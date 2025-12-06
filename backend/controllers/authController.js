@@ -8,13 +8,10 @@ dotenv.config();
 
 export const requestOtp = async (req, res) => {
   try {
-    const { phone } = req.body;
-
-    if (!phone) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Phone number is required" });
-    }
+ const { phone } = req.body || {};           // safe destructure
+if (!phone) {
+  return res.status(400).json({ success:false, message: "Phone number is required" });
+}
 
     if (!process.env.RENFLAIR_API_KEY) {
       return res.status(500).json({
@@ -67,10 +64,10 @@ export const requestOtp = async (req, res) => {
 
 export const verifyOtp = async (req, res) => {
   try {
-    const { phone, otp } = req.body;
-    if (!phone || !otp) {
-      return res.status(400).json({ success: false, message: "Phone and OTP are required" });
-    }
+    const { phone, otp } = req.body || {};
+if (!phone || !otp) {
+  return res.status(400).json({ success:false, message: "Phone and OTP are required" });
+}
 
     const otpRecord = await Otp.findOne({ phone, otp });
     if (!otpRecord) return res.status(400).json({ success: false, message: "Invalid OTP" });

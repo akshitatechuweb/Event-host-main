@@ -9,7 +9,8 @@ import {
   deactivateUser,
   requestHostUpgrade,
   approveHostUpgrade,
-  completeProfile
+  createProfile,
+    logoutUser
 } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -42,6 +43,6 @@ router.get(
   getUserById
 );
 
-router.post("/complete-profile", authMiddleware, completeProfile);
-
+router.post("/create-profile", authMiddleware, createProfile);
+router.post("/logout", authMiddleware, logoutUser);
 export default router;

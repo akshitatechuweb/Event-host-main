@@ -199,9 +199,9 @@ export const deactivateUser = async (req, res) => {
 };
 
 
-// ADD THIS FUNCTION in your userController.js
 
-export const completeProfile = async (req, res) => {
+
+export const createProfile = async (req, res) => {
   try {
     const { name, email, city, gender } = req.body;
 
@@ -213,23 +213,24 @@ export const completeProfile = async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (!user)
+      return res.status(404).json({ success: false, message: "User not found" });
 
     user.name = name.trim();
     if (email?.trim()) user.email = email.trim();
     user.city = city.trim();
     user.gender = gender;
 
-    await user.save(); // pre-save hook auto sets isProfileComplete = true
+    await user.save();
 
     return res.json({
       success: true,
-      message: "Profile completed successfully!",
+      message: "Profile created successfully!",
       user,
       isProfileComplete: true,
     });
   } catch (error) {
-    console.error("Complete profile error:", error);
+    console.error("Create profile error:", error);
     res.status(500).json({ success: false, message: "Failed to save profile" });
   }
 };
@@ -237,3 +238,21 @@ export const completeProfile = async (req, res) => {
 
 
 
+export const logoutUser = async (req, res) => {
+  try {
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+    });
+
+    return res.json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ success: false, message: "Logout failed" });
+  }
+};

@@ -46,30 +46,7 @@ export const getUserById = async (req, res) => {
   }
 };
 
-// 🔹 Update user profile
-export const updateUserProfile = async (req, res) => {
-  try {
-    const updates = req.body;
-    const user = await User.findById(req.user.id);
 
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    Object.assign(user, updates);
-
-    user.profileCompletion = calculateProfileCompletion(user);
-    if (user.profileCompletion === 100) {
-      user.isVerified = true;
-    } else {
-      user.isVerified = false;
-    }
-
-    await user.save();
-    res.json({ message: "Profile updated", user });
-  } catch (err) {
-    console.error("Update profile error:", err);
-    res.status(500).json({ message: "Error updating profile" });
-  }
-};
 
 // 2️⃣ Request to become host
 export const requestHostUpgrade = async (req, res) => {
@@ -216,10 +193,21 @@ export const createProfile = async (req, res) => {
     if (!user)
       return res.status(404).json({ success: false, message: "User not found" });
 
+    //  If user already created profile → don't overwrite
+    if (user.isProfileComplete) {
+      return res.status(400).json({
+        success: false,
+        message: "Profile already exists. Please update instead.",
+      });
+    }
+
+    // 🟢 First-time profile creation
     user.name = name.trim();
     if (email?.trim()) user.email = email.trim();
     user.city = city.trim();
     user.gender = gender;
+
+    user.isProfileComplete = true;
 
     await user.save();
 
@@ -234,6 +222,7 @@ export const createProfile = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to save profile" });
   }
 };
+
 
 
 
@@ -256,3 +245,51 @@ export const logoutUser = async (req, res) => {
     res.status(500).json({ success: false, message: "Logout failed" });
   }
 };
+
+
+
+export const completeProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user)
+      return res.status(404).json({ success: false, message: "User not found" });
+
+    // Existing profile fields (already stored from create-profile)
+    user.name = user.name; 
+    user.city = user.city;
+    user.gender = user.gender;
+
+    // Uploaded files
+    if (req.files.profilePhoto) {
+      user.photos.push({
+        url: req.files.profilePhoto[0].path,
+        isProfilePhoto: true
+      });
+    }
+
+    user.documents = {
+      aadhaar: req.files.aadhaar ? req.files.aadhaar[0].path : null,
+      pan: req.files.pan ? req.files.pan[0].path : null,
+      drivingLicense: req.files.drivingLicense
+        ? req.files.drivingLicense[0].path
+        : null,
+    };
+
+    // After completing full profile → make user host
+    user.role = "host";
+    user.isVerified = true;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Profile completed successfully!",
+      user,
+    });
+  } catch (error) {
+    console.error("Complete profile error:", error);
+    res.status(500).json({ success: false, message: "Profile update failed" });
+  }
+};
+
+

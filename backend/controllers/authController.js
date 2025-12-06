@@ -65,33 +65,54 @@ if (!phone) {
 export const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body || {};
-if (!phone || !otp) {
-  return res.status(400).json({ success:false, message: "Phone and OTP are required" });
-}
+    if (!phone || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone and OTP are required",
+      });
+    }
 
     const otpRecord = await Otp.findOne({ phone, otp });
-    if (!otpRecord) return res.status(400).json({ success: false, message: "Invalid OTP" });
+    if (!otpRecord)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid OTP" });
+
     if (otpRecord.expiresAt < new Date()) {
       await Otp.deleteOne({ phone });
-      return res.status(400).json({ success: false, message: "OTP expired" });
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP expired" });
     }
 
     let user = await User.findOne({ phone });
+
+    let responseMessage = ""; 
+
     if (!user) {
+      // New user
       user = await User.create({ phone, isVerified: true });
+      responseMessage =
+        "OTP verified successfully. Please create your profile.";
     } else {
+      // Existing user
       user.isVerified = true;
       await user.save();
+      responseMessage = "Welcome back! Login successful.";
     }
 
     await Otp.deleteOne({ phone });
 
     if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is not set in environment. Aborting token creation.");
-      return res.status(500).json({ success: false, message: "Server configuration error: JWT secret missing" });
+      return res.status(500).json({
+        success: false,
+        message: "Server configuration error: JWT secret missing",
+      });
     }
 
-    const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.cookie("accessToken", token, {
       httpOnly: true,
@@ -100,16 +121,16 @@ if (!phone || !otp) {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // THIS IS THE KEY PART
     return res.json({
       success: true,
-      message: "Login successful",
+      message: responseMessage, // 👈 Dynamic message here
       token,
       user,
-      isProfileComplete: user.isProfileComplete, // ← Frontend uses this
+      isProfileComplete: user.isProfileComplete || false,
     });
   } catch (error) {
-    console.error("OTP verification failed:", error && (error.stack || error));
+    console.error("OTP verification failed:", error);
     res.status(500).json({ success: false, message: "Login failed" });
   }
 };
+

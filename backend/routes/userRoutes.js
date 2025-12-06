@@ -1,23 +1,25 @@
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
+import { upload } from "../middleware/multer.js";
 import {
   getMyProfile,
   getUserById,
-  updateUserProfile,
+ 
   getAllUsers,
   deactivateUser,
   requestHostUpgrade,
   approveHostUpgrade,
   createProfile,
-    logoutUser
+    logoutUser,
+      completeProfile
+
 } from "../controllers/userController.js";
 
 const router = express.Router();
 
 // Protected routes
 router.get("/get-profile", authMiddleware, getMyProfile);
-router.put("/update-profile", authMiddleware, updateUserProfile);
 router.put("/deactivate/:id", authMiddleware, deactivateUser);
 router.put("/request-host", authMiddleware, requestHostUpgrade);
 
@@ -45,4 +47,18 @@ router.get(
 
 router.post("/create-profile", authMiddleware, createProfile);
 router.post("/logout", authMiddleware, logoutUser);
+
+
+router.put(
+  "/complete-profile",
+  authMiddleware,
+  upload.fields([
+    { name: "profilePhoto", maxCount: 1 },
+    { name: "aadhaar", maxCount: 1 },
+    { name: "pan", maxCount: 1 },
+    { name: "drivingLicense", maxCount: 1 },
+  ]),
+  completeProfile
+);
+
 export default router;

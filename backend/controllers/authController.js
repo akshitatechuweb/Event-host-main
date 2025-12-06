@@ -51,6 +51,7 @@ export const requestOtp = async (req, res) => {
     return res.json({
       success: true,
       message: "OTP sent successfully",
+      otp,
       details: smsResponse,
     });
   } catch (error) {
@@ -88,6 +89,11 @@ export const verifyOtp = async (req, res) => {
 
     await Otp.deleteOne({ phone });
 
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not set in environment. Aborting token creation.");
+      return res.status(500).json({ success: false, message: "Server configuration error: JWT secret missing" });
+    }
+
     const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     res.cookie("accessToken", token, {
@@ -106,7 +112,7 @@ export const verifyOtp = async (req, res) => {
       isProfileComplete: user.isProfileComplete, // ← Frontend uses this
     });
   } catch (error) {
-    console.error("OTP verification failed:", error);
+    console.error("OTP verification failed:", error && (error.stack || error));
     res.status(500).json({ success: false, message: "Login failed" });
   }
 };

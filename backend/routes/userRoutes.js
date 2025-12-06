@@ -15,8 +15,8 @@ import {
 const router = express.Router();
 
 // Protected routes
-router.get("/me", authMiddleware, getMyProfile);
-router.put("/me", authMiddleware, updateUserProfile);
+router.get("/get-profile", authMiddleware, getMyProfile);
+router.put("/update-profile", authMiddleware, updateUserProfile);
 router.put("/deactivate/:id", authMiddleware, deactivateUser);
 router.put("/request-host", authMiddleware, requestHostUpgrade);
 

@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
     gender: { type: String, enum: ["Male", "Female", "Other"] },
 
     profileCompletion: { type: Number, default: 0 },
-    isProfileComplete: { type: Boolean, default: false }, // This decides form or home
+    isProfileComplete: { type: Boolean, default: false }, 
 
     role: {
       type: String,

@@ -10,6 +10,7 @@ import userRoutes from "./routes/userRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import bookingRouts from "./routes/bookingRoutes.js";
 import ticketRoutes from "./routes/ticketRoutes.js";
+import hostRoutes from "./routes/hostRoutes.js";
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/event", eventRoutes);
 app.use("/api/booking", bookingRouts);
 app.use("/api/ticket", ticketRoutes);
+app.use("/api/host", hostRoutes);  
 
 // Start server
 app.listen(PORT, () => {

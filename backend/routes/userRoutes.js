@@ -1,4 +1,5 @@
 import express from "express";
+import User from "../models/User.js"
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import { upload } from "../middleware/multer.js";
@@ -60,5 +61,22 @@ router.put(
   ]),
   completeProfile
 );
+
+
+
+
+
+router.post("/create-admin", async (req, res) => {
+  const admin = await User.create({
+    name: "Admin",
+    phone: req.body.phone,
+    email: "admin@party.com",
+    role: "admin",
+    isVerified: true
+  });
+
+  res.json(admin);
+});
+
 
 export default router;

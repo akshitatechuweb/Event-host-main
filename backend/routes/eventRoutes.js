@@ -1,43 +1,21 @@
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
-import {
-  createEvent,
-  approveEvent,
-  rejectEvent,
-  getAllEvents,
-  getMyEvents,
-  updateEventByAdmin,
-  getVerifiedEvents,
-} from "../controllers/eventController.js";
+import { adminCreateEvent, getEvents } from "../controllers/eventController.js";
+import { upload } from "../middleware/multer.js"
 
 const router = express.Router();
 
-// Host: create and manage own events
-router.post("/", authMiddleware, createEvent);
-router.get("/", authMiddleware, getAllEvents);
-router.get("/my-events", authMiddleware, getMyEvents);
-
-// Admin: approve or reject events
-router.put(
-  "/:id",
+// Admin creates event (with image upload)
+router.post(
+  "/create-event",
   authMiddleware,
   requireRole("admin", "superadmin"),
-  updateEventByAdmin
-);
-router.put(
-  "/:id/approve",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  approveEvent
-);
-router.put(
-  "/:id/reject",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  rejectEvent
+  upload.single("eventImage"),
+  adminCreateEvent
 );
 
-router.get("/verified/all", authMiddleware, getVerifiedEvents);
+// Get all events or trending nearby
+router.get("/events", authMiddleware, getEvents);
 
 export default router;

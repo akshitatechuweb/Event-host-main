@@ -1,91 +1,28 @@
 import mongoose from "mongoose";
-import { type } from "os";
-import { title } from "process";
 
 const eventSchema = new mongoose.Schema(
   {
-    hostId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    category: {
-      type: String,
-      required: true,
-    },
-
+    hostId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    hostedBy: { type: String, required: true },
+    eventName: { type: String, required: true },
+    eventImage: { type: String },
+    date: { type: Date, required: true },
+    time: { type: String, required: true }, 
+    fullAddress: { type: String, required: true },
+    city: { type: String, required: true },
+    entryFees: { type: Number, required: true },
+    about: { type: String },
+    ageRestriction: { type: String },
+    genderPreference: { type: String, default: "both" },
+    categories: [{ type: String }],
     location: {
-      address: {
-        type: String,
-        required: true,
-        trim: true,
-      },
-      coordinates: {
-        type: {
-          type: String,
-          enum: ["Point"],
-          default: "Point",
-        },
-        coordinates: {
-          type: [Number],
-          required: true,
-          index: "2dsphere",
-        },
-      },
-    },
-
-    startDateTime: {
-      type: Date,
-      required: true,
-    },
-
-    endDateTime: {
-      type: Date,
-      required: true,
-    },
-
-    capacity: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    rules: {
-      type: [String],
-      default: [],
-    },
-
-    media: [
-      {
-        url: { type: String, required: true },
-        type: {
-          type: String,
-          enum: ["image", "video"],
-          default: "image",
-        },
-      },
-    ],
-    status: {
-      type: String,
-      enum: ["draft", "pending", "live", "canceled"],
-      default: "draft",
-    },
+      type: { type: String, enum: ["Point"], default: "Point" },
+      coordinates: { type: [Number], required: true } // [lng, lat]
+    }
   },
   { timestamps: true }
 );
 
-const Event = mongoose.model("Event", eventSchema);
+eventSchema.index({ location: "2dsphere" });
 
-export default Event;
+export default mongoose.model("Event", eventSchema);

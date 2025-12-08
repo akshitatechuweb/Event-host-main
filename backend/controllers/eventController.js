@@ -1,168 +1,86 @@
 import Event from "../models/Event.js";
 import User from "../models/User.js";
+import axios from "axios";
 
-// Host creates a new event
-export const createEvent = async (req, res) => {
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY; // put your key in .env
+const DEFAULT_RADIUS = 10000; // 10 km
+
+// Admin creates event (auto-geocoding)
+export const adminCreateEvent = async (req, res) => {
   try {
-    const { title, description, category, location, startDateTime, endDateTime, capacity, rules, media } = req.body;
-    const user = req.user;
+    const {
+      hostId,
+      eventName,
+      eventImage,
+      date,
+      time,
+      fullAddress,
+      city,
+      entryFees,
+      about,
+      ageRestriction,
+      genderPreference,
+      categories
+    } = req.body;
 
-    // Ensure only verified hosts can create events
-    if (user.role !== "host" || !user.isHostVerified) {
-      return res.status(403).json({
-        success: false,
-        message: "Only verified hosts can create events",
-      });
-    }
+    const host = await User.findById(hostId);
+    if (!host) return res.status(404).json({ success: false, message: "Host not found" });
+
+    // Geocode
+    const geoRes = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
+      params: { address: fullAddress, key: process.env.GOOGLE_MAPS_API_KEY }
+    });
+
+    if (!geoRes.data.results.length)
+      return res.status(400).json({ success: false, message: "Invalid address for geocoding" });
+
+    const location = geoRes.data.results[0].geometry.location; // {lat, lng}
 
     const newEvent = await Event.create({
-      hostId: user._id,
-      title,
-      description,
-      category,
-      location,
-      startDateTime,
-      endDateTime,
-      capacity,
-      rules,
-      media,
-      status: "pending", 
+      hostId,
+      hostedBy: host.name,
+      eventName,
+      eventImage: req.file ? `/uploads/${req.file.filename}` : eventImage,
+      date,
+      time,
+      fullAddress,
+      city,
+      entryFees,
+      about,
+      ageRestriction,
+      genderPreference: genderPreference || "both",
+      categories,
+      location: { type: "Point", coordinates: [location.lng, location.lat] }
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Event created successfully. Awaiting admin approval.",
-      event: newEvent,
-    });
+    res.status(201).json({ success: true, message: "Event created successfully", event: newEvent });
   } catch (err) {
-    console.error("Error creating event:", err);
-    res.status(500).json({ success: false, message: "Server error while creating event" });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// 🔹 Admin updates any event details
-export const updateEventByAdmin = async (req, res) => {
+
+// Get events (all or trending nearby)
+export const getEvents = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
+    const { userLat, userLng, trendingOnly } = req.query;
+    let filter = {};
 
-    const event = await Event.findByIdAndUpdate(id, updates, { new: true });
-    if (!event)
-      return res.status(404).json({ success: false, message: "Event not found" });
-
-    res.json({ success: true, message: "Event updated successfully", event });
-  } catch (err) {
-    console.error("Error updating event:", err);
-    res.status(500).json({ success: false, message: "Server error while updating event" });
-  }
-};
-
-//  Admin approves an event
-export const approveEvent = async (req, res) => {
-  try {
-    const eventId = req.params.id;
-
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+    if (trendingOnly === "true" && userLat && userLng) {
+      filter.location = {
+        $near: {
+          $geometry: { type: "Point", coordinates: [parseFloat(userLng), parseFloat(userLat)] },
+          $maxDistance: DEFAULT_RADIUS
+        }
+      };
     }
 
-    event.status = "live";
-    await event.save();
+    const events = await Event.find(filter).sort({ dateTime: 1 });
 
-    res.json({ success: true, message: "Event approved successfully", event });
+    const updatedEvents = events.map(ev => ({ ...ev._doc, trending: trendingOnly === "true" }));
+
+    res.status(200).json({ success: true, events: updatedEvents });
   } catch (err) {
-    console.error("Error approving event:", err);
-    res.status(500).json({ success: false, message: "Server error while approving event" });
-  }
-};
-
-//  Admin rejects an event
-export const rejectEvent = async (req, res) => {
-  try {
-    const eventId = req.params.id;
-
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
-    }
-
-    event.status = "canceled";
-    await event.save();
-
-    res.json({ success: true, message: "Event rejected successfully", event });
-  } catch (err) {
-    console.error("Error rejecting event:", err);
-    res.status(500).json({ success: false, message: "Server error while rejecting event" });
-  }
-};
-
-//  Get all events (admin, with pagination + filter)
-export const getAllEvents = async (req, res) => {
-  try {
-    const { page = 1, limit = 10, status } = req.query;
-    const query = status ? { status } : {};
-
-    const skip = (page - 1) * limit;
-    const [events, total] = await Promise.all([
-      Event.find(query)
-        .populate("hostId", "name phone city")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit)),
-      Event.countDocuments(query),
-    ]);
-
-    res.json({
-      success: true,
-      currentPage: parseInt(page),
-      totalPages: Math.ceil(total / limit),
-      totalEvents: total,
-      events,
-    });
-  } catch (err) {
-    console.error("Error fetching events:", err);
-    res.status(500).json({ success: false, message: "Failed to fetch events" });
-  }
-};
-
-//  Host can view their own events
-export const getMyEvents = async (req, res) => {
-  try {
-    const user = req.user;
-
-    const events = await Event.find({ hostId: user._id }).sort({ createdAt: -1 });
-    res.json({ success: true, events });
-  } catch (err) {
-    console.error("Error fetching host events:", err);
-    res.status(500).json({ success: false, message: "Failed to fetch your events" });
-  }
-};
-
-// 🔹 Public route — fetch only verified/live events
-export const getVerifiedEvents = async (req, res) => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-    const skip = (page - 1) * limit;
-
-    const [events, total] = await Promise.all([
-      Event.find({ status: "live" })
-        .populate("hostId", "name city")
-        .sort({ startDateTime: 1 })
-        .skip(skip)
-        .limit(parseInt(limit)),
-      Event.countDocuments({ status: "live" }),
-    ]);
-
-    res.json({
-      success: true,
-      currentPage: parseInt(page),
-      totalPages: Math.ceil(total / limit),
-      totalEvents: total,
-      events,
-    });
-  } catch (err) {
-    console.error("Error fetching verified events:", err);
-    res.status(500).json({ success: false, message: "Failed to fetch verified events" });
+    res.status(500).json({ success: false, message: err.message });
   }
 };

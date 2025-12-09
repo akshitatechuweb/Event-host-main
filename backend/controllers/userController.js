@@ -198,42 +198,38 @@ export const createProfile = async (req, res) => {
   }
 };
 
-// Step 2: Complete Profile → Become Host (MANDATORY: Photo + Aadhaar + PAN)
-// controllers/userController.js → Replace completeProfile with this
 
 export const completeProfile = async (req, res) => {
-  try {
+  try {  
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    let wasGuest = user.role !== "host"; 
+    let wasGuest = user.role !== "host";
 
-    // === 1. Profile Photo Update (Replace old one) ===
+    // Profile Photo Update
     if (req.files?.profilePhoto) {
-      const newPhotoPath = req.files.profilePhoto[0].path.replace(/\\/g, "/");
+      const photoUrl = `/uploads/${req.files.profilePhoto[0].filename}`;
       user.photos = user.photos.filter(p => !p.isProfilePhoto);
-      user.photos.push({ url: newPhotoPath, isProfilePhoto: true });
+      user.photos.push({ url: photoUrl, isProfilePhoto: true });
     }
 
-    // === 2. Documents Update (Keep old if not uploaded) ===
+    // Documents Update
     if (req.files) {
       user.documents = {
-        aadhaar: req.files.aadhaar?.[0]?.path?.replace(/\\/g, "/") || user.documents.aadhaar,
-        pan: req.files.pan?.[0]?.path?.replace(/\\/g, "/") || user.documents.pan,
-        drivingLicense: req.files.drivingLicense?.[0]?.path?.replace(/\\/g, "/") || user.documents.drivingLicense,
+        aadhaar: req.files.aadhaar ? `/uploads/${req.files.aadhaar[0].filename}` : user.documents.aadhaar,
+        pan: req.files.pan ? `/uploads/${req.files.pan[0].filename}` : user.documents.pan,
+        drivingLicense: req.files.drivingLicense ? `/uploads/${req.files.drivingLicense[0].filename}` : user.documents.drivingLicense,
       };
     }
 
-   
+
     if (wasGuest) {
-      // Mandatory check sirf pehli baar
       if (!req.files?.profilePhoto || !req.files?.aadhaar || !req.files?.pan) {
         return res.status(400).json({
           success: false,
           message: "First time: Profile Photo, Aadhaar & PAN are mandatory",
         });
       }
-
       user.role = "host";
       user.isVerified = true;
       user.isHostVerified = true;
@@ -242,7 +238,6 @@ export const completeProfile = async (req, res) => {
 
     await user.save();
 
-    // Success
     const message = wasGuest
       ? "Congratulations! You're now a verified Host"
       : "Profile updated successfully!";
@@ -254,7 +249,7 @@ export const completeProfile = async (req, res) => {
       profileCompletion: 100,
     });
 
-  } catch (error) {
+  } catch (error) {  
     console.error("Complete/Update profile error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }

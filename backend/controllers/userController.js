@@ -199,62 +199,64 @@ export const createProfile = async (req, res) => {
 };
 
 // Step 2: Complete Profile → Become Host (MANDATORY: Photo + Aadhaar + PAN)
+// controllers/userController.js → Replace completeProfile with this
+
 export const completeProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (user.role === "host") {
-      return res.status(400).json({ success: false, message: "You are already a Host" });
+    let wasGuest = user.role !== "host"; 
+
+    // === 1. Profile Photo Update (Replace old one) ===
+    if (req.files?.profilePhoto) {
+      const newPhotoPath = req.files.profilePhoto[0].path.replace(/\\/g, "/");
+      user.photos = user.photos.filter(p => !p.isProfilePhoto);
+      user.photos.push({ url: newPhotoPath, isProfilePhoto: true });
     }
 
-    const profilePhoto = req.files?.profilePhoto?.[0];
-    const aadhaar = req.files?.aadhaar?.[0];
-    const pan = req.files?.pan?.[0];
-
-    if (!profilePhoto || !aadhaar || !pan) {
-      return res.status(400).json({
-        success: false,
-        message: "Profile Photo, Aadhaar & PAN are mandatory to become a Host",
-        missing: {
-          profilePhoto: !profilePhoto,
-          aadhaar: !aadhaar,
-          pan: !pan,
-        },
-      });
+    // === 2. Documents Update (Keep old if not uploaded) ===
+    if (req.files) {
+      user.documents = {
+        aadhaar: req.files.aadhaar?.[0]?.path?.replace(/\\/g, "/") || user.documents.aadhaar,
+        pan: req.files.pan?.[0]?.path?.replace(/\\/g, "/") || user.documents.pan,
+        drivingLicense: req.files.drivingLicense?.[0]?.path?.replace(/\\/g, "/") || user.documents.drivingLicense,
+      };
     }
 
-    // Replace old profile photo
-    user.photos = user.photos.filter(photo => !photo.isProfilePhoto);
-    user.photos.push({
-      url: profilePhoto.path,
-      isProfilePhoto: true,
-    });
+   
+    if (wasGuest) {
+      // Mandatory check sirf pehli baar
+      if (!req.files?.profilePhoto || !req.files?.aadhaar || !req.files?.pan) {
+        return res.status(400).json({
+          success: false,
+          message: "First time: Profile Photo, Aadhaar & PAN are mandatory",
+        });
+      }
 
-    // Update documents
-    user.documents = {
-      aadhaar: aadhaar.path,
-      pan: pan.path,
-      drivingLicense: req.files?.drivingLicense?.[0]?.path || user.documents.drivingLicense || null,
-    };
-
-    // Finalize Host Status
-    user.role = "host";
-    user.isVerified = true;
-    user.isHostVerified = true;
-    user.isHostRequestPending = false;
+      user.role = "host";
+      user.isVerified = true;
+      user.isHostVerified = true;
+      user.isHostRequestPending = false;
+    }
 
     await user.save();
 
+    // Success
+    const message = wasGuest
+      ? "Congratulations! You're now a verified Host"
+      : "Profile updated successfully!";
+
     res.json({
       success: true,
-      message: "Congratulations! You're now a verified Host",
+      message,
       user,
       profileCompletion: 100,
     });
+
   } catch (error) {
-    console.error("Complete profile error:", error);
-    res.status(500).json({ success: false, message: "Failed to complete profile" });
+    console.error("Complete/Update profile error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

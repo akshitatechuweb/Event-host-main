@@ -1,44 +1,41 @@
 import User from "../models/User.js";
 
-// Calculate profile Completion
+
 const calculateProfileCompletion = (user) => {
-  let totalFields = 5;
   let filled = 0;
+  const total = 6;
 
-  if (user.name) filled++;
-  if (user.city) filled++;
-  if (user.bio) filled++;
-  if (user.photos && user.photos.length > 0) filled++;
-  if (user.profileDetails?.age && user.profileDetails?.gender) filled++;
+  if (user.name?.trim()) filled++;
+  if (user.email?.trim()) filled++;
+  if (user.city?.trim()) filled++;
+  if (user.gender) filled++;
+  if (user.photos?.some(p => p.isProfilePhoto)) filled++;
+  if (user.documents?.aadhaar || user.documents?.pan) filled++;
 
-  return Math.round((filled / totalFields) * 100);
+  return Math.round((filled / total) * 100);
 };
 
-// 🔹 Get current user (from JWT auth middleware)
+// Get current user profile
 export const getMyProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    const user = await User.findById(req.user._id).select("-password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
     res.json({ success: true, user });
   } catch (err) {
     console.error("Error fetching profile:", err);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch profile" });
+    res.status(500).json({ success: false, message: "Failed to fetch profile" });
   }
 };
 
-// 🔹 Get user by ID (admin/moderator)
+// Get user by ID (Admin)
 export const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    const user = await User.findById(req.params.id).select("-password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
     res.json({ success: true, user });
   } catch (err) {
     console.error("Error fetching user:", err);
@@ -46,70 +43,66 @@ export const getUserById = async (req, res) => {
   }
 };
 
-
-
-// 2️⃣ Request to become host
+// Request to become host (old flow - kept for backward compatibility)
 export const requestHostUpgrade = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (user.role !== "guest")
-      return res
-        .status(400)
-        .json({ message: "Only guests can request host role" });
+    if (user.role !== "guest") {
+      return res.status(400).json({ success: false, message: "Only guests can request host role" });
+    }
 
-    if (user.profileCompletion < 100)
-      return res
-        .status(400)
-        .json({ message: "Complete profile before requesting host" });
+    if (user.profileCompletion < 80) {
+      return res.status(400).json({ success: false, message: "Complete your profile first" });
+    }
 
     user.isHostRequestPending = true;
     await user.save();
 
-    // later: notify admin via email / socket / dashboard
-    res.json({ message: "Host request submitted successfully" });
+    res.json({ success: true, message: "Host request submitted successfully" });
   } catch (err) {
     console.error("Request host error:", err);
-    res.status(500).json({ message: "Error submitting request" });
+    res.status(500).json({ success: false, message: "Error submitting request" });
   }
 };
 
+// Approve host request (Admin)
 export const approveHostUpgrade = async (req, res) => {
   try {
-    const { id } = req.params; // user id
+    const { id } = req.params;
     const user = await User.findById(id);
 
-    if (!user) return res.status(404).json({ message: "User not found" });
-    if (!user.isHostRequestPending)
-      return res.status(400).json({ message: "No pending host request" });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (!user.isHostRequestPending) {
+      return res.status(400).json({ success: false, message: "No pending host request" });
+    }
 
     user.role = "host";
     user.isHostRequestPending = false;
     user.isHostVerified = true;
+    user.isVerified = true;
+
     await user.save();
 
-    res.json({ message: "User promoted to host", user });
+    res.json({ success: true, message: "User promoted to host successfully", user });
   } catch (err) {
     console.error("Approve host error:", err);
-    res.status(500).json({ message: "Error approving host" });
+    res.status(500).json({ success: false, message: "Error approving host" });
   }
 };
 
-//  Get all users (Admin) — with pagination, filtering, sorting, and projection
+// Get all users (Admin) - with filters
 export const getAllUsers = async (req, res) => {
   try {
-    // 1️⃣ Pagination
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    //  Filters (search by role, city, verification, name, phone)
     const filters = {};
     if (req.query.role) filters.role = req.query.role;
     if (req.query.city) filters.city = new RegExp(req.query.city, "i");
-    if (req.query.isVerified)
-      filters.isVerified = req.query.isVerified === "true";
+    if (req.query.isVerified) filters.isVerified = req.query.isVerified === "true";
     if (req.query.search) {
       filters.$or = [
         { name: new RegExp(req.query.search, "i") },
@@ -118,17 +111,13 @@ export const getAllUsers = async (req, res) => {
       ];
     }
 
-    //  Sorting
     const sortField = req.query.sortBy || "createdAt";
     const sortOrder = req.query.order === "asc" ? 1 : -1;
-
-    // Select only needed fields
     const selectFields = req.query.fields?.replace(/,/g, " ") || "";
 
-    // Query
     const [users, total] = await Promise.all([
       User.find(filters)
-        .select(selectFields)
+        .select(selectFields || "-password")
         .sort({ [sortField]: sortOrder })
         .skip(skip)
         .limit(limit)
@@ -136,7 +125,6 @@ export const getAllUsers = async (req, res) => {
       User.countDocuments(filters),
     ]);
 
-    // Response with pagination meta
     res.json({
       success: true,
       total,
@@ -151,38 +139,33 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// Deactivate user (admin or self)
+// Deactivate user (Admin or self)
 export const deactivateUser = async (req, res) => {
   try {
     const userId = req.params.id || req.user._id;
-
     const user = await User.findByIdAndUpdate(
       userId,
       { isActive: false },
       { new: true }
-    );
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
     res.json({ success: true, message: "User deactivated successfully", user });
   } catch (err) {
     console.error("Error deactivating user:", err);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to deactivate user" });
+    res.status(500).json({ success: false, message: "Failed to deactivate user" });
   }
 };
 
-
-
-
+// Step 1: Create Basic Profile
 export const createProfile = async (req, res) => {
   try {
     const { name, email, city, gender } = req.body;
 
-    if (!name || !city || !gender) {
+    if (!name?.trim() || !city?.trim() || !gender) {
       return res.status(400).json({
         success: false,
         message: "Name, City and Gender are required",
@@ -190,106 +173,104 @@ export const createProfile = async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
-    if (!user)
-      return res.status(404).json({ success: false, message: "User not found" });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    //  If user already created profile → don't overwrite
-    if (user.isProfileComplete) {
-      return res.status(400).json({
-        success: false,
-        message: "Profile already exists. Please update instead.",
-      });
+    if (user.role === "host") {
+      return res.status(400).json({ success: false, message: "Profile already completed" });
     }
 
-    // 🟢 First-time profile creation
     user.name = name.trim();
-    if (email?.trim()) user.email = email.trim();
     user.city = city.trim();
     user.gender = gender;
-
-    user.isProfileComplete = true;
+    if (email?.trim()) user.email = email.trim().toLowerCase();
 
     await user.save();
 
-    return res.json({
+    res.json({
       success: true,
-      message: "Profile created successfully!",
+      message: "Basic profile created successfully!",
       user,
-      isProfileComplete: true,
+      profileCompletion: user.profileCompletion || calculateProfileCompletion(user),
     });
   } catch (error) {
     console.error("Create profile error:", error);
-    res.status(500).json({ success: false, message: "Failed to save profile" });
+    res.status(500).json({ success: false, message: "Failed to create profile" });
   }
 };
 
+// Step 2: Complete Profile → Become Host (MANDATORY: Photo + Aadhaar + PAN)
+export const completeProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
+    if (user.role === "host") {
+      return res.status(400).json({ success: false, message: "You are already a Host" });
+    }
 
+    const profilePhoto = req.files?.profilePhoto?.[0];
+    const aadhaar = req.files?.aadhaar?.[0];
+    const pan = req.files?.pan?.[0];
 
+    if (!profilePhoto || !aadhaar || !pan) {
+      return res.status(400).json({
+        success: false,
+        message: "Profile Photo, Aadhaar & PAN are mandatory to become a Host",
+        missing: {
+          profilePhoto: !profilePhoto,
+          aadhaar: !aadhaar,
+          pan: !pan,
+        },
+      });
+    }
 
+    // Replace old profile photo
+    user.photos = user.photos.filter(photo => !photo.isProfilePhoto);
+    user.photos.push({
+      url: profilePhoto.path,
+      isProfilePhoto: true,
+    });
+
+    // Update documents
+    user.documents = {
+      aadhaar: aadhaar.path,
+      pan: pan.path,
+      drivingLicense: req.files?.drivingLicense?.[0]?.path || user.documents.drivingLicense || null,
+    };
+
+    // Finalize Host Status
+    user.role = "host";
+    user.isVerified = true;
+    user.isHostVerified = true;
+    user.isHostRequestPending = false;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Congratulations! You're now a verified Host",
+      user,
+      profileCompletion: 100,
+    });
+  } catch (error) {
+    console.error("Complete profile error:", error);
+    res.status(500).json({ success: false, message: "Failed to complete profile" });
+  }
+};
+
+// Logout
 export const logoutUser = async (req, res) => {
   try {
     res.clearCookie("accessToken", {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
     });
 
-    return res.json({
-      success: true,
-      message: "Logout successful",
-    });
+    res.json({ success: true, message: "Logged out successfully" });
   } catch (error) {
     console.error("Logout error:", error);
     res.status(500).json({ success: false, message: "Logout failed" });
   }
 };
-
-
-
-export const completeProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    if (!user)
-      return res.status(404).json({ success: false, message: "User not found" });
-
-    // Existing profile fields (already stored from create-profile)
-    user.name = user.name; 
-    user.city = user.city;
-    user.gender = user.gender;
-
-    // Uploaded files
-    if (req.files.profilePhoto) {
-      user.photos.push({
-        url: req.files.profilePhoto[0].path,
-        isProfilePhoto: true
-      });
-    }
-
-    user.documents = {
-      aadhaar: req.files.aadhaar ? req.files.aadhaar[0].path : null,
-      pan: req.files.pan ? req.files.pan[0].path : null,
-      drivingLicense: req.files.drivingLicense
-        ? req.files.drivingLicense[0].path
-        : null,
-    };
-
-    // After completing full profile → make user host
-    user.role = "host";
-    user.isVerified = true;
-
-    await user.save();
-
-    return res.json({
-      success: true,
-      message: "Profile completed successfully!",
-      user,
-    });
-  } catch (error) {
-    console.error("Complete profile error:", error);
-    res.status(500).json({ success: false, message: "Profile update failed" });
-  }
-};
-
-

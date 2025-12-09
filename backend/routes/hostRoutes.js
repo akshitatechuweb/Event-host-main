@@ -1,20 +1,19 @@
+// routes/adminRoutes.js
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
-import { requestEventHostAccess } from "../controllers/hostController.js";
-import { approveEventHost } from "../controllers/adminController.js";
+import {
+  approveEventHost,
+  rejectEventHost,
+  getAllHostRequests,
+} from "../controllers/adminController.js";
 
 const router = express.Router();
 
-// Host → send request
-router.post("/event-request", authMiddleware, requestEventHostAccess);
+router.use(authMiddleware, requireRole("admin", "superadmin"));
 
-// Admin → approve request
-router.put(
-  "/approve-event-request/:id",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  approveEventHost
-);
+router.get("/host-requests", getAllHostRequests);
+router.put("/host-requests/approve/:id", approveEventHost);
+router.put("/host-requests/reject/:id", rejectEventHost);
 
 export default router;

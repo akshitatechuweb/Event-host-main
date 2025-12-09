@@ -1,54 +1,24 @@
+// routes/userRoutes.js
 import express from "express";
-import User from "../models/User.js"
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import { upload } from "../middleware/multer.js";
 import {
   getMyProfile,
-  getUserById,
- 
-  getAllUsers,
-  deactivateUser,
+  createProfile,
+  completeProfile,
+  logoutUser,
   requestHostUpgrade,
   approveHostUpgrade,
-  createProfile,
-    logoutUser,
-      completeProfile
-
+  getAllUsers,
+  deactivateUser,
 } from "../controllers/userController.js";
 
 const router = express.Router();
 
-// Protected routes
+// Public (after login)
 router.get("/get-profile", authMiddleware, getMyProfile);
-router.put("/deactivate/:id", authMiddleware, deactivateUser);
-router.put("/request-host", authMiddleware, requestHostUpgrade);
-
-// Admin/moderator-only routes (can restrict later with role middleware)
-
-router.put(
-  "/approve-host/:id",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  approveHostUpgrade
-);
-
-router.get(
-  "/",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  getAllUsers
-);
-router.get(
-  "/:id",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  getUserById
-);
-
 router.post("/create-profile", authMiddleware, createProfile);
-router.post("/logout", authMiddleware, logoutUser);
-
 
 router.put(
   "/complete-profile",
@@ -62,21 +32,46 @@ router.put(
   completeProfile
 );
 
+router.post("/logout", authMiddleware, logoutUser);
 
+// Host request (optional flow)
+router.put("/request-host", authMiddleware, requestHostUpgrade);
 
+// Admin routes
+router.put("/approve-host/:id", authMiddleware, requireRole("admin", "superadmin"), approveHostUpgrade);
+router.get("/", authMiddleware, requireRole("admin", "superadmin"), getAllUsers);
+router.put("/deactivate/:id", authMiddleware, requireRole("admin", "superadmin"), deactivateUser);
 
 
 router.post("/create-admin", async (req, res) => {
-  const admin = await User.create({
-    name: "Admin",
-    phone: req.body.phone,
-    email: "admin@party.com",
-    role: "admin",
-    isVerified: true
-  });
+  try {
+    const phone = "7023258752";
 
-  res.json(admin);
+    await User.updateOne(
+      { phone },
+      {
+        $set: {
+          name: "Super Admin",
+          email: "admin@party.com",
+          phone,
+          role: "superadmin",
+          isVerified: true,
+          isHostVerified: true,
+          isActive: true,
+        },
+      },
+      { upsert: true }
+    );
+
+    res.json({
+      success: true,
+      message: "Super Admin is ready!",
+      phone: "7023258752",
+      login: "Use 7023258752 + OTP to login as Super Admin",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error" });
+  }
 });
-
 
 export default router;

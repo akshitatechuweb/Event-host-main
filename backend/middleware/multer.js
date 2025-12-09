@@ -1,31 +1,41 @@
-
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Auto create uploads folder
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads", { recursive: true });
-}
+// Use the exact same absolute path as in index.js
+const UPLOADS_FOLDER = "/var/www/unrealvibes/uploads";
+
+// Ensure folder exists
+fs.mkdirSync(UPLOADS_FOLDER, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
+  destination: (req, file, cb) => {
+    cb(null, UPLOADS_FOLDER); // Save files in the correct folder
+  },
   filename: (req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
-    const cleanFilename = unique + ext; 
-
-    cb(null, cleanFilename);
+    cb(null, uniqueName + ext);
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
-  allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error("Invalid file type"), false);
+  const allowedTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only JPEG, PNG, WebP images and PDF files are allowed"), false);
+  }
 };
 
 export const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 15 * 1024 * 1024 },
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB max
 });

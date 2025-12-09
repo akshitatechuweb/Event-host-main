@@ -22,7 +22,12 @@ export const getMyProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    res.json({ success: true, user });
+
+    res.json({
+      success: true,
+      user,
+      profileCompletion: calculateProfileCompletion(user),
+    });
   } catch (err) {
     console.error("Error fetching profile:", err);
     res.status(500).json({ success: false, message: "Failed to fetch profile" });
@@ -36,12 +41,18 @@ export const getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    res.json({ success: true, user });
+
+    res.json({
+      success: true,
+      user,
+      profileCompletion: calculateProfileCompletion(user),
+    });
   } catch (err) {
     console.error("Error fetching user:", err);
     res.status(500).json({ success: false, message: "Failed to fetch user" });
   }
 };
+
 
 // Request to become host (old flow - kept for backward compatibility)
 export const requestHostUpgrade = async (req, res) => {

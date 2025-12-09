@@ -13,6 +13,7 @@ import {
   getAllUsers,
   deactivateUser,
 } from "../controllers/userController.js";
+import User from "../models/User.js";
 
 const router = express.Router();
 

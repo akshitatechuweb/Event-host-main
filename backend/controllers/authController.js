@@ -125,7 +125,6 @@ export const verifyOtp = async (req, res) => {
       success: true,
       message: responseMessage, 
       token,
-      user,
       isProfileComplete: user.isProfileComplete || false,
     });
   } catch (error) {

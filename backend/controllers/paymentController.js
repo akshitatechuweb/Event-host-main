@@ -1,7 +1,6 @@
 // controllers/paymentController.js
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import QRCode from "qrcode";
 import Event from "../models/Event.js";
 import Booking from "../models/Booking.js";
 
@@ -11,12 +10,18 @@ const razorpay = new Razorpay({
 });
 
 // Book Now → Create Order
-export const createBookingOrder = async (req, res) => {
+export const createOrder = async (req, res) => {
   try {
-    const { eventId, ticketCount = 1, bookingName, bookingEmail, bookingPhone } = req.body;
+    const { 
+      eventId, 
+      ticketCount = 1,
+      bookingName,
+      bookingEmail,
+      bookingPhone 
+    } = req.body;
+
     const userId = req.user?._id || null;
 
-    // Validation
     if (!bookingName || !bookingEmail || !bookingPhone) {
       return res.status(400).json({ success: false, message: "Name, Email, Phone required" });
     }
@@ -25,10 +30,10 @@ export const createBookingOrder = async (req, res) => {
     if (!event) return res.status(404).json({ success: false, message: "Event not found" });
     if (event.availableSeats < ticketCount) return res.status(400).json({ success: false, message: "Sold Out" });
 
-    const totalAmount = event.entryFees * ticketCount * 100; 
+    const amount = event.entryFees * ticketCount * 100;
 
     const order = await razorpay.orders.create({
-      amount: totalAmount,
+      amount,
       currency: "INR",
       receipt: `booking_${Date.now()}`,
     });
@@ -36,27 +41,28 @@ export const createBookingOrder = async (req, res) => {
     res.json({
       success: true,
       orderId: order.id,
-      amount: totalAmount,
+      amount,
       key_id: process.env.RAZORPAY_KEY_ID,
       eventName: event.eventName,
-      entryFees: event.entryFees,
-      ticketCount,
       totalAmount: event.entryFees * ticketCount,
+      ticketCount,
     });
+
   } catch (error) {
+    console.error("Create Order Error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Payment Success → Confirm Booking + Generate QR
-export const verifyBookingPayment = async (req, res) => {
+// Verify Payment (UPI se bhi chalega)
+export const verifyPayment = async (req, res) => {
   try {
     const {
-      order_id,
-      payment_id,
-      signature,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
       eventId,
-      ticketCount,
+      ticketCount = 1,
       bookingName,
       bookingEmail,
       bookingPhone,
@@ -65,11 +71,12 @@ export const verifyBookingPayment = async (req, res) => {
     const userId = req.user?._id || null;
 
     // Verify signature
-    const expectedSign = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${order_id}|${payment_id}`)
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
-    if (expectedSign !== signature) {
+    if (expectedSignature !== razorpay_signature) {
       return res.status(400).json({ success: false, message: "Invalid payment" });
     }
 
@@ -82,11 +89,7 @@ export const verifyBookingPayment = async (req, res) => {
     event.availableSeats -= ticketCount;
     await event.save();
 
-    // Generate QR Code
-    const qrData = `https://unrealvibe.com/ticket/${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const qrCode = await QRCode.toDataURL(qrData);
-
-    // Save Booking
+    // Save booking
     const booking = await Booking.create({
       userId,
       eventId,
@@ -95,29 +98,26 @@ export const verifyBookingPayment = async (req, res) => {
       bookingPhone,
       ticketCount,
       totalAmount: event.entryFees * ticketCount,
-      orderId: order_id,
-      paymentId: payment_id,
-      paymentStatus: "success",
-      qrCode,
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      signature: razorpay_signature,
+      status: "confirmed",
     });
-
-    await booking.populate("eventId", "eventName date time fullAddress eventImage");
 
     res.json({
       success: true,
-      message: "Booking Confirmed! Your ticket is ready",
+      message: "Payment Successful! Ticket Booked",
       booking: {
         id: booking._id,
-        eventName: booking.eventId.eventName,
-        date: booking.eventId.date,
+        eventName: event.eventName,
         bookingName,
         ticketCount,
-        qrCode,
-        ticketUrl: qrData,
+        totalAmount: event.entryFees * ticketCount,
       },
     });
+
   } catch (error) {
-    console.error(error);
+    console.error("Verify Payment Error:", error);
     res.status(500).json({ success: false, message: "Payment failed" });
   }
 };

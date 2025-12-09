@@ -66,7 +66,6 @@
 
 
 
-
 // models/Booking.js
 import mongoose from "mongoose";
 
@@ -74,27 +73,24 @@ const bookingSchema = new mongoose.Schema({
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: "Event", required: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // null for guest
 
-  // Booking Name (must!)
-  bookingName: { type: String, required: true, trim: true },
-  bookingEmail: { type: String, required: true, trim: true, lowercase: true },
-  bookingPhone: { type: String, required: true, trim: true },
+  // Booking Details (UPI wala user daalega)
+  bookingName: { type: String, required: true },
+  bookingEmail: { type: String, required: true },
+  bookingPhone: { type: String, required: true },
 
   ticketCount: { type: Number, default: 1, min: 1, max: 10 },
   totalAmount: { type: Number, required: true },
 
-  // Razorpay
+  // Razorpay Payment
   orderId: { type: String, required: true },
   paymentId: { type: String },
-  paymentStatus: { type: String, enum: ["pending", "success", "failed"], default: "pending" },
+  signature: { type: String },
 
-  // QR Code for entry
-  qrCode: { type: String },
-
-  status: { type: String, enum: ["confirmed", "cancelled", "checked_in"], default: "confirmed" },
+  status: { 
+    type: String, 
+    enum: ["pending", "confirmed", "failed", "cancelled"], 
+    default: "pending" 
+  },
 }, { timestamps: true });
-
-bookingSchema.index({ eventId: 1 });
-bookingSchema.index({ userId: 1 });
-bookingSchema.index({ qrCode: 1, sparse: true });
 
 export default mongoose.model("Booking", bookingSchema);

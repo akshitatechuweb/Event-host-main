@@ -22,12 +22,7 @@ export const getMyProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-
-    res.json({
-      success: true,
-      user,
-      profileCompletion: calculateProfileCompletion(user),
-    });
+    res.json({ success: true, user });
   } catch (err) {
     console.error("Error fetching profile:", err);
     res.status(500).json({ success: false, message: "Failed to fetch profile" });
@@ -41,18 +36,12 @@ export const getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-
-    res.json({
-      success: true,
-      user,
-      profileCompletion: calculateProfileCompletion(user),
-    });
+    res.json({ success: true, user });
   } catch (err) {
     console.error("Error fetching user:", err);
     res.status(500).json({ success: false, message: "Failed to fetch user" });
   }
 };
-
 
 // Request to become host (old flow - kept for backward compatibility)
 export const requestHostUpgrade = async (req, res) => {
@@ -60,8 +49,8 @@ export const requestHostUpgrade = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (user.role !== "guest") {
-      return res.status(400).json({ success: false, message: "Only guests can request host role" });
+    if (user.role !== "user") {
+      return res.status(400).json({ success: false, message: "Only users can request host role" });
     }
 
     if (user.profileCompletion < 80) {
@@ -215,7 +204,7 @@ export const completeProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    let wasGuest = user.role !== "host";
+    let wasUser = user.role !== "host";
 
   
     if (req.body.name?.trim()) user.name = req.body.name.trim();
@@ -240,7 +229,7 @@ export const completeProfile = async (req, res) => {
     }
 
     
-    if (wasGuest) {
+    if (wasUser) {
       if (!req.files?.profilePhoto || !req.files?.aadhaar || !req.files?.pan) {
         return res.status(400).json({
           success: false,
@@ -255,7 +244,7 @@ export const completeProfile = async (req, res) => {
 
     await user.save();
 
-    const message = wasGuest
+    const message = wasUser
       ? "Congratulations! You're now a verified Host"
       : "Profile updated successfully!";
 

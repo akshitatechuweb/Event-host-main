@@ -206,6 +206,12 @@ export const completeProfile = async (req, res) => {
 
     let wasGuest = user.role !== "host";
 
+  
+    if (req.body.name?.trim()) user.name = req.body.name.trim();
+    if (req.body.city?.trim()) user.city = req.body.city.trim();
+    if (req.body.email?.trim()) user.email = req.body.email.trim().toLowerCase();
+    if (req.body.gender) user.gender = req.body.gender;
+
     // Profile Photo Update
     if (req.files?.profilePhoto) {
       const photoUrl = `/uploads/${req.files.profilePhoto[0].filename}`;
@@ -222,7 +228,7 @@ export const completeProfile = async (req, res) => {
       };
     }
 
-
+    
     if (wasGuest) {
       if (!req.files?.profilePhoto || !req.files?.aadhaar || !req.files?.pan) {
         return res.status(400).json({

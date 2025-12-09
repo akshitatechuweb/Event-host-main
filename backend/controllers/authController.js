@@ -123,7 +123,7 @@ export const verifyOtp = async (req, res) => {
 
     return res.json({
       success: true,
-      message: responseMessage, // 👈 Dynamic message here
+      message: responseMessage, 
       token,
       user,
       isProfileComplete: user.isProfileComplete || false,

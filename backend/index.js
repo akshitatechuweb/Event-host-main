@@ -10,10 +10,12 @@ import fs from "fs";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
-import bookingRouts from "./routes/bookingRoutes.js";     // you had this commented
-import ticketRoutes from "./routes/ticketRoutes.js";     // you had this commented
+import bookingRouts from "./routes/bookingRoutes.js";     
+import ticketRoutes from "./routes/ticketRoutes.js";     
 import hostRoutes from "./routes/hostRoutes.js";
-import paymentRoutes from "./routes/paymentRoutes.js";   // you had this commented
+import paymentRoutes from "./routes/paymentRoutes.js";   
+import adminRoutes from "./routes/adminRoutes.js";
+
 
 dotenv.config();
 
@@ -71,6 +73,7 @@ app.use("/api/booking", bookingRouts);
 app.use("/api/ticket", ticketRoutes);
 app.use("/api/host", hostRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Start server
 app.listen(PORT, () => {

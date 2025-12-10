@@ -2,22 +2,21 @@
 import EventHostRequest from "../models/HostRequest.js";
 import User from "../models/User.js";
 
-// Approve Event Host Request (with re-approval support)
+// Approve Event Host Request
 export const approveEventHost = async (req, res) => {
   try {
     const requestId = req.params.id;
 
     const request = await EventHostRequest.findById(requestId)
-      .populate("userId", "name phone email");
+      .populate("userId", "name phone email city");
 
     if (!request) {
       return res.status(404).json({
         success: false,
-        message: "Request not found",
+        message: "Host request not found",
       });
     }
 
-    // Allow re-approval of rejected requests
     if (request.status === "approved") {
       return res.status(400).json({
         success: false,
@@ -25,67 +24,72 @@ export const approveEventHost = async (req, res) => {
       });
     }
 
-    // Update request status
+    // Update request
     request.status = "approved";
-    request.reviewedBy = req.user._id; // Admin who approved
+    request.reviewedBy = req.user._id;
     request.reviewedAt = new Date();
     await request.save();
 
-    // Get user details
-    const user = await User.findById(request.userId._id);
+    // Critical Fix: Use findOne({ _id: ... }) because your _id is string
+    const user = await User.findOne({ _id: request.userId._id });
 
-    // Only upgrade if user is not already a host
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found in database",
+      });
+    }
+
+    // Upgrade user to host
     if (user.role !== "host") {
       user.role = "host";
       user.isVerified = true;
       user.isHostVerified = true;
     }
-    
     user.isHostRequestPending = false;
     await user.save();
 
     res.json({
       success: true,
       message: "Event hosting permission granted successfully!",
-      request,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        city: user.city,
         role: user.role,
         isHostVerified: user.isHostVerified,
       },
     });
   } catch (error) {
     console.error("Approve Host Error:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Server error",
-      error: error.message 
+      error: error.message,
     });
   }
 };
 
-// Reject Request
+// Reject Event Host Request
 export const rejectEventHost = async (req, res) => {
   try {
     const requestId = req.params.id;
     const { reason } = req.body;
 
-    const request = await EventHostRequest.findById(requestId)
-      .populate("userId", "name phone email");
-
+    const request = await EventHostRequest.findById(requestId);
     if (!request) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Request not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Request not found",
       });
     }
 
     if (request.status === "rejected") {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Request already rejected" 
+      return res.status(400).json({
+        success: false,
+        message: "Request already rejected",
       });
     }
 
@@ -95,33 +99,34 @@ export const rejectEventHost = async (req, res) => {
     request.reviewedAt = new Date();
     await request.save();
 
-    // Update user
-    await User.findByIdAndUpdate(request.userId._id, {
-      isHostRequestPending: false,
-    });
+    // Safe update for string _id
+    await User.updateOne(
+      { _id: request.userId },
+      { isHostRequestPending: false }
+    );
 
     res.json({
       success: true,
-      message: "Request rejected successfully",
+      message: "Host request rejected successfully",
       request,
     });
   } catch (error) {
     console.error("Reject Host Error:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Server error",
-      error: error.message 
+      error: error.message,
     });
   }
 };
 
-// Get All Requests (Admin Dashboard)
+// Get All Host Requests (Admin Dashboard)
 export const getAllHostRequests = async (req, res) => {
   try {
-    const { status } = req.query; // Filter by status: ?status=pending
+    const { status } = req.query;
 
     const filter = status ? { status } : {};
-    
+
     const requests = await EventHostRequest.find(filter)
       .populate("userId", "name phone email city role")
       .populate("reviewedBy", "name email")
@@ -141,10 +146,10 @@ export const getAllHostRequests = async (req, res) => {
     });
   } catch (error) {
     console.error("Get All Requests Error:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Failed to fetch requests",
-      error: error.message 
+      error: error.message,
     });
   }
 };
@@ -169,18 +174,20 @@ export const getRequestById = async (req, res) => {
     });
   } catch (error) {
     console.error("Get Request Error:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Server error",
-      error: error.message 
+      error: error.message,
     });
   }
 };
 
-// 🆕 Get all approved hosts (for event creation)
+// Get All Approved Hosts (For Creating Events)
 export const getAllHosts = async (req, res) => {
   try {
-    const hosts = await User.find({ role: "host" })
+    const hosts = await User.find({
+      $or: [{ role: "host" }, { isHostVerified: true }]
+    })
       .select("_id name email phone city")
       .sort({ name: 1 });
 
@@ -188,11 +195,11 @@ export const getAllHosts = async (req, res) => {
       success: true,
       total: hosts.length,
       hosts: hosts.map(host => ({
-        hostId: host._id,  // Use this ID when creating events
-        name: host.name,
+        hostId: host._id.toString(),
+        name: host.name || "No Name",
         email: host.email,
         phone: host.phone,
-        city: host.city,
+        city: host.city || "Not specified",
       })),
     });
   } catch (error) {
@@ -205,7 +212,7 @@ export const getAllHosts = async (req, res) => {
   }
 };
 
-// 🆕 Get host user ID from request ID
+// Get Host ID from Request ID (Very Useful!)
 export const getHostIdFromRequestId = async (req, res) => {
   try {
     const requestId = req.params.requestId;
@@ -213,46 +220,30 @@ export const getHostIdFromRequestId = async (req, res) => {
     const request = await EventHostRequest.findById(requestId)
       .populate("userId", "_id name email phone city role");
 
-    if (!request) {
+    if (!request || !request.userId) {
       return res.status(404).json({
         success: false,
-        message: "Request not found",
+        message: "Request or user not found",
       });
     }
-
-    if (!request.userId) {
-      return res.status(404).json({
-        success: false,
-        message: "Host user not found for this request",
-      });
-    }
-
-    const host = request.userId;
 
     res.json({
       success: true,
-      message: "Host ID retrieved successfully",
-      hostId: host._id.toString(),  // Use this ID when creating events
+      message: "Host ID retrieved",
+      hostId: request.userId._id.toString(),
       hostDetails: {
-        name: host.name,
-        email: host.email,
-        phone: host.phone,
-        city: host.city,
-        role: host.role,
-        isHost: host.role === "host",
-      },
-      requestInfo: {
-        requestId: request._id,
-        status: request.status,
-        message: request.message,
-        createdAt: request.createdAt,
+        name: request.userId.name,
+        email: request.userId.email,
+        phone: request.userId.phone,
+        city: request.userId.city,
+        role: request.userId.role,
       },
     });
   } catch (error) {
     console.error("Get Host ID Error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch host ID",
+      message: "Server error",
       error: error.message,
     });
   }

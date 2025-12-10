@@ -9,8 +9,8 @@ import {
   getAllHosts,
   getHostIdFromRequestId,
 } from "../controllers/adminController.js";
-import { adminCreateEvent, getEvents } from "../controllers/eventController.js";  // ← Add this
-import { upload } from "../middleware/multer.js";  // ← Add this
+import { adminCreateEvent, getEvents } from "../controllers/eventController.js"; 
+import { upload } from "../middleware/multer.js"; 
 
 const router = express.Router();
 

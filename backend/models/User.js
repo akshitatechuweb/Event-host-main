@@ -4,12 +4,12 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true },
-    email: { type: String, trim: true, lowercase: true, index: true, sparse: true },
-    phone: { type: String, required: true, unique: true, index: true },
+    email: { type: String, trim: true, lowercase: true, sparse: true },
+    phone: { type: String, required: true, unique: true },
     city: { type: String, trim: true },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
 
-    // Documents for verification
+    // Verification docs
     documents: {
       aadhaar: { type: String, default: null },
       pan: { type: String, default: null },
@@ -27,10 +27,17 @@ const userSchema = new mongoose.Schema(
     profileCompletion: { type: Number, default: 0 },
     isProfileComplete: { type: Boolean, default: false },
 
+    // Role of user
     role: {
       type: String,
       enum: ["user", "host", "moderator", "admin", "superadmin"],
       default: "user",
+    },
+
+    // ⭐ EVENTS HOSTED — ONLY for host users
+    eventsHosted: {
+      type: Number,
+      default: 0,
     },
 
     isVerified: { type: Boolean, default: false },
@@ -40,7 +47,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto calculate profile completion on save
+// Auto calculate profile completion
 userSchema.pre("save", function (next) {
   let filled = 0;
   const total = 6;
@@ -49,8 +56,10 @@ userSchema.pre("save", function (next) {
   if (this.email?.trim()) filled++;
   if (this.city?.trim()) filled++;
   if (this.gender) filled++;
-  if (this.photos?.some(p => p.isProfilePhoto)) filled++;
-  if (this.documents.aadhaar || this.documents.pan || this.documents.drivingLicense) filled++;
+  if (this.photos?.some((p) => p.isProfilePhoto)) filled++;
+
+  const docs = this.documents || {};
+  if (docs.aadhaar || docs.pan || docs.drivingLicense) filled++;
 
   this.profileCompletion = Math.round((filled / total) * 100);
   this.isProfileComplete = this.profileCompletion === 100;

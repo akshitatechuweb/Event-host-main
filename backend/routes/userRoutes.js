@@ -12,6 +12,7 @@ import {
   approveHostUpgrade,
   getAllUsers,
   deactivateUser,
+  updateProfile
 } from "../controllers/userController.js";
 import User from "../models/User.js";
 
@@ -20,6 +21,7 @@ const router = express.Router();
 // Public (after login)
 router.get("/get-profile", authMiddleware, getMyProfile);
 router.post("/create-profile", authMiddleware, createProfile);
+router.put("/update-profile", authMiddleware, updateProfile);
 
 router.put(
   "/complete-profile",

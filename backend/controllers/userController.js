@@ -277,3 +277,39 @@ export const logoutUser = async (req, res) => {
     res.status(500).json({ success: false, message: "Logout failed" });
   }
 };
+
+
+
+
+// Update profile (basic fields only for User & Host)
+export const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const { name, email, city, gender } = req.body;
+
+    // Update basic fields ONLY
+    if (name?.trim()) user.name = name.trim();
+    if (email?.trim()) user.email = email.trim().toLowerCase();
+    if (city?.trim()) user.city = city.trim();
+    if (gender) user.gender = gender;
+
+    // Do NOT update any documents or photos here
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user,
+      profileCompletion: user.profileCompletion,
+    });
+
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return res.status(500).json({ success: false, message: "Failed to update profile" });
+  }
+};

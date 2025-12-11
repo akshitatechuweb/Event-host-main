@@ -10,6 +10,7 @@ export const adminCreateEvent = async (req, res) => {
     const {
       hostId,
       eventName,
+      subtitle,
       eventImage,
       date,
       time,
@@ -24,7 +25,10 @@ export const adminCreateEvent = async (req, res) => {
       howItWorks,
       cancellationPolicy,
       ageRestriction,
-      category
+      category,
+      thingsToKnow,
+      partyTerms,
+      maxCapacity
     } = req.body;
 
     const host = await User.findById(hostId);
@@ -70,8 +74,8 @@ export const adminCreateEvent = async (req, res) => {
 
     const location = geoRes.data.results[0].geometry.location;
 
-    // Handle image path - prioritize uploaded file
-    let imagePath = eventImage; // default to provided URL/path
+    // Handle image path
+    let imagePath = eventImage;
     if (req.file) {
       imagePath = `/uploads/${req.file.filename}`;
     }
@@ -81,7 +85,8 @@ export const adminCreateEvent = async (req, res) => {
       hostId,
       hostedBy: host.name,
       eventName,
-      eventImage: imagePath, // Store the image path
+      subtitle,
+      eventImage: imagePath,
       date: eventDate,
       time,
       day: weekday,
@@ -98,6 +103,10 @@ export const adminCreateEvent = async (req, res) => {
       cancellationPolicy,
       ageRestriction,
       category,
+      thingsToKnow,
+      partyTerms,
+      maxCapacity,
+      currentBookings: 0,
       location: {
         type: "Point",
         coordinates: [location.lng, location.lat],
@@ -123,7 +132,6 @@ export const adminCreateEvent = async (req, res) => {
   }
 };
 
-// Get events - IMAGE WILL NOW BE INCLUDED
 export const getEvents = async (req, res) => {
   try {
     const { userLat, userLng, trendingOnly } = req.query;
@@ -132,9 +140,9 @@ export const getEvents = async (req, res) => {
     if (trendingOnly === "true" && userLat && userLng) {
       filter.location = {
         $near: {
-          $geometry: { 
-            type: "Point", 
-            coordinates: [parseFloat(userLng), parseFloat(userLat)] 
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(userLng), parseFloat(userLat)]
           },
           $maxDistance: DEFAULT_RADIUS,
         },
@@ -146,7 +154,7 @@ export const getEvents = async (req, res) => {
       .sort({ eventDateTime: 1 });
 
     const formatted = events.map((ev) => ({
-      ...ev.toObject(), // This includes eventImage field
+      ...ev.toObject(), // Includes all fields + status virtual
       hostedBy: ev.hostId?.name,
       totalEventsHosted: ev.hostId?.eventsHosted || 0,
       trending: trendingOnly === "true",
@@ -155,5 +163,19 @@ export const getEvents = async (req, res) => {
     res.status(200).json({ success: true, events: formatted });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Helper function to update booking count when a booking is made
+export const updateEventBooking = async (eventId, increment = true) => {
+  try {
+    const event = await Event.findByIdAndUpdate(
+      eventId,
+      { $inc: { currentBookings: increment ? 1 : -1 } },
+      { new: true }
+    );
+    return event;
+  } catch (err) {
+    throw new Error(`Failed to update booking: ${err.message}`);
   }
 };

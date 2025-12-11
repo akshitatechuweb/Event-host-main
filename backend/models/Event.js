@@ -11,8 +11,7 @@ const eventSchema = new mongoose.Schema(
 
     date: { type: Date, required: true },       
     time: { type: String, required: true },     
-    day: { type: String },                      
-    eventDateTime: { type: Date },              
+    day: { type: String },              
 
     fullAddress: { type: String, required: true },
     city: { type: String, required: true },
@@ -28,7 +27,6 @@ const eventSchema = new mongoose.Schema(
     cancellationPolicy: { type: String },
 
     ageRestriction: { type: String },
-    genderPreference: { type: String, default: "both" },
 
     category: { type: String },
 
@@ -41,6 +39,6 @@ const eventSchema = new mongoose.Schema(
 );
 
 eventSchema.index({ location: "2dsphere" });
-eventSchema.index({ eventDateTime: 1 });
+eventSchema.index({ date: 1 });
 
 export default mongoose.model("Event", eventSchema);

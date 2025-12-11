@@ -26,7 +26,6 @@ export const adminCreateEvent = async (req, res) => {
       howItWorks,
       cancellationPolicy,
       ageRestriction,
-      genderPreference,
       category
     } = req.body;
 
@@ -101,7 +100,6 @@ export const adminCreateEvent = async (req, res) => {
       howItWorks,
       cancellationPolicy,
       ageRestriction,
-      genderPreference: genderPreference || "both",
       category,
       location: {
         type: "Point",
@@ -162,5 +160,3 @@ export const getEvents = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-

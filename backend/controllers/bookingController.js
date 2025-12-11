@@ -3,11 +3,20 @@ import Ticket from "../models/Ticket.js";
 import Event from "../models/Event.js";
 import Transaction from "../models/Transaction.js";
 
-//  Create a booking
+// Create a booking
 export const createBooking = async (req, res) => {
   try {
-    const { eventId, ticketTypeId, pricePaid } = req.body;
-    const userId = req.user._id;
+    const { 
+      eventId, 
+      ticketTypeId, 
+      pricePaid,
+      fullName,
+      email,
+      phone,
+      gender
+    } = req.body;
+
+    const userId = req.user?._id || null; // guest allowed
 
     // Validate ticket type
     const ticket = await Ticket.findById(ticketTypeId);
@@ -18,7 +27,7 @@ export const createBooking = async (req, res) => {
     }
 
     // Check ticket availability
-    if (ticket.availableQuantity <= 0) {
+    if (ticket.quantity.available <= 0) {
       return res
         .status(400)
         .json({ success: false, message: "Tickets sold out" });
@@ -37,23 +46,36 @@ export const createBooking = async (req, res) => {
       eventId,
       userId,
       ticketTypeId,
-      pricePaid,
-      status: "requested",
+      totalAmount: pricePaid,
+      orderId: "test_order_" + Math.random().toString(36).substring(2, 10),
+
+      attendee: {
+        fullName,
+        email,
+        phone,
+        gender
+      },
+
+      status: "pending",
     });
 
-    // Decrease available ticket count
+    // Reduce ticket available count
     ticket.quantity.available -= 1;
     await ticket.save();
 
-    // Mock transaction (simulate Razorpay success)
+    // Mock payment transaction
     const transaction = await Transaction.create({
       bookingId: booking._id,
       amount: pricePaid,
-      platformFee: pricePaid * 0.1, // 10% fee
+      platformFee: pricePaid * 0.1,
       payoutToHost: pricePaid * 0.9,
       providerTxnId: "mock_" + Math.random().toString(36).substring(2, 10),
       status: "completed",
     });
+
+    // Mark booking as confirmed after mock payment
+    booking.status = "confirmed";
+    await booking.save();
 
     res.status(201).json({
       success: true,
@@ -61,6 +83,7 @@ export const createBooking = async (req, res) => {
       booking,
       transaction,
     });
+
   } catch (err) {
     console.error("❌ Error creating booking:", err);
     res.status(500).json({ success: false, message: "Error creating booking" });

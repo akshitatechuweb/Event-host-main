@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 
 const eventSchema = new mongoose.Schema(
@@ -5,13 +6,13 @@ const eventSchema = new mongoose.Schema(
     hostId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     hostedBy: { type: String, required: true },
     
-
     eventName: { type: String, required: true },
-    eventImage: { type: String },
+    eventImage: { type: String }, // This will store the image path
 
     date: { type: Date, required: true },       
     time: { type: String, required: true },     
-    day: { type: String },              
+    day: { type: String },
+    eventDateTime: { type: Date }, // ADD THIS FIELD if you want to store combined date+time
 
     fullAddress: { type: String, required: true },
     city: { type: String, required: true },
@@ -27,12 +28,11 @@ const eventSchema = new mongoose.Schema(
     cancellationPolicy: { type: String },
 
     ageRestriction: { type: String },
-
     category: { type: String },
 
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
-      coordinates: { type: [Number], required: true } // [lng, lat]
+      coordinates: { type: [Number], required: true }
     }
   },
   { timestamps: true }

@@ -3,9 +3,7 @@ import User from "../models/User.js";
 import axios from "axios";
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const DEFAULT_RADIUS = 10000; // 10 km
-
-// controllers/eventController.js
+const DEFAULT_RADIUS = 10000;
 
 export const adminCreateEvent = async (req, res) => {
   try {
@@ -29,13 +27,11 @@ export const adminCreateEvent = async (req, res) => {
       category
     } = req.body;
 
-    // 1️⃣ Find host
     const host = await User.findById(hostId);
     if (!host) {
       return res.status(404).json({ success: false, message: "Host not found" });
     }
 
-    // 2️⃣ Allow ONLY hosts
     if (host.role !== "host") {
       return res.status(403).json({
         success: false,
@@ -43,26 +39,21 @@ export const adminCreateEvent = async (req, res) => {
       });
     }
 
-    // 3️⃣ Date check
     if (!date) {
       return res.status(400).json({ success: false, message: "Event date required" });
     }
 
     const eventDate = new Date(date);
-
-    const weekday = eventDate.toLocaleDateString("en-US", {
-      weekday: "long",
-    });
+    const weekday = eventDate.toLocaleDateString("en-US", { weekday: "long" });
 
     let eventDateTime = null;
-
     if (time) {
       const [h, m] = time.split(":");
       eventDateTime = new Date(eventDate);
       eventDateTime.setHours(parseInt(h), parseInt(m), 0, 0);
     }
 
-    // 4️⃣ Geocode
+    // Geocode
     const geoRes = await axios.get(
       "https://maps.googleapis.com/maps/api/geocode/json",
       {
@@ -79,12 +70,18 @@ export const adminCreateEvent = async (req, res) => {
 
     const location = geoRes.data.results[0].geometry.location;
 
-    // 5️⃣ Create event
+    // Handle image path - prioritize uploaded file
+    let imagePath = eventImage; // default to provided URL/path
+    if (req.file) {
+      imagePath = `/uploads/${req.file.filename}`;
+    }
+
+    // Create event
     const newEvent = await Event.create({
       hostId,
       hostedBy: host.name,
       eventName,
-      eventImage: req.file ? `/uploads/${req.file.filename}` : eventImage,
+      eventImage: imagePath, // Store the image path
       date: eventDate,
       time,
       day: weekday,
@@ -107,7 +104,6 @@ export const adminCreateEvent = async (req, res) => {
       },
     });
 
-    // 6️⃣ Increase host's event count
     const updatedHost = await User.findByIdAndUpdate(
       hostId,
       { $inc: { eventsHosted: 1 } },
@@ -127,9 +123,7 @@ export const adminCreateEvent = async (req, res) => {
   }
 };
 
-
-
-// Get events (all or trending nearby)
+// Get events - IMAGE WILL NOW BE INCLUDED
 export const getEvents = async (req, res) => {
   try {
     const { userLat, userLng, trendingOnly } = req.query;
@@ -138,7 +132,10 @@ export const getEvents = async (req, res) => {
     if (trendingOnly === "true" && userLat && userLng) {
       filter.location = {
         $near: {
-          $geometry: { type: "Point", coordinates: [parseFloat(userLng), parseFloat(userLat)] },
+          $geometry: { 
+            type: "Point", 
+            coordinates: [parseFloat(userLng), parseFloat(userLat)] 
+          },
           $maxDistance: DEFAULT_RADIUS,
         },
       };
@@ -149,7 +146,7 @@ export const getEvents = async (req, res) => {
       .sort({ eventDateTime: 1 });
 
     const formatted = events.map((ev) => ({
-      ...ev.toObject(),
+      ...ev.toObject(), // This includes eventImage field
       hostedBy: ev.hostId?.name,
       totalEventsHosted: ev.hostId?.eventsHosted || 0,
       trending: trendingOnly === "true",

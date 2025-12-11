@@ -9,49 +9,44 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Create Order
+// Book Now → Create Order
 export const createOrder = async (req, res) => {
   try {
-    const { eventId, ticketCount = 1, bookingName, bookingEmail, bookingPhone } = req.body;
+    const { 
+      eventId, 
+      ticketCount = 1,
+      fullName,
+      email,
+      phone,
+      gender
+    } = req.body;
+
     const userId = req.user?._id || null;
 
-    // Auto-fill from logged-in user if fields are not provided
-    let finalName = bookingName?.trim();
-    let finalEmail = bookingEmail?.trim();
-    let finalPhone = bookingPhone?.trim();
-
-    if (req.user) {
-      finalName = finalName || req.user.name?.trim();
-      finalEmail = finalEmail || req.user.email?.trim();
-      finalPhone = finalPhone || req.user.phone?.trim();
-    }
-
-    // Validation: All three are required (either from body or profile)
-    if (!finalName || !finalEmail || !finalPhone) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, Email, and Phone are required",
+    // Validate attendee fields
+    if (!fullName || !email || !phone || !gender) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Full Name, Email, Phone, and Gender are required" 
       });
     }
 
+    // Check event
     const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
-    }
+    if (!event) return res.status(404).json({ success: false, message: "Event not found" });
+    if (event.availableSeats < ticketCount) return res.status(400).json({ success: false, message: "Sold Out" });
 
-    if (event.availableSeats < ticketCount) {
-      return res.status(400).json({ success: false, message: "Not enough seats available" });
-    }
+    // Amount in paise
+    const amount = event.entryFees * ticketCount * 100;
 
-    const amount = event.entryFees * ticketCount * 100; // in paise
-
+    // Create Razorpay order
     const order = await razorpay.orders.create({
       amount,
       currency: "INR",
       receipt: `booking_${Date.now()}`,
     });
 
-    res.json({
+    return res.json({
       success: true,
       orderId: order.id,
       amount,
@@ -59,15 +54,16 @@ export const createOrder = async (req, res) => {
       eventName: event.eventName,
       totalAmount: event.entryFees * ticketCount,
       ticketCount,
-      bookingName: finalName,
     });
+
   } catch (error) {
     console.error("Create Order Error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Verify Payment
+
+// Verify Payment (UPI se bhi chalega)
 export const verifyPayment = async (req, res) => {
   try {
     const {
@@ -83,24 +79,6 @@ export const verifyPayment = async (req, res) => {
 
     const userId = req.user?._id || null;
 
-    // Auto-fill same as createOrder
-    let finalName = bookingName?.trim();
-    let finalEmail = bookingEmail?.trim();
-    let finalPhone = bookingPhone?.trim();
-
-    if (req.user) {
-      finalName = finalName || req.user.name?.trim();
-      finalEmail = finalEmail || req.user.email?.trim();
-      finalPhone = finalPhone || req.user.phone?.trim();
-    }
-
-    if (!finalName || !finalEmail || !finalPhone) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, Email, and Phone are required",
-      });
-    }
-
     // Verify signature
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
@@ -108,25 +86,25 @@ export const verifyPayment = async (req, res) => {
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: "Invalid payment signature" });
+      return res.status(400).json({ success: false, message: "Invalid payment" });
     }
 
     const event = await Event.findById(eventId);
     if (!event || event.availableSeats < ticketCount) {
-      return res.status(400).json({ success: false, message: "Event sold out or not found" });
+      return res.status(400).json({ success: false, message: "Event sold out" });
     }
 
-    // Deduct seats
+    // Reduce seats
     event.availableSeats -= ticketCount;
     await event.save();
 
-    // Create booking
+    // Save booking
     const booking = await Booking.create({
       userId,
       eventId,
-      bookingName: finalName,
-      bookingEmail: finalEmail,
-      bookingPhone: finalPhone,
+      bookingName,
+      bookingEmail,
+      bookingPhone,
       ticketCount,
       totalAmount: event.entryFees * ticketCount,
       orderId: razorpay_order_id,
@@ -141,13 +119,14 @@ export const verifyPayment = async (req, res) => {
       booking: {
         id: booking._id,
         eventName: event.eventName,
-        bookingName: finalName,
+        bookingName,
         ticketCount,
         totalAmount: event.entryFees * ticketCount,
       },
     });
+
   } catch (error) {
     console.error("Verify Payment Error:", error);
-    res.status(500).json({ success: false, message: "Payment verification failed" });
+    res.status(500).json({ success: false, message: "Payment failed" });
   }
 };

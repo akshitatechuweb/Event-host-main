@@ -13,24 +13,34 @@ const bookingSchema = new mongoose.Schema(
       ref: "User" 
     },
 
-    attendee: {
-      fullName: { type: String, required: true },
-      email: { type: String, required: true },
-      phone: { type: String, required: true },
-      gender: { type: String, enum: ["Male", "Female", "Other"], required: true }
-    },
+    attendees: [
+      {
+        fullName: { type: String, required: true },
+        email: { type: String, required: true },
+        phone: { type: String, required: true },
+        gender: { type: String, enum: ["Male", "Female", "Other"], required: true },
+        passType: { type: String, enum: ["Male", "Female", "Couple"], required: true }
+      }
+    ],
 
     ticketTypeId: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: "Ticket" 
     },
 
-    ticketCount: { 
-      type: Number, 
-      default: 1, 
-      min: 1, 
-      max: 10 
+    ticketCount: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 20
     },
+    items: [
+      {
+        passType: { type: String, enum: ["Male", "Female", "Couple"], required: true },
+        price: { type: Number, required: true },
+        quantity: { type: Number, required: true }
+      }
+    ],
 
     totalAmount: { 
       type: Number, 

@@ -26,6 +26,15 @@ const eventSchema = new mongoose.Schema(
     partyTerms: { type: String, default: "" },
     maxCapacity: { type: Number },
     currentBookings: { type: Number, default: 0 },
+      // Passes: Male, Female and Couple (admin can set different price and total quantity per pass)
+      passes: [
+        {
+          type: { type: String, enum: ["Male", "Female", "Couple"], required: true },
+          price: { type: Number, required: true, default: 0 },
+          totalQuantity: { type: Number, required: true, default: 0 },
+          remainingQuantity: { type: Number, required: true, default: 0 },
+        }
+      ],
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], required: true }
@@ -37,13 +46,13 @@ const eventSchema = new mongoose.Schema(
 eventSchema.index({ location: "2dsphere" });
 eventSchema.index({ date: 1 });
 
-// Virtual field - null values ko completely remove kiya
+// Virtual field 
 eventSchema.virtual("status").get(function() {
   try {
     const now = new Date();
     const eventDate = this.eventDateTime || this.date;
     
-    // Safety check - agar date invalid hai
+    // Safety check 
     if (!eventDate || isNaN(eventDate.getTime())) {
       return "";
     }

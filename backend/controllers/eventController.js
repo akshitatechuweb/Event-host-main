@@ -79,6 +79,20 @@ export const adminCreateEvent = async (req, res) => {
       imagePath = `/uploads/${req.file.filename}`;
     }
 
+    // If passes are provided, ensure remainingQuantity is set from totalQuantity
+    const inputPasses = req.body.passes || [];
+    const defaultPassTypes = ["Male", "Female", "Couple"];
+    const normalizedPasses = defaultPassTypes.map((type) => {
+      const found = inputPasses.find((p) => p.type === type) || {};
+      const totalQ = found.totalQuantity || 0;
+      return {
+        type,
+        price: found.price || 0,
+        totalQuantity: totalQ,
+        remainingQuantity: typeof found.remainingQuantity === 'number' ? found.remainingQuantity : totalQ
+      };
+    });
+
     // Create event
     const newEvent = await Event.create({
       hostId,
@@ -104,6 +118,7 @@ export const adminCreateEvent = async (req, res) => {
       thingsToKnow,
       partyTerms,
       maxCapacity,
+      passes: normalizedPasses,
       currentBookings: 0,
       location: {
         type: "Point",

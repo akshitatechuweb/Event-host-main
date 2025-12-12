@@ -13,7 +13,6 @@ const eventSchema = new mongoose.Schema(
     eventDateTime: { type: Date },
     fullAddress: { type: String, required: true },
     city: { type: String, required: true },
-    entryFees: { type: Number, required: true },
     about: { type: String },
     partyFlow: { type: String },
     partyEtiquette: { type: String },
@@ -82,8 +81,11 @@ eventSchema.virtual("status").get(function() {
       return "Just Started";
     }
     
+    // Return empty string instead of null/undefined
+    return "";
   } catch (error) {
     console.error("Error calculating event status:", error);
+    return "";
   }
 });
 

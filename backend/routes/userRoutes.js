@@ -1,4 +1,3 @@
-// routes/userRoutes.js
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
@@ -12,7 +11,6 @@ import {
   approveHostUpgrade,
   getAllUsers,
   deactivateUser,
-  updateProfile
 } from "../controllers/userController.js";
 import User from "../models/User.js";
 
@@ -21,8 +19,8 @@ const router = express.Router();
 // Public (after login)
 router.get("/get-profile", authMiddleware, getMyProfile);
 router.post("/create-profile", authMiddleware, createProfile);
-router.put("/update-profile", authMiddleware, updateProfile);
 
+// Complete/Update profile - unified endpoint
 router.put(
   "/complete-profile",
   authMiddleware,
@@ -45,7 +43,7 @@ router.put("/approve-host/:id", authMiddleware, requireRole("admin", "superadmin
 router.get("/", authMiddleware, requireRole("admin", "superadmin"), getAllUsers);
 router.put("/deactivate/:id", authMiddleware, requireRole("admin", "superadmin"), deactivateUser);
 
-
+// Create super admin
 router.post("/create-admin", async (req, res) => {
   try {
     const phone = "7023258752";

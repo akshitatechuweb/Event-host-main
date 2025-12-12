@@ -1,4 +1,3 @@
-// models/User.js
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
@@ -9,6 +8,11 @@ const userSchema = new mongoose.Schema(
     city: { type: String, trim: true },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
 
+    // Always present fields (with defaults)
+    bio: { type: String, trim: true, maxlength: 500, default: "" },
+    funFact: { type: String, trim: true, maxlength: 300, default: "" },
+    interests: { type: [String], default: [] },
+
     // Verification docs
     documents: {
       aadhaar: { type: String, default: null },
@@ -17,52 +21,73 @@ const userSchema = new mongoose.Schema(
     },
 
     // Photos
-    photos: [
-      {
-        url: { type: String, required: true },
-        isProfilePhoto: { type: Boolean, default: false },
-      },
-    ],
+    photos: {
+      type: [
+        {
+          url: { type: String, required: true },
+          isProfilePhoto: { type: Boolean, default: false },
+        },
+      ],
+      default: [],
+    },
 
     profileCompletion: { type: Number, default: 0 },
     isProfileComplete: { type: Boolean, default: false },
 
-    // Role of user
+    // Role & Host System
     role: {
       type: String,
       enum: ["user", "host", "moderator", "admin", "superadmin"],
       default: "user",
     },
+    isHost: { type: Boolean, default: false },
 
-    // ⭐ EVENTS HOSTED — ONLY for host users
-    eventsHosted: {
-      type: Number,
-      default: 0,
-    },
+    eventsHosted: { type: Number, default: 0 },
 
     isVerified: { type: Boolean, default: false },
+    isHostVerified: { type: Boolean, default: false },
     isHostRequestPending: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
-// Auto calculate profile completion
+// Auto-calculate profile completion + auto-upgrade to host
 userSchema.pre("save", function (next) {
-  let filled = 0;
-  const total = 6;
+  let completion = 0;
 
-  if (this.name?.trim()) filled++;
-  if (this.email?.trim()) filled++;
-  if (this.city?.trim()) filled++;
-  if (this.gender) filled++;
-  if (this.photos?.some((p) => p.isProfilePhoto)) filled++;
+  const hasName = !!this.name?.trim();
+  const hasCity = !!this.city?.trim();
+  const hasGender = !!this.gender;
+  const hasProfilePhoto = this.photos.some((p) => p.isProfilePhoto);
+  const hasDocs = !!this.documents?.aadhaar && !!this.documents?.pan;
 
-  const docs = this.documents || {};
-  if (docs.aadhaar || docs.pan || docs.drivingLicense) filled++;
+  // Step 1: Basic info → 33%
+  if (hasName && hasCity && hasGender) {
+    completion = 33;
 
-  this.profileCompletion = Math.round((filled / total) * 100);
-  this.isProfileComplete = this.profileCompletion === 100;
+    // Step 2: Profile photo → 66%
+    if (hasProfilePhoto) {
+      completion = 66;
+
+      // Step 3: Documents → 100%
+      if (hasDocs) {
+        completion = 100;
+      }
+    }
+  }
+
+  this.profileCompletion = completion;
+  this.isProfileComplete = completion === 100;
+
+  // Auto-promote to verified host when 100%
+  if (completion === 100 && hasDocs) {
+    this.isHost = true;
+    this.role = "host";
+    this.isVerified = true;
+    this.isHostVerified = true;
+    this.isHostRequestPending = false; // just in case
+  }
 
   next();
 });

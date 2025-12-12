@@ -1,20 +1,5 @@
 import User from "../models/User.js";
 
-
-const calculateProfileCompletion = (user) => {
-  let filled = 0;
-  const total = 6;
-
-  if (user.name?.trim()) filled++;
-  if (user.email?.trim()) filled++;
-  if (user.city?.trim()) filled++;
-  if (user.gender) filled++;
-  if (user.photos?.some(p => p.isProfilePhoto)) filled++;
-  if (user.documents?.aadhaar || user.documents?.pan) filled++;
-
-  return Math.round((filled / total) * 100);
-};
-
 // Get current user profile
 export const getMyProfile = async (req, res) => {
   try {
@@ -22,7 +7,11 @@ export const getMyProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    res.json({ success: true, user });
+
+    res.json({ 
+      success: true, 
+      user
+    });
   } catch (err) {
     console.error("Error fetching profile:", err);
     res.status(500).json({ success: false, message: "Failed to fetch profile" });
@@ -36,7 +25,11 @@ export const getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    res.json({ success: true, user });
+
+    res.json({ 
+      success: true, 
+      user
+    });
   } catch (err) {
     console.error("Error fetching user:", err);
     res.status(500).json({ success: false, message: "Failed to fetch user" });
@@ -79,13 +72,18 @@ export const approveHostUpgrade = async (req, res) => {
     }
 
     user.role = "host";
+    user.isHost = true;
     user.isHostRequestPending = false;
     user.isHostVerified = true;
     user.isVerified = true;
 
     await user.save();
 
-    res.json({ success: true, message: "User promoted to host successfully", user });
+    res.json({ 
+      success: true, 
+      message: "User promoted to host successfully", 
+      user
+    });
   } catch (err) {
     console.error("Approve host error:", err);
     res.status(500).json({ success: false, message: "Error approving host" });
@@ -153,7 +151,11 @@ export const deactivateUser = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.json({ success: true, message: "User deactivated successfully", user });
+    res.json({ 
+      success: true, 
+      message: "User deactivated successfully", 
+      user
+    });
   } catch (err) {
     console.error("Error deactivating user:", err);
     res.status(500).json({ success: false, message: "Failed to deactivate user" });
@@ -189,8 +191,7 @@ export const createProfile = async (req, res) => {
     res.json({
       success: true,
       message: "Basic profile created successfully!",
-      user,
-      profileCompletion: user.profileCompletion || calculateProfileCompletion(user),
+      user
     });
   } catch (error) {
     console.error("Create profile error:", error);
@@ -198,65 +199,76 @@ export const createProfile = async (req, res) => {
   }
 };
 
-
+// Complete/Update Profile - Unified endpoint
 export const completeProfile = async (req, res) => {
-  try {  
+  try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    let wasUser = user.role !== "host";
-
-  
+    // Basic fields
     if (req.body.name?.trim()) user.name = req.body.name.trim();
     if (req.body.city?.trim()) user.city = req.body.city.trim();
     if (req.body.email?.trim()) user.email = req.body.email.trim().toLowerCase();
     if (req.body.gender) user.gender = req.body.gender;
 
-    // Profile Photo Update
+    // Optional rich fields - always set (even if empty)
+    user.bio = req.body.bio?.trim() ?? "";
+    user.funFact = req.body.funFact?.trim() ?? "";
+
+    // Interests - ensure it's always an array
+    if (req.body.interests !== undefined) {
+      if (typeof req.body.interests === "string") {
+        try {
+          user.interests = JSON.parse(req.body.interests);
+        } catch {
+          user.interests = req.body.interests.split(",").map((i) => i.trim()).filter(Boolean);
+        }
+      } else if (Array.isArray(req.body.interests)) {
+        user.interests = req.body.interests;
+      } else {
+        user.interests = [];
+      }
+    }
+
+    // Profile Photo
     if (req.files?.profilePhoto) {
       const photoUrl = `/uploads/${req.files.profilePhoto[0].filename}`;
-      user.photos = user.photos.filter(p => !p.isProfilePhoto);
+      // Remove old profile photo flag
+      user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
       user.photos.push({ url: photoUrl, isProfilePhoto: true });
     }
 
-    // Documents Update
+    // Documents
     if (req.files) {
-      user.documents = {
-        aadhaar: req.files.aadhaar ? `/uploads/${req.files.aadhaar[0].filename}` : user.documents.aadhaar,
-        pan: req.files.pan ? `/uploads/${req.files.pan[0].filename}` : user.documents.pan,
-        drivingLicense: req.files.drivingLicense ? `/uploads/${req.files.drivingLicense[0].filename}` : user.documents.drivingLicense,
-      };
-    }
-
-    
-    if (wasUser) {
-      if (!req.files?.profilePhoto || !req.files?.aadhaar || !req.files?.pan) {
-        return res.status(400).json({
-          success: false,
-          message: "First time: Profile Photo, Aadhaar & PAN are mandatory",
-        });
+      if (req.files.aadhaar) {
+        user.documents.aadhaar = `/uploads/${req.files.aadhaar[0].filename}`;
       }
-      user.role = "host";
-      user.isVerified = true;
-      user.isHostVerified = true;
-      user.isHostRequestPending = false;
+      if (req.files.pan) {
+        user.documents.pan = `/uploads/${req.files.pan[0].filename}`;
+      }
+      if (req.files.drivingLicense) {
+        user.documents.drivingLicense = `/uploads/${req.files.drivingLicense[0].filename}`;
+      }
     }
 
     await user.save();
 
-    const message = wasUser
-      ? "Congratulations! You're now a verified Host"
-      : "Profile updated successfully!";
+    let message = "Profile updated successfully!";
+    if (user.profileCompletion === 100 && user.isHost) {
+      message = "Congratulations! You're now a verified Host";
+    } else if (user.profileCompletion === 33) {
+      message = "Basic info saved! Now add a profile photo.";
+    } else if (user.profileCompletion === 66) {
+      message = "Looking great! Upload Aadhaar & PAN to become a Host.";
+    }
 
     res.json({
       success: true,
       message,
       user,
-      profileCompletion: 100,
     });
-
-  } catch (error) {  
-    console.error("Complete/Update profile error:", error);
+  } catch (error) {
+    console.error("Complete profile error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -275,41 +287,5 @@ export const logoutUser = async (req, res) => {
   } catch (error) {
     console.error("Logout error:", error);
     res.status(500).json({ success: false, message: "Logout failed" });
-  }
-};
-
-
-
-
-// Update profile (basic fields only for User & Host)
-export const updateProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    const { name, email, city, gender } = req.body;
-
-    // Update basic fields ONLY
-    if (name?.trim()) user.name = name.trim();
-    if (email?.trim()) user.email = email.trim().toLowerCase();
-    if (city?.trim()) user.city = city.trim();
-    if (gender) user.gender = gender;
-
-    // Do NOT update any documents or photos here
-
-    await user.save();
-
-    return res.json({
-      success: true,
-      message: "Profile updated successfully",
-      user,
-      profileCompletion: user.profileCompletion,
-    });
-
-  } catch (error) {
-    console.error("Update profile error:", error);
-    return res.status(500).json({ success: false, message: "Failed to update profile" });
   }
 };

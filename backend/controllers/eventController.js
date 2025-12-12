@@ -5,6 +5,9 @@ import axios from "axios";
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const DEFAULT_RADIUS = 10000;
 
+// ========================================================
+// ADMIN — CREATE EVENT (with permission check + pass setup)
+// ========================================================
 export const adminCreateEvent = async (req, res) => {
   try {
     const {
@@ -30,6 +33,7 @@ export const adminCreateEvent = async (req, res) => {
       maxCapacity
     } = req.body;
 
+    // Validate host
     const host = await User.findById(hostId);
     if (!host) {
       return res.status(404).json({ success: false, message: "Host not found" });
@@ -42,13 +46,25 @@ export const adminCreateEvent = async (req, res) => {
       });
     }
 
+    // ========================================================
+    // 🛑 NEW LOGIC: Host must have eventCreationCredits > 0
+    // ========================================================
+    if (host.eventCreationCredits <= 0) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not approved to create an event. Request approval from admin.",
+      });
+    }
+
+    // Validate date
     if (!date) {
-      return res.status(400).json({ success: false, message: "Event date required" });
+      return res.status(400).json({ success: false, message: "Event date is required" });
     }
 
     const eventDate = new Date(date);
     const weekday = eventDate.toLocaleDateString("en-US", { weekday: "long" });
 
+    // Build eventDateTime
     let eventDateTime = null;
     if (time) {
       const [h, m] = time.split(":");
@@ -56,7 +72,9 @@ export const adminCreateEvent = async (req, res) => {
       eventDateTime.setHours(parseInt(h), parseInt(m), 0, 0);
     }
 
-    // Geocode
+    // ========================================================
+    // GEOLOCATION — Convert address → coordinates
+    // ========================================================
     const geoRes = await axios.get(
       "https://maps.googleapis.com/maps/api/geocode/json",
       {
@@ -68,32 +86,61 @@ export const adminCreateEvent = async (req, res) => {
     );
 
     if (!geoRes.data.results.length) {
-      return res.status(400).json({ success: false, message: "Invalid address" });
+      return res.status(400).json({ success: false, message: "Invalid event address" });
     }
 
     const location = geoRes.data.results[0].geometry.location;
 
-    // Handle image path
+    // ========================================================
+    // Event IMAGE upload path
+    // ========================================================
     let imagePath = eventImage;
     if (req.file) {
       imagePath = `/uploads/${req.file.filename}`;
     }
 
-    // If passes are provided, ensure remainingQuantity is set from totalQuantity
-    const inputPasses = req.body.passes || [];
+    // ========================================================
+    // INITIAL PASSES SETUP (Male / Female / Couple)
+    // ========================================================
+    let inputPasses = [];
+    try {
+      if (req.body.passes) {
+        inputPasses = JSON.parse(req.body.passes);
+      }
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format for passes",
+      });
+    }
+
+    if (!Array.isArray(inputPasses)) {
+      return res.status(400).json({
+        success: false,
+        message: "passes must be a JSON array",
+      });
+    }
+
     const defaultPassTypes = ["Male", "Female", "Couple"];
+
     const normalizedPasses = defaultPassTypes.map((type) => {
       const found = inputPasses.find((p) => p.type === type) || {};
       const totalQ = found.totalQuantity || 0;
+
       return {
         type,
         price: found.price || 0,
         totalQuantity: totalQ,
-        remainingQuantity: typeof found.remainingQuantity === 'number' ? found.remainingQuantity : totalQ
+        remainingQuantity:
+          typeof found.remainingQuantity === "number"
+            ? found.remainingQuantity
+            : totalQ,
       };
     });
 
-    // Create event
+    // ========================================================
+    // CREATE EVENT
+    // ========================================================
     const newEvent = await Event.create({
       hostId,
       hostedBy: host.name,
@@ -126,13 +173,21 @@ export const adminCreateEvent = async (req, res) => {
       },
     });
 
+    // ========================================================
+    // 🟢 IMPORTANT: Host uses up ONE event creation permission
+    // ========================================================
+    host.eventCreationCredits -= 1;
+    await host.save();
+
+    // Update host stats
     const updatedHost = await User.findByIdAndUpdate(
       hostId,
       { $inc: { eventsHosted: 1 } },
       { new: true, select: "name eventsHosted" }
     );
 
-    res.status(201).json({
+    // Response
+    return res.status(201).json({
       success: true,
       message: "Event created successfully",
       event: {
@@ -140,11 +195,16 @@ export const adminCreateEvent = async (req, res) => {
         totalEventsHosted: updatedHost.eventsHosted,
       },
     });
+
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Create Event Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
+// ========================================================
+// GET EVENTS (with optional trending filter)
+// ========================================================
 export const getEvents = async (req, res) => {
   try {
     const { userLat, userLng, trendingOnly } = req.query;
@@ -155,7 +215,7 @@ export const getEvents = async (req, res) => {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(userLng), parseFloat(userLat)]
+            coordinates: [parseFloat(userLng), parseFloat(userLat)],
           },
           $maxDistance: DEFAULT_RADIUS,
         },
@@ -167,28 +227,16 @@ export const getEvents = async (req, res) => {
       .sort({ eventDateTime: 1 });
 
     const formatted = events.map((ev) => ({
-      ...ev.toObject(), // Includes all fields + status virtual
+      ...ev.toObject(),
       hostedBy: ev.hostId?.name,
       totalEventsHosted: ev.hostId?.eventsHosted || 0,
       trending: trendingOnly === "true",
     }));
 
-    res.status(200).json({ success: true, events: formatted });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+    return res.status(200).json({ success: true, events: formatted });
 
-// Helper function to update booking count when a booking is made
-export const updateEventBooking = async (eventId, increment = true) => {
-  try {
-    const event = await Event.findByIdAndUpdate(
-      eventId,
-      { $inc: { currentBookings: increment ? 1 : -1 } },
-      { new: true }
-    );
-    return event;
   } catch (err) {
-    throw new Error(`Failed to update booking: ${err.message}`);
+    console.error("Get Events Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };

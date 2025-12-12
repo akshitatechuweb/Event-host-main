@@ -15,6 +15,8 @@ import ticketRoutes from "./routes/ticketRoutes.js";
 import hostRoutes from "./routes/hostRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";   
 import adminRoutes from "./routes/adminRoutes.js";
+import passRoutes from "./routes/passRoutes.js";
+
 
 
 dotenv.config();
@@ -74,6 +76,7 @@ app.use("/api/ticket", ticketRoutes);
 app.use("/api/host", hostRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/passes", passRoutes);
 
 // Start server
 app.listen(PORT, () => {

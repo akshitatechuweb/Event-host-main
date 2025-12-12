@@ -2,13 +2,14 @@ import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import {
-  approveEventHost,
+  // approveEventHost,
   rejectEventHost,
   getAllHostRequests,
   getRequestById,
   getAllHosts,
   getHostIdFromRequestId,
 } from "../controllers/adminController.js";
+import { approveEventHostRequest } from "../controllers/hostController.js";
 import { adminCreateEvent, getEvents } from "../controllers/eventController.js"; 
 import { upload } from "../middleware/multer.js"; 
 
@@ -17,7 +18,19 @@ const router = express.Router();
 // Host Request Routes
 router.get("/host-requests", authMiddleware, requireRole("admin", "superadmin"), getAllHostRequests);
 router.get("/host-requests/:id", authMiddleware, requireRole("admin", "superadmin"), getRequestById);
-router.post("/host-requests/approve/:id", authMiddleware, requireRole("admin", "superadmin"), approveEventHost);
+
+// OLD WAY OF APPROVING REQUESTS
+// router.post("/host-requests/approve/:id", authMiddleware, requireRole("admin", "superadmin"), approveEventHost);
+
+
+// NEW WAY OF APPROVING REQUESTS
+router.put(
+  "/approve-event-request/:id",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  approveEventHostRequest
+);
+
 router.post("/host-requests/reject/:id", authMiddleware, requireRole("admin", "superadmin"), rejectEventHost);
 
 // Helper Routes

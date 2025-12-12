@@ -43,6 +43,7 @@ const userSchema = new mongoose.Schema(
     isHost: { type: Boolean, default: false },
 
     eventsHosted: { type: Number, default: 0 },
+    eventCreationCredits: { type: Number, default: 0 }, // here is the EVENT CREATION CREDITS
 
     isVerified: { type: Boolean, default: false },
     isHostVerified: { type: Boolean, default: false },

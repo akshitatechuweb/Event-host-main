@@ -12,22 +12,20 @@ export const createTicket = async (req, res) => {
     const { eventId, name, price, quantity, refundPolicy } = req.body;
     const hostId = req.user._id;
 
-    //  Check if event exists and belongs to this host
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ success: false, message: "Event not found" });
     }
 
     if (event.hostId.toString() !== hostId.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized to add tickets for this event" });
+      return res.status(403).json({ success: false, message: "Not authorized to add tickets" });
     }
 
-     const finalQuantity =
+    const finalQuantity =
       typeof quantity === "number"
         ? { total: quantity, available: quantity }
         : quantity;
 
-    //  Create ticket type document (legacy usage) and also update Event.passes when name matches Male/Female/Couple
     const ticket = await Ticket.create({
       eventId,
       name,
@@ -36,26 +34,18 @@ export const createTicket = async (req, res) => {
       refundPolicy,
     });
 
-    // If the ticket name matches one of the 3 pass types, update event.passes accordingly
-    const passTypes = ["Male", "Female", "Couple"];
-    if (passTypes.includes(name)) {
-      const pass = event.passes.find((p) => p.type === name);
-      if (pass) {
-        pass.price = price;
-        pass.totalQuantity = typeof quantity === 'number' ? quantity : (quantity.total || pass.totalQuantity);
-        pass.remainingQuantity = pass.totalQuantity; // Reset remaining on update; or more complex logic may be added
-      } else {
-        event.passes.push({ type: name, price, totalQuantity: typeof quantity === 'number' ? quantity : (quantity.total || 0), remainingQuantity: typeof quantity === 'number' ? quantity : (quantity.available || 0) });
-      }
-      await event.save();
-    }
+    return res.status(201).json({
+      success: true,
+      message: "Ticket type created",
+      ticket
+    });
 
-    res.status(201).json({ success: true, message: "Ticket type created", ticket });
   } catch (err) {
     console.error("Error creating ticket:", err);
     res.status(500).json({ success: false, message: "Failed to create ticket type" });
   }
 };
+
 
 // Get all tickets for a specific event
 export const getTicketsByEvent = async (req, res) => {
@@ -84,28 +74,19 @@ export const updateTicket = async (req, res) => {
       return res.status(404).json({ success: false, message: "Ticket not found" });
     }
 
-    // Check ownership
     if (ticket.eventId.hostId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized to update this ticket" });
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     Object.assign(ticket, updates);
     await ticket.save();
-    // Update event passes if this ticket maps to a pass type
-    const passTypes = ["Male", "Female", "Couple"];
-    if (passTypes.includes(ticket.name)) {
-      const ev = ticket.eventId; // populated
-      const pass = ev.passes.find((p) => p.type === ticket.name);
-      if (pass) {
-        pass.price = ticket.price;
-        const totalQ = typeof ticket.quantity === 'object' ? (ticket.quantity.total || 0) : (ticket.quantity || 0);
-        pass.totalQuantity = totalQ;
-        pass.remainingQuantity = Math.min(pass.remainingQuantity || totalQ, totalQ);
-        await ev.save();
-      }
-    }
 
-    res.json({ success: true, message: "Ticket updated", ticket });
+    return res.json({
+      success: true,
+      message: "Ticket updated",
+      ticket
+    });
+
   } catch (err) {
     console.error("Error updating ticket:", err);
     res.status(500).json({ success: false, message: "Failed to update ticket" });
@@ -122,31 +103,23 @@ export const deleteTicket = async (req, res) => {
       return res.status(404).json({ success: false, message: "Ticket not found" });
     }
 
-    const user = req.user;
     if (
-      user.role !== "admin" &&
-      ticket.eventId.hostId.toString() !== user._id.toString()
+      req.user.role !== "admin" &&
+      ticket.eventId.hostId.toString() !== req.user._id.toString()
     ) {
-      return res.status(403).json({ success: false, message: "Not authorized to delete this ticket" });
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     await Ticket.findByIdAndDelete(id);
-    // If deleting a pass type ticket, reset event pass
-    const passTypes = ["Male", "Female", "Couple"];
-    if (passTypes.includes(ticket.name)) {
-      const ev = ticket.eventId; // populated
-      const passIndex = ev.passes.findIndex((p) => p.type === ticket.name);
-      if (passIndex !== -1) {
-        ev.passes[passIndex] = { type: ticket.name, price: 0, totalQuantity: 0, remainingQuantity: 0 };
-        await ev.save();
-      }
-    }
-    res.json({ success: true, message: "Ticket deleted successfully" });
+
+    return res.json({ success: true, message: "Ticket deleted successfully" });
+
   } catch (err) {
     console.error("Error deleting ticket:", err);
     res.status(500).json({ success: false, message: "Failed to delete ticket" });
   }
 };
+
 
 // Verify and check-in a generated ticket (scan QR)
 export const verifyGeneratedTicket = async (req, res) => {
@@ -263,7 +236,7 @@ export const generateMultipleTickets = async (req, res) => {
       if (!pass) {
         return res.status(400).json({ success: false, message: `Pass type ${item.type} not available for this event` });
       }
-      const required = item.type === "Couple" ? item.quantity : item.quantity;
+      
       if (pass.remainingQuantity < item.quantity) {
         return res.status(400).json({ success: false, message: `${item.type} pass sold out or insufficient stock` });
       }

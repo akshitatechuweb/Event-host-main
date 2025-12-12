@@ -63,7 +63,7 @@ export const createOrder = async (req, res) => {
 };
 
 
-// Verify Payment (UPI se bhi chalega)
+// Update your verifyPayment to auto-generate ticket
 export const verifyPayment = async (req, res) => {
   try {
     const {
@@ -72,9 +72,10 @@ export const verifyPayment = async (req, res) => {
       razorpay_signature,
       eventId,
       ticketCount = 1,
-      bookingName,
-      bookingEmail,
-      bookingPhone,
+      fullName,
+      email,
+      phone,
+      gender
     } = req.body;
 
     const userId = req.user?._id || null;
@@ -98,13 +99,16 @@ export const verifyPayment = async (req, res) => {
     event.availableSeats -= ticketCount;
     await event.save();
 
-    // Save booking
+    // Save booking with attendee info
     const booking = await Booking.create({
       userId,
       eventId,
-      bookingName,
-      bookingEmail,
-      bookingPhone,
+      attendee: {
+        fullName,
+        email,
+        phone,
+        gender
+      },
       ticketCount,
       totalAmount: event.entryFees * ticketCount,
       orderId: razorpay_order_id,
@@ -113,16 +117,46 @@ export const verifyPayment = async (req, res) => {
       status: "confirmed",
     });
 
+    // Auto-generate ticket
+    const ticketNumber = `TKT-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+    const qrData = JSON.stringify({
+      ticketNumber,
+      bookingId: booking._id,
+      eventId: event._id,
+      attendeeName: fullName,
+      ticketCount
+    });
+
+    const ticket = await Ticket.create({
+      bookingId: booking._id,
+      eventId: event._id,
+      userId,
+      ticketNumber,
+      qrCode: qrData,
+      attendee: {
+        fullName,
+        email,
+        phone,
+        gender
+      },
+      ticketCount,
+      totalAmount: event.entryFees * ticketCount,
+      status: "active"
+    });
+
     res.json({
       success: true,
-      message: "Payment Successful! Ticket Booked",
+      message: "Payment Successful! Ticket Generated",
       booking: {
         id: booking._id,
         eventName: event.eventName,
-        bookingName,
-        ticketCount,
         totalAmount: event.entryFees * ticketCount,
       },
+      ticket: {
+        id: ticket._id,
+        ticketNumber: ticket.ticketNumber,
+        qrCode: ticket.qrCode
+      }
     });
 
   } catch (error) {

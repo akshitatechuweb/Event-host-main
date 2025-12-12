@@ -1,52 +1,67 @@
+// models/Ticket.js
 import mongoose from "mongoose";
 
 const ticketSchema = new mongoose.Schema(
   {
+    bookingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Booking",
+      required: true,
+      unique: true
+    },
+
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Event",
-      required: true,
+      required: true
     },
 
-    name: {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    },
+
+    ticketNumber: {
       type: String,
       required: true,
-      trim: true,
+      unique: true
     },
 
-    price: {
+    qrCode: {
+      type: String,
+      required: true
+    },
+
+    attendee: {
+      fullName: { type: String, required: true },
+      email: { type: String, required: true },
+      phone: { type: String, required: true },
+      gender: { type: String, required: true }
+    },
+
+    ticketCount: {
       type: Number,
       required: true,
-      min: 0,
-      default: 0,
+      default: 1
     },
 
-    quantity: {
-      total: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      available: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
+    totalAmount: {
+      type: Number,
+      required: true
     },
 
-    refundPolicy: {
+    status: {
       type: String,
-      enum: [
-        "non-refundable",
-        "partial-refund",
-        "full-refund",
-        "custom-policy",
-      ],
-      default: "non-refundable",
+      enum: ["active", "used", "cancelled", "expired"],
+      default: "active"
     },
+
+    checkedInAt: {
+      type: Date
+    }
   },
   { timestamps: true }
 );
 
-const Ticket = mongoose.model("TicketType", ticketSchema);
+const Ticket = mongoose.model("Ticket", ticketSchema);
 export default Ticket;

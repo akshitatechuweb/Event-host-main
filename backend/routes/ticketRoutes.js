@@ -1,23 +1,12 @@
+// routes/ticketRoutes.js
 import express from "express";
+import { generateTicket, getTicket, getUserTickets } from "../controllers/ticketController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-import { requireRole } from "../middleware/roleMiddleware.js";
-import {
-  createTicket,
-  getTicketsByEvent,
-  updateTicket,
-  deleteTicket,
-} from "../controllers/ticketController.js";
 
 const router = express.Router();
 
-router.post("/", authMiddleware, requireRole("host"), createTicket);
-router.get("/:eventId", getTicketsByEvent);
-router.put("/:id", authMiddleware, requireRole("host"), updateTicket);
-router.delete(
-  "/:id",
-  authMiddleware,
-  requireRole("host", "admin"),
-  deleteTicket
-);
+router.post("/generate", generateTicket);
+router.get("/details", getTicket);
+router.get("/my-tickets", authMiddleware, getUserTickets);
 
 export default router;

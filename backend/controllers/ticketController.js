@@ -1,108 +1,156 @@
+// controllers/ticketController.js
 import Ticket from "../models/Ticket.js";
+import Booking from "../models/Booking.js";
 import Event from "../models/Event.js";
+import crypto from "crypto";
 
-// Create a new ticket type (Host only)
-export const createTicket = async (req, res) => {
+// Generate unique ticket for a booking
+export const generateTicket = async (req, res) => {
   try {
-    const { eventId, name, price, quantity, refundPolicy } = req.body;
-    const hostId = req.user._id;
+    const { bookingId } = req.body;
 
-    //  Check if event exists and belongs to this host
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+    const booking = await Booking.findById(bookingId)
+      .populate('eventId')
+      .populate('userId');
+
+    if (!booking) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Booking not found" 
+      });
     }
 
-    if (event.hostId.toString() !== hostId.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized to add tickets for this event" });
+    if (booking.status !== "confirmed") {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Booking not confirmed" 
+      });
     }
 
-     const finalQuantity =
-      typeof quantity === "number"
-        ? { total: quantity, available: quantity }
-        : quantity;
+    // Check if ticket already exists
+    const existingTicket = await Ticket.findOne({ bookingId });
+    if (existingTicket) {
+      return res.json({
+        success: true,
+        message: "Ticket already generated",
+        ticket: existingTicket
+      });
+    }
 
-    //  Create ticket type
-    const ticket = await Ticket.create({
-      eventId,
-      name,
-      price,
-      quantity: finalQuantity,
-      refundPolicy,
+    // Generate unique ticket number
+    const ticketNumber = `TKT-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+    // Generate QR code data
+    const qrData = JSON.stringify({
+      ticketNumber,
+      bookingId: booking._id,
+      eventId: booking.eventId._id,
+      attendeeName: booking.attendee.fullName,
+      ticketCount: booking.ticketCount
     });
 
-    res.status(201).json({ success: true, message: "Ticket type created", ticket });
-  } catch (err) {
-    console.error("Error creating ticket:", err);
-    res.status(500).json({ success: false, message: "Failed to create ticket type" });
+    // Create ticket
+    const ticket = await Ticket.create({
+      bookingId: booking._id,
+      eventId: booking.eventId._id,
+      userId: booking.userId?._id,
+      ticketNumber,
+      qrCode: qrData,
+      attendee: booking.attendee,
+      ticketCount: booking.ticketCount,
+      totalAmount: booking.totalAmount,
+      status: "active"
+    });
+
+    res.json({
+      success: true,
+      message: "Ticket generated successfully",
+      ticket: {
+        id: ticket._id,
+        ticketNumber: ticket.ticketNumber,
+        eventName: booking.eventId.eventName,
+        eventDate: booking.eventId.eventDate,
+        attendee: ticket.attendee,
+        ticketCount: ticket.ticketCount,
+        qrCode: ticket.qrCode,
+        status: ticket.status
+      }
+    });
+
+  } catch (error) {
+    console.error("Generate Ticket Error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to generate ticket" 
+    });
   }
 };
 
-// Get all tickets for a specific event
-export const getTicketsByEvent = async (req, res) => {
-  try {
-    const { eventId } = req.params;
 
-    const tickets = await Ticket.find({ eventId });
-    if (!tickets.length) {
-      return res.status(404).json({ success: false, message: "No tickets found for this event" });
+// Get ticket by booking ID or ticket number
+export const getTicket = async (req, res) => {
+  try {
+    const { bookingId, ticketNumber } = req.query;
+
+    let ticket;
+    if (bookingId) {
+      ticket = await Ticket.findOne({ bookingId })
+        .populate('eventId')
+        .populate('bookingId');
+    } else if (ticketNumber) {
+      ticket = await Ticket.findOne({ ticketNumber })
+        .populate('eventId')
+        .populate('bookingId');
+    } else {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Provide bookingId or ticketNumber" 
+      });
     }
 
-    res.json({ success: true, tickets });
-  } catch (err) {
-    console.error("Error fetching tickets:", err);
-    res.status(500).json({ success: false, message: "Failed to fetch tickets" });
-  }
-};
-
-// Update ticket type (Host)
-export const updateTicket = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    const ticket = await Ticket.findById(id).populate("eventId");
     if (!ticket) {
-      return res.status(404).json({ success: false, message: "Ticket not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "Ticket not found" 
+      });
     }
 
-    // Check ownership
-    if (ticket.eventId.hostId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized to update this ticket" });
-    }
+    res.json({
+      success: true,
+      ticket
+    });
 
-    Object.assign(ticket, updates);
-    await ticket.save();
-
-    res.json({ success: true, message: "Ticket updated", ticket });
-  } catch (err) {
-    console.error("Error updating ticket:", err);
-    res.status(500).json({ success: false, message: "Failed to update ticket" });
+  } catch (error) {
+    console.error("Get Ticket Error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch ticket" 
+    });
   }
 };
 
-// Delete ticket (Host or Admin)
-export const deleteTicket = async (req, res) => {
+
+// Get all tickets for logged-in user
+export const getUserTickets = async (req, res) => {
   try {
-    const { id } = req.params;
+    const userId = req.user._id;
 
-    const ticket = await Ticket.findById(id).populate("eventId");
-    if (!ticket) {
-      return res.status(404).json({ success: false, message: "Ticket not found" });
-    }
+    const tickets = await Ticket.find({ userId })
+      .populate('eventId')
+      .populate('bookingId')
+      .sort({ createdAt: -1 });
 
-    const user = req.user;
-    if (
-      user.role !== "admin" &&
-      ticket.eventId.hostId.toString() !== user._id.toString()
-    ) {
-      return res.status(403).json({ success: false, message: "Not authorized to delete this ticket" });
-    }
+    res.json({
+      success: true,
+      count: tickets.length,
+      tickets
+    });
 
-    await Ticket.findByIdAndDelete(id);
-    res.json({ success: true, message: "Ticket deleted successfully" });
-  } catch (err) {
-    console.error("Error deleting ticket:", err);
-    res.status(500).json({ success: false, message: "Failed to delete ticket" });
+  } catch (error) {
+    console.error("Get User Tickets Error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch tickets" 
+    });
   }
 };

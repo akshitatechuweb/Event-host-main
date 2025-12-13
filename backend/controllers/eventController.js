@@ -27,6 +27,13 @@ export const adminCreateEvent = async (req, res) => {
       howItWorks,
       cancellationPolicy,
       ageRestriction,
+      // ========================================================
+      // 🆕 NEW FIELDS
+      // ========================================================
+      whatsIncludedInTicket,
+      expectedGuestCount,
+      maleToFemaleRatio,
+      // ========================================================
       category,
       thingsToKnow,
       partyTerms,
@@ -161,6 +168,13 @@ export const adminCreateEvent = async (req, res) => {
       howItWorks,
       cancellationPolicy,
       ageRestriction,
+      // ========================================================
+      // 🆕 NEW FIELDS ADDED TO EVENT CREATION
+      // ========================================================
+      whatsIncludedInTicket,
+      expectedGuestCount,
+      maleToFemaleRatio,
+      // ========================================================
       category,
       thingsToKnow,
       partyTerms,

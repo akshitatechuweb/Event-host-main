@@ -21,20 +21,27 @@ const eventSchema = new mongoose.Schema(
     howItWorks: { type: String },
     cancellationPolicy: { type: String },
     ageRestriction: { type: String },
+    // ========================================================
+    // 🆕 NEW FIELDS ADDED
+    // ========================================================
+    whatsIncludedInTicket: { type: String, default: "" },
+    expectedGuestCount: { type: String, default: "" },
+    maleToFemaleRatio: { type: String, default: "" },
+    // ========================================================
     category: { type: String },
     thingsToKnow: { type: String, default: "" },
     partyTerms: { type: String, default: "" },
     maxCapacity: { type: Number },
     currentBookings: { type: Number, default: 0 },
-      // Passes: Male, Female and Couple (admin can set different price and total quantity per pass)
-      passes: [
-        {
-          type: { type: String, enum: ["Male", "Female", "Couple"], required: true },
-          price: { type: Number, required: true, default: 0 },
-          totalQuantity: { type: Number, required: true, default: 0 },
-          remainingQuantity: { type: Number, required: true, default: 0 },
-        }
-      ],
+    // Passes: Male, Female and Couple (admin can set different price and total quantity per pass)
+    passes: [
+      {
+        type: { type: String, enum: ["Male", "Female", "Couple"], required: true },
+        price: { type: Number, required: true, default: 0 },
+        totalQuantity: { type: Number, required: true, default: 0 },
+        remainingQuantity: { type: Number, required: true, default: 0 },
+      }
+    ],
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], required: true }

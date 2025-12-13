@@ -5,8 +5,8 @@ import Event from "../models/Event.js";
 import Booking from "../models/Booking.js";
 import GeneratedTicket from "../models/GeneratedTicket.js";
 
+/* ================= HOST: CREATE TICKET TYPE ================= */
 
-// Create a new ticket type (Host only)
 export const createTicket = async (req, res) => {
   try {
     const { eventId, name, price, quantity, refundPolicy } = req.body;
@@ -18,7 +18,7 @@ export const createTicket = async (req, res) => {
     }
 
     if (event.hostId.toString() !== hostId.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized to add tickets" });
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     const finalQuantity =
@@ -34,42 +34,42 @@ export const createTicket = async (req, res) => {
       refundPolicy,
     });
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
       message: "Ticket type created",
-      ticket
+      ticket,
     });
-
   } catch (err) {
-    console.error("Error creating ticket:", err);
-    res.status(500).json({ success: false, message: "Failed to create ticket type" });
+    console.error(err);
+    res.status(500).json({ success: false, message: "Failed to create ticket" });
   }
 };
 
+/* ================= GET TICKETS BY EVENT ================= */
 
-// Get all tickets for a specific event
 export const getTicketsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
     const tickets = await Ticket.find({ eventId });
     const event = await Event.findById(eventId);
-    const passes = event ? event.passes || [] : [];
 
-    res.json({ success: true, tickets, passes });
+    res.json({
+      success: true,
+      tickets,
+      passes: event?.passes || [],
+    });
   } catch (err) {
-    console.error("Error fetching tickets:", err);
     res.status(500).json({ success: false, message: "Failed to fetch tickets" });
   }
 };
 
-// Update ticket type (Host)
+/* ================= UPDATE TICKET ================= */
+
 export const updateTicket = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
+    const ticket = await Ticket.findById(req.params.id).populate("eventId");
 
-    const ticket = await Ticket.findById(id).populate("eventId");
     if (!ticket) {
       return res.status(404).json({ success: false, message: "Ticket not found" });
     }
@@ -78,27 +78,21 @@ export const updateTicket = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    Object.assign(ticket, updates);
+    Object.assign(ticket, req.body);
     await ticket.save();
 
-    return res.json({
-      success: true,
-      message: "Ticket updated",
-      ticket
-    });
-
+    res.json({ success: true, ticket });
   } catch (err) {
-    console.error("Error updating ticket:", err);
     res.status(500).json({ success: false, message: "Failed to update ticket" });
   }
 };
 
-// Delete ticket (Host or Admin)
+/* ================= DELETE TICKET ================= */
+
 export const deleteTicket = async (req, res) => {
   try {
-    const { id } = req.params;
+    const ticket = await Ticket.findById(req.params.id).populate("eventId");
 
-    const ticket = await Ticket.findById(id).populate("eventId");
     if (!ticket) {
       return res.status(404).json({ success: false, message: "Ticket not found" });
     }
@@ -110,166 +104,81 @@ export const deleteTicket = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    await Ticket.findByIdAndDelete(id);
+    await Ticket.findByIdAndDelete(req.params.id);
 
-    return res.json({ success: true, message: "Ticket deleted successfully" });
-
+    res.json({ success: true, message: "Ticket deleted" });
   } catch (err) {
-    console.error("Error deleting ticket:", err);
     res.status(500).json({ success: false, message: "Failed to delete ticket" });
   }
 };
 
+/* ================= VERIFY / SCAN TICKET ================= */
 
-// Verify and check-in a generated ticket (scan QR)
 export const verifyGeneratedTicket = async (req, res) => {
   try {
     const { qr, ticketNumber } = req.body;
-    const hostId = req.user._id;
 
-    let query = {};
-    if (qr) {
-      // qr is expected to be a JSON string stored as qrCode in GeneratedTicket
-      query.qrCode = qr;
-    } else if (ticketNumber) {
-      query.ticketNumber = ticketNumber;
-    } else {
-      return res.status(400).json({ success: false, message: "qr or ticketNumber required" });
+    const query = qr ? { qrCode: qr } : { ticketNumber };
+
+    const ticket = await GeneratedTicket.findOne(query).populate("eventId");
+
+    if (!ticket) {
+      return res.status(404).json({ success: false, message: "Ticket not found" });
     }
 
-    const genTicket = await GeneratedTicket.findOne(query).populate('eventId');
-    if (!genTicket) return res.status(404).json({ success: false, message: "Ticket not found" });
-
-    // Only the event host or admin can mark as used
-    if (req.user.role !== 'admin' && genTicket.eventId.hostId.toString() !== hostId.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized to scan this ticket" });
+    if (
+      req.user.role !== "admin" &&
+      ticket.eventId.hostId.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    if (genTicket.status === 'used') {
-      return res.status(400).json({ success: false, message: "Ticket already used" });
+    if (ticket.status === "used") {
+      return res.status(400).json({ success: false, message: "Already used" });
     }
 
-    genTicket.status = 'used';
-    genTicket.checkedInAt = new Date();
-    await genTicket.save();
+    ticket.status = "used";
+    ticket.checkedInAt = new Date();
+    await ticket.save();
 
-    return res.json({ success: true, message: "Entry allowed", ticket: genTicket });
+    res.json({ success: true, message: "Entry allowed", ticket });
   } catch (err) {
-    console.error('Error verifying ticket', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Verification failed" });
   }
 };
 
+/* ================= BOOK & GENERATE TICKETS ================= */
 
 export const generateMultipleTickets = async (req, res) => {
   try {
     const { eventId, attendees, selectedTickets } = req.body;
-    const userId = req.user?._id || null;
+    const userId = req.user._id;
 
-    // Validate event
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found",
-      });
+      return res.status(404).json({ success: false, message: "Event not found" });
     }
 
-    // Validate requests
-    if (!Array.isArray(selectedTickets) || selectedTickets.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "selectedTickets must be a non-empty array",
-      });
-    }
-
-    if (!Array.isArray(attendees) || attendees.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "attendees must be a non-empty array",
-      });
-    }
-
-    // Calculate total amount and validate attendees vs selectedTickets
     let totalAmount = 0;
-    let totalPersonsRequired = 0;
-    selectedTickets.forEach((item) => {
-      totalAmount += item.price * item.quantity;
-      if (item.type === "Couple") {
-        totalPersonsRequired += item.quantity * 2;
-      } else {
-        totalPersonsRequired += item.quantity;
-      }
+    selectedTickets.forEach((t) => {
+      totalAmount += t.price * t.quantity;
     });
 
-    if (attendees.length !== totalPersonsRequired) {
-      return res.status(400).json({ success: false, message: "attendees length does not match selected tickets quantity" });
-    }
-
-    // capacity check
-    if (typeof event.maxCapacity === 'number' && (event.currentBookings || 0) + totalPersonsRequired > event.maxCapacity) {
-      return res.status(400).json({ success: false, message: "Event sold out or insufficient capacity" });
-    }
-
-    // validate distribution by passType
-    const expectedCounts = {};
-    selectedTickets.forEach((item) => {
-      expectedCounts[item.type] = (expectedCounts[item.type] || 0) + (item.type === 'Couple' ? item.quantity * 2 : item.quantity);
-    });
-    const actualCounts = {};
-    attendees.forEach((a) => { actualCounts[a.passType] = (actualCounts[a.passType] || 0) + 1; });
-    for (const [ptype, expected] of Object.entries(expectedCounts)) {
-      if ((actualCounts[ptype] || 0) !== expected) {
-        return res.status(400).json({ success: false, message: `attendees distribution does not match selected tickets for pass ${ptype}` });
-      }
-    }
-
-    // Check pass stock availability & reduce remainingQuantity on Event
-    const eventPasses = event.passes || [];
-    const passMap = {};
-    eventPasses.forEach((p) => {
-      passMap[p.type] = p;
-    });
-
-    for (const item of selectedTickets) {
-      const pass = passMap[item.type];
-      if (!pass) {
-        return res.status(400).json({ success: false, message: `Pass type ${item.type} not available for this event` });
-      }
-      
-      if (pass.remainingQuantity < item.quantity) {
-        return res.status(400).json({ success: false, message: `${item.type} pass sold out or insufficient stock` });
-      }
-    }
-
-    // Deduct stock
-    for (const item of selectedTickets) {
-      const pass = passMap[item.type];
-      pass.remainingQuantity -= item.quantity;
-    }
-    await event.save();
-    event.currentBookings = (event.currentBookings || 0) + attendees.length;
-    await event.save();
-
-    // Create booking entry
     const booking = await Booking.create({
       eventId,
       userId,
       attendees,
       totalAmount,
       status: "confirmed",
-      orderId: "ORDER-" + Date.now(),
       ticketCount: attendees.length,
       items: selectedTickets,
     });
 
-    // Generate tickets
     const generatedTickets = [];
 
-    // Create tickets per attendee - attendees array must map to pass types
     for (const attendee of attendees) {
       const ticketNumber =
-        "TKT-" + Date.now() + "-" + crypto.randomBytes(4).toString("hex").toUpperCase();
+        "TKT-" + Date.now() + "-" + crypto.randomBytes(4).toString("hex");
 
       const qrData = JSON.stringify({
         ticketNumber,
@@ -279,10 +188,6 @@ export const generateMultipleTickets = async (req, res) => {
         ticketType: attendee.passType,
       });
 
-      // find price for the passType
-      const pass = passMap[attendee.passType];
-      const price = pass ? (pass.type === 'Couple' ? (pass.price / 2) : pass.price) : 0;
-
       const newTicket = await GeneratedTicket.create({
         bookingId: booking._id,
         eventId,
@@ -291,24 +196,97 @@ export const generateMultipleTickets = async (req, res) => {
         qrCode: qrData,
         attendee,
         ticketType: attendee.passType,
-        price,
+        price: attendee.price || 0,
       });
 
       generatedTickets.push(newTicket);
     }
 
-    return res.json({
+    res.json({
       success: true,
-      message: "Booking & Tickets generated successfully",
-      booking,
+      message: "Payment Successful! Tickets Generated",
+      booking: {
+        id: booking._id,
+        eventName: event.title || event.eventName,
+        totalAmount,
+      },
       tickets: generatedTickets,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Ticket generation failed" });
+  }
+};
 
+/* ================= 🔥 GET TICKETS BY USER ================= */
+
+export const getTicketsByUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const tickets = await GeneratedTicket.find({ userId })
+      .populate({
+        path: "eventId",
+        select: "eventName eventImage date time fullAddress city",
+      })
+      .populate({
+        path: "bookingId",
+        select: "totalAmount createdAt",
+      })
+      .sort({ createdAt: -1 });
+
+    if (!tickets.length) {
+      return res.json({
+        success: true,
+        passes: [],
+      });
+    }
+
+    // 🔥 Group tickets by booking + event
+    const groupedPasses = {};
+
+    tickets.forEach((ticket) => {
+      const key = `${ticket.bookingId._id}_${ticket.eventId._id}`;
+
+      if (!groupedPasses[key]) {
+        groupedPasses[key] = {
+          bookingId: ticket.bookingId._id,
+          eventId: ticket.eventId._id,
+
+          // UI fields
+          eventName: ticket.eventId.eventName,
+          eventImage: ticket.eventId.eventImage || null,
+          date: ticket.eventId.date,
+          time: ticket.eventId.time,
+          location: `${ticket.eventId.fullAddress}, ${ticket.eventId.city}`,
+
+          totalAmount: ticket.bookingId.totalAmount,
+          tickets: [],
+        };
+      }
+
+      groupedPasses[key].tickets.push({
+        ticketId: ticket._id,
+        ticketNumber: ticket.ticketNumber,
+        ticketType: ticket.ticketType,
+        attendeeName: ticket.attendee.fullName,
+        qrCode: ticket.qrCode,
+        status: ticket.status,
+        price: ticket.price,
+      });
+    });
+
+    return res.json({
+      success: true,
+      passes: Object.values(groupedPasses),
+    });
   } catch (error) {
-    console.error("❌ Book & Generate Error:", error);
+    console.error("❌ getTicketsByUser error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to complete booking and ticket generation",
+      message: "Failed to fetch user tickets",
     });
   }
 };
+
+

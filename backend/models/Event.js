@@ -29,13 +29,12 @@ const eventSchema = new mongoose.Schema(
     partyTerms: { type: String, default: "" },
     maxCapacity: { type: Number },
     currentBookings: { type: Number, default: 0 },
-    // Keep these in DB for internal tracking, but hide in response
     passes: [
       {
         type: { type: String, enum: ["Male", "Female", "Couple"], required: true },
         price: { type: Number, required: true, default: 0 },
-        totalQuantity: { type: Number, default: 0 },         // internal
-        remainingQuantity: { type: Number, default: 0 },     // internal
+        totalQuantity: { type: Number, required: true, default: 0 },
+        remainingQuantity: { type: Number, required: true, default: 0 },
       }
     ],
     location: {
@@ -43,33 +42,81 @@ const eventSchema = new mongoose.Schema(
       coordinates: { type: [Number], required: true }
     }
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { 
+      virtuals: true,
+      transform: function(doc, ret) {
+        // Remove _id from passes subdocuments
+        if (ret.passes) {
+          ret.passes = ret.passes.map(pass => {
+            const { _id, ...cleanPass } = pass;
+            return cleanPass;
+          });
+        }
+        return ret;
+      }
+    },
+    toObject: { 
+      virtuals: true,
+      transform: function(doc, ret) {
+        // Remove _id from passes subdocuments
+        if (ret.passes) {
+          ret.passes = ret.passes.map(pass => {
+            const { _id, ...cleanPass } = pass;
+            return cleanPass;
+          });
+        }
+        return ret;
+      }
+    }
+  }
 );
 
 eventSchema.index({ location: "2dsphere" });
 eventSchema.index({ date: 1 });
 
-// Virtual status (unchanged)
+// Virtual field for status
 eventSchema.virtual("status").get(function() {
   try {
     const now = new Date();
     const eventDate = this.eventDateTime || this.date;
-    if (!eventDate || isNaN(eventDate.getTime())) return "";
+    
+    if (!eventDate || isNaN(eventDate.getTime())) {
+      return "";
+    }
     
     const hoursUntilEvent = (eventDate - now) / (1000 * 60 * 60);
     const daysUntilEvent = hoursUntilEvent / 24;
+    
     const createdAt = this.createdAt || now;
     const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
     
+    // Calculate booking percentage
     let bookingPercentage = 0;
     if (this.maxCapacity && this.maxCapacity > 0 && this.currentBookings >= 0) {
       bookingPercentage = (this.currentBookings / this.maxCapacity) * 100;
     }
     
-    if (bookingPercentage >= 85) return "Almost Full";
-    if (daysUntilEvent <= 2 && daysUntilEvent > 0) return "Filling Fast";
-    if (bookingPercentage >= 50) return "High Demand";
-    if (hoursSinceCreation <= 48) return "Just Started";
+    // PRIORITY 1: Almost Full - 85%+ filled
+    if (bookingPercentage >= 85) {
+      return "Almost Full";
+    }
+    
+    // PRIORITY 2: Filling Fast - within 48 hours (2 days)
+    if (daysUntilEvent <= 2 && daysUntilEvent > 0) {
+      return "Filling Fast";
+    }
+    
+    // PRIORITY 3: High Demand - 50%+ bookings
+    if (bookingPercentage >= 50) {
+      return "High Demand";
+    }
+    
+    // PRIORITY 4: Just Started - within 48 hours of creation
+    if (hoursSinceCreation <= 48) {
+      return "Just Started";
+    }
     
     return "";
   } catch (error) {
@@ -77,22 +124,5 @@ eventSchema.virtual("status").get(function() {
     return "";
   }
 });
-
-// Clean response: Show only type & price in passes
-eventSchema.set('toJSON', {
-  virtuals: true,
-  transform: (doc, ret) => {
-    if (ret.passes) {
-      ret.passes = ret.passes.map(pass => ({
-        type: pass.type,
-        price: pass.price
-      }));
-    }
-    delete ret.__v;
-    return ret;
-  }
-});
-
-eventSchema.set('toObject', { virtuals: true });
 
 export default mongoose.model("Event", eventSchema);

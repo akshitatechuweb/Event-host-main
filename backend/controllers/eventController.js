@@ -93,7 +93,7 @@ export const adminCreateEvent = async (req, res) => {
       imagePath = `/uploads/${req.file.filename}`;
     }
 
-    // Parse passes (only type and price from frontend)
+    // Parse passes (only type and price)
     let inputPasses = [];
     try {
       if (req.body.passes) {
@@ -114,15 +114,12 @@ export const adminCreateEvent = async (req, res) => {
     }
 
     const defaultPassTypes = ["Male", "Female", "Couple"];
-    const totalQty = maxCapacity || 0; // Use maxCapacity as quantity for all
 
     const normalizedPasses = defaultPassTypes.map((type) => {
       const found = inputPasses.find((p) => p.type === type) || {};
       return {
         type,
         price: found.price || 0,
-        totalQuantity: totalQty,
-        remainingQuantity: totalQty, // initially full
       };
     });
 
@@ -276,7 +273,7 @@ export const adminUpdateEvent = async (req, res) => {
       event.eventImage = eventImage;
     }
 
-    // Update passes (only type & price from input)
+    // Update passes (only type & price)
     if (req.body.passes) {
       let inputPasses = [];
       try {
@@ -290,15 +287,12 @@ export const adminUpdateEvent = async (req, res) => {
       }
 
       const defaultPassTypes = ["Male", "Female", "Couple"];
-      const totalQty = maxCapacity ?? event.maxCapacity ?? 0;
 
       const normalizedPasses = defaultPassTypes.map((type) => {
         const found = inputPasses.find((p) => p.type === type) || {};
         return {
           type,
-          price: found.price ?? 0,
-          totalQuantity: totalQty,
-          remainingQuantity: totalQty,
+          price: found.price || 0,
         };
       });
 

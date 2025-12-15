@@ -5,6 +5,47 @@ import axios from "axios";
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const DEFAULT_RADIUS = 10000;
 
+// Helper to compute image URL, bookingPercentage and status for an event object
+function computeEventExtras(ev, req) {
+  let imageUrl = ev.eventImage || null;
+  try {
+    if (imageUrl && imageUrl.startsWith("/")) {
+      imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  let bookingPercentage = null;
+  if (ev.maxCapacity && ev.maxCapacity > 0 && typeof ev.currentBookings === "number") {
+    bookingPercentage = Math.round((ev.currentBookings / ev.maxCapacity) * 100);
+  }
+
+  let status = "";
+  try {
+    const now = new Date();
+    const eventDate = ev.eventDateTime ? new Date(ev.eventDateTime) : (ev.date ? new Date(ev.date) : null);
+    const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
+    const hoursUntilEvent = eventDate ? (eventDate - now) / (1000 * 60 * 60) : null;
+    const daysUntilEvent = hoursUntilEvent !== null ? hoursUntilEvent / 24 : null;
+    const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
+
+    if (bookingPercentage !== null && bookingPercentage >= 85) {
+      status = "Almost Full";
+    } else if (daysUntilEvent !== null && daysUntilEvent <= 2 && daysUntilEvent > 0) {
+      status = "Filling Fast";
+    } else if (bookingPercentage !== null && bookingPercentage >= 50) {
+      status = "High Demand";
+    } else if (hoursSinceCreation <= 48) {
+      status = "Just Started";
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  return { eventImage: imageUrl, bookingPercentage, status };
+}
+
 // ========================================================
 // ADMIN/SUPERADMIN — CREATE EVENT
 // ========================================================
@@ -177,11 +218,16 @@ export const adminCreateEvent = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Event created successfully",
-      event: {
-        ...newEvent.toObject(),
-        totalEventsHosted: updatedHost.eventsHosted,
-        category: newEvent.category, // ← Ensures category is returned
-      },
+      event: (() => {
+        const ev = { ...newEvent.toObject() };
+        const extras = computeEventExtras(ev, req);
+        return {
+          ...ev,
+          ...extras,
+          totalEventsHosted: updatedHost.eventsHosted,
+          category: newEvent.category, // ← Ensures category is returned
+        };
+      })(),
     });
 
   } catch (err) {
@@ -247,7 +293,7 @@ export const adminUpdateEvent = async (req, res) => {
       if (time) {
         const [h, m] = time.split(":");
         const dt = new Date(eventDate);
-        dt.setHours(parseInt(h), parseInt(m), 0, 0);
+        dt.setHours(parseInt(h), parInt(m), 0, 0);
         event.eventDateTime = dt;
         event.time = time;
       }
@@ -327,11 +373,16 @@ export const adminUpdateEvent = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Event updated successfully",
-      event: {
-        ...event.toObject(),
-        totalEventsHosted: updatedHost?.eventsHosted || 0,
-        category: event.category, // ← Ensures category is returned
-      },
+      event: (() => {
+        const ev = { ...event.toObject() };
+        const extras = computeEventExtras(ev, req);
+        return {
+          ...ev,
+          ...extras,
+          totalEventsHosted: updatedHost?.eventsHosted || 0,
+          category: event.category, // ← Ensures category is returned
+        };
+      })(),
     });
 
   } catch (err) {
@@ -365,13 +416,57 @@ export const getEvents = async (req, res) => {
       .sort({ eventDateTime: 1 })
       .lean();
 
-    const formatted = events.map((ev) => ({
-      ...ev,
-      hostedBy: ev.hostId?.name || "Unknown",
-      totalEventsHosted: ev.hostId?.eventsHosted || 0,
-      trending: trendingOnly === "true",
-      category: ev.category || "", // ← Ensures category is always returned
-    }));
+    const formatted = events.map((ev) => {
+      // Full image URL if stored as a relative upload path
+      let imageUrl = ev.eventImage || null;
+      try {
+        if (imageUrl && imageUrl.startsWith("/")) {
+          imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
+        }
+      } catch (err) {
+        // ignore if req isn't available for some reason
+      }
+
+      // Compute booking percentage
+      let bookingPercentage = null;
+      if (ev.maxCapacity && ev.maxCapacity > 0 && typeof ev.currentBookings === "number") {
+        bookingPercentage = Math.round((ev.currentBookings / ev.maxCapacity) * 100);
+      }
+
+      // Compute status (same rules as the model virtual)
+      let status = "";
+      try {
+        const now = new Date();
+        const eventDate = ev.eventDateTime ? new Date(ev.eventDateTime) : (ev.date ? new Date(ev.date) : null);
+        const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
+        const hoursUntilEvent = eventDate ? (eventDate - now) / (1000 * 60 * 60) : null;
+        const daysUntilEvent = hoursUntilEvent !== null ? hoursUntilEvent / 24 : null;
+        const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
+
+        if (bookingPercentage !== null && bookingPercentage >= 85) {
+          status = "Almost Full";
+        } else if (daysUntilEvent !== null && daysUntilEvent <= 2 && daysUntilEvent > 0) {
+          status = "Filling Fast";
+        } else if (bookingPercentage !== null && bookingPercentage >= 50) {
+          status = "High Demand";
+        } else if (hoursSinceCreation <= 48) {
+          status = "Just Started";
+        }
+      } catch (err) {
+        // swallow and continue
+      }
+
+      return {
+        ...ev,
+        eventImage: imageUrl,
+        hostedBy: ev.hostId?.name || "Unknown",
+        totalEventsHosted: ev.hostId?.eventsHosted || 0,
+        trending: trendingOnly === "true",
+        category: ev.category || "",
+        bookingPercentage,
+        status,
+      };
+    });
 
     return res.status(200).json({ success: true, events: formatted });
 

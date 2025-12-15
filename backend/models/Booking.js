@@ -60,6 +60,11 @@ const bookingSchema = new mongoose.Schema(
       type: String 
     },
 
+    qrCode: {
+      type: String,
+      default: null
+    },
+
     status: { 
       type: String,
       enum: ["pending", "confirmed", "failed", "cancelled"],
@@ -67,6 +72,12 @@ const bookingSchema = new mongoose.Schema(
     },
   },
   { timestamps: true }
+);
+
+// Only enforce uniqueness for documents where a non-null qrCode exists
+bookingSchema.index(
+  { qrCode: 1 },
+  { unique: true, partialFilterExpression: { qrCode: { $exists: true, $ne: null } } }
 );
 
 const Booking = mongoose.model("Booking", bookingSchema);

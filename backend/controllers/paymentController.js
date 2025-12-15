@@ -1,6 +1,4 @@
-// controllers/paymentController.js
 import Razorpay from "razorpay";
-import crypto from "crypto";
 import Event from "../models/Event.js";
 import Booking from "../models/Booking.js";
 import GeneratedTicket from "../models/GeneratedTicket.js";
@@ -12,94 +10,83 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// ===============================
-// CREATE ORDER
-// ===============================
+/* =====================================================
+   CREATE ORDER
+===================================================== */
 export const createOrder = async (req, res) => {
   try {
-    const { eventId, selectedTickets = [], attendees = [] } = req.body;
+    const { eventId, items = [], attendees = [] } = req.body;
     const userId = req.user?._id || null;
 
-    // Validate attendees
-    if (Array.isArray(attendees) && attendees.length > 0) {
-      for (const a of attendees) {
-        if (!a.fullName || !a.email || !a.phone || !a.gender || !a.passType) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Each attendee must have fullName, email, phone, gender & passType",
-          });
-        }
-      }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "items must be a non-empty array",
+      });
     }
 
-    // Fetch event
     const event = await Event.findById(eventId);
-    if (!event)
+    if (!event) {
       return res
         .status(404)
         .json({ success: false, message: "Event not found" });
-
-    if (!Array.isArray(selectedTickets) || selectedTickets.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "selectedTickets must be a non-empty array",
-      });
     }
 
     // Build pass map
     const passMap = {};
-    (event.passes || []).forEach((p) => (passMap[p.type] = p));
+    event.passes.forEach((p) => {
+      passMap[p.type] = p;
+    });
 
     let totalAmount = 0;
     let totalPersons = 0;
 
-    for (const item of selectedTickets) {
-      const pass = passMap[item.type];
-      if (!pass)
-        return res
-          .status(400)
-          .json({ success: false, message: `${item.type} pass not available` });
+    for (const item of items) {
+      const pass = passMap[item.passType];
 
-      if (pass.remainingQuantity < item.quantity)
+      if (!pass) {
         return res.status(400).json({
           success: false,
-          message: `${item.type} pass insufficient stock`,
+          message: `${item.passType} pass not available`,
         });
+      }
+
+      // Security: price validation
+      if (pass.price !== item.price) {
+        return res.status(400).json({
+          success: false,
+          message: "Ticket price mismatch",
+        });
+      }
 
       totalAmount += pass.price * item.quantity;
       totalPersons +=
-        item.type === "Couple" ? item.quantity * 2 : item.quantity;
+        item.passType === "Couple"
+          ? item.quantity * 2
+          : item.quantity;
     }
 
+    // Capacity check
     if (
-      Array.isArray(attendees) &&
-      attendees.length > 0 &&
-      attendees.length !== totalPersons
+      event.currentBookings + totalPersons >
+      event.maxCapacity
     ) {
       return res.status(400).json({
         success: false,
-        message: "attendees length must match selected tickets person count",
+        message: "Event sold out or insufficient capacity",
       });
     }
 
-    // Capacity check against maxCapacity
-    if (
-      typeof event.maxCapacity === "number" &&
-      (event.currentBookings || 0) + totalPersons > event.maxCapacity
-    ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Event sold out or insufficient capacity",
-        });
+    // Optional attendees validation
+    if (attendees.length > 0 && attendees.length !== totalPersons) {
+      return res.status(400).json({
+        success: false,
+        message: "Attendees count mismatch",
+      });
     }
 
-    const amount = Math.round(totalAmount * 100);
-
     const order = await razorpay.orders.create({
-      amount,
+      amount: totalAmount * 100,
       currency: "INR",
       receipt: `booking_${Date.now()}`,
     });
@@ -107,29 +94,29 @@ export const createOrder = async (req, res) => {
     return res.json({
       success: true,
       orderId: order.id,
-      amount,
+      amount: totalAmount,
       key_id: process.env.RAZORPAY_KEY_ID,
       eventName: event.eventName,
-      totalAmount,
       ticketCount: totalPersons,
     });
   } catch (error) {
-    console.error("Create Order Error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("CREATE ORDER ERROR:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error" });
   }
 };
 
-
-// ===============================
-// VERIFY PAYMENT (ORDER-ID ONLY)
-// ===============================
+/* =====================================================
+   VERIFY PAYMENT
+===================================================== */
 export const verifyPayment = async (req, res) => {
   try {
     const {
-      razorpay_order_id,   // ONLY REQUIRED PAYMENT FIELD
+      razorpay_order_id,
       eventId,
+      items = [],
       attendees = [],
-      selectedTickets = [],
     } = req.body;
 
     if (!razorpay_order_id) {
@@ -139,129 +126,90 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    const userId = req.user?._id || null;
-
-    // ======================================================
-    // 1. Fetch Event
-    // ======================================================
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found",
-      });
-    }
-
-    if (!Array.isArray(selectedTickets) || selectedTickets.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "selectedTickets must be a non-empty array",
+        message: "items must be a non-empty array",
       });
     }
 
-    // ======================================================
-    // 2. Build Pass Map
-    // ======================================================
+    const userId = req.user?._id || null;
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
+    }
+
+    // Build pass map
     const passMap = {};
-    (event.passes || []).forEach((p) => {
+    event.passes.forEach((p) => {
       passMap[p.type] = p;
     });
 
     let totalPersons = 0;
     let totalAmount = 0;
 
-    // ======================================================
-    // 3. Validate Tickets & Stock
-    // ======================================================
-    for (const item of selectedTickets) {
-      const pass = passMap[item.type];
+    for (const item of items) {
+      const pass = passMap[item.passType];
       if (!pass) {
         return res.status(400).json({
           success: false,
-          message: `${item.type} pass not available`,
-        });
-      }
-
-      if (pass.remainingQuantity < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `${item.type} pass insufficient stock`,
+          message: `${item.passType} pass not available`,
         });
       }
 
       totalAmount += pass.price * item.quantity;
-      totalPersons += item.type === "Couple"
-        ? item.quantity * 2
-        : item.quantity;
+      totalPersons +=
+        item.passType === "Couple"
+          ? item.quantity * 2
+          : item.quantity;
     }
 
-    // ======================================================
-    // 4. Validate Attendees Count
-    // ======================================================
-    if (!Array.isArray(attendees) || attendees.length !== totalPersons) {
+    // Attendee validation
+    if (attendees.length !== totalPersons) {
       return res.status(400).json({
         success: false,
-        message: `Attendees count mismatch. Expected ${totalPersons}, got ${attendees.length}`,
+        message: `Attendees count mismatch. Expected ${totalPersons}`,
       });
     }
 
-    // ======================================================
-    // 5. Validate Attendee Distribution
-    // ======================================================
-    const expectedCounts = {};
-    selectedTickets.forEach((item) => {
-      expectedCounts[item.type] =
-        (expectedCounts[item.type] || 0) +
-        (item.type === "Couple" ? item.quantity * 2 : item.quantity);
-    });
+    // Atomic capacity update (safe)
+    const updatedEvent = await Event.findOneAndUpdate(
+      {
+        _id: eventId,
+        $expr: {
+          $lte: [
+            { $add: ["$currentBookings", totalPersons] },
+            "$maxCapacity",
+          ],
+        },
+      },
+      { $inc: { currentBookings: totalPersons } },
+      { new: true }
+    );
 
-    const actualCounts = {};
-    attendees.forEach((a) => {
-      actualCounts[a.passType] = (actualCounts[a.passType] || 0) + 1;
-    });
-
-    for (const [type, count] of Object.entries(expectedCounts)) {
-      if ((actualCounts[type] || 0) !== count) {
-        return res.status(400).json({
-          success: false,
-          message: `Attendee distribution mismatch for pass ${type}`,
-        });
-      }
+    if (!updatedEvent) {
+      return res.status(400).json({
+        success: false,
+        message: "Event sold out during payment",
+      });
     }
 
-    // ======================================================
-    // 6. Reduce Stock + Update Event
-    // ======================================================
-    for (const item of selectedTickets) {
-      passMap[item.type].remainingQuantity -= item.quantity;
-    }
-
-    event.currentBookings =
-      (event.currentBookings || 0) + attendees.length;
-
-    await event.save();
-
-    // ======================================================
-    // 7. Create Booking (NO paymentId / signature)
-    // ======================================================
+    // Create booking
     const booking = await Booking.create({
       userId,
       eventId,
       attendees,
-      ticketCount: attendees.length,
-      items: selectedTickets.map((i) => ({
-        passType: i.type,
-        quantity: i.quantity,
-        price: passMap[i.type].price,
-      })),
+      ticketCount: totalPersons,
+      items,
       totalAmount,
       orderId: razorpay_order_id,
       status: "confirmed",
     });
 
-    // ======================================================
-    // 8. Generate Tickets
-    // ======================================================
+    // Generate tickets
     const generatedTickets = [];
 
     for (const attendee of attendees) {
@@ -298,9 +246,7 @@ export const verifyPayment = async (req, res) => {
       generatedTickets.push(ticket);
     }
 
-    // ======================================================
-    // 9. Save Transaction (MOCK)
-    // ======================================================
+    // Save transaction
     await Transaction.create({
       bookingId: booking._id,
       amount: totalAmount,
@@ -308,16 +254,12 @@ export const verifyPayment = async (req, res) => {
       status: "completed",
     });
 
-    // ======================================================
-    // 10. Success Response
-    // ======================================================
     return res.json({
       success: true,
-      message: "Order verified successfully. Tickets generated.",
+      message: "Payment verified. Tickets generated.",
       bookingId: booking._id,
       tickets: generatedTickets,
     });
-
   } catch (error) {
     console.error("VERIFY PAYMENT ERROR:", error);
     return res.status(500).json({

@@ -20,7 +20,12 @@ const generatedTicketSchema = new mongoose.Schema(
     },
 
     ticketNumber: { type: String, required: true, unique: true },
-    qrCode: { type: String, required: true },
+   qrCode: {
+  type: String,
+  required: true,
+  unique: true,
+},
+
 
     attendee: {
       fullName: String,

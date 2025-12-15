@@ -62,7 +62,7 @@ const bookingSchema = new mongoose.Schema(
 
     qrCode: {
       type: String,
-      default: null
+      default: undefined
     },
 
     status: { 
@@ -75,10 +75,10 @@ const bookingSchema = new mongoose.Schema(
 );
 
 // Only enforce uniqueness for documents where a non-null qrCode exists
-bookingSchema.index(
-  { qrCode: 1 },
-  { unique: true, partialFilterExpression: { qrCode: { $exists: true, $ne: null } } }
-);
+// Use a sparse unique index: documents without `qrCode` are not indexed,
+// so multiple documents without a qrCode won't conflict. We avoid using
+// partialFilterExpression to keep compatibility with older MongoDB versions.
+bookingSchema.index({ qrCode: 1 }, { unique: true, sparse: true });
 
 const Booking = mongoose.model("Booking", bookingSchema);
 

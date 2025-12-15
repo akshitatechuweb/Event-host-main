@@ -19,32 +19,35 @@ const connectDB = async () => {
       }
 
       const indexes = await coll.indexes();
+
+      // If there are any existing qrCode indexes, drop them to avoid conflicts
       for (const idx of indexes) {
         if (idx.key && idx.key.qrCode === 1) {
-          // Keep if already has the desired partial filter
-          const hasDesiredPartial = idx.partialFilterExpression && idx.partialFilterExpression.qrCode && (
-            idx.partialFilterExpression.qrCode.$ne === null || (
-              idx.partialFilterExpression.qrCode.$exists === true && idx.partialFilterExpression.qrCode.$ne === null
-            )
-          );
-
-          if (!hasDesiredPartial) {
-            try {
-              await coll.dropIndex(idx.name);
-              console.log(`Dropped old index ${idx.name} on bookings.qrCode`);
-            } catch (dropErr) {
-              console.warn(`Failed to drop index ${idx.name}:`, dropErr.message);
-            }
+          try {
+            await coll.dropIndex(idx.name);
+            console.log(`Dropped existing index ${idx.name} on bookings.qrCode`);
+          } catch (dropErr) {
+            console.warn(`Failed to drop index ${idx.name}:`, dropErr.message);
           }
         }
       }
 
-      // Ensure the Booking model's partial unique index is created
+      // Clean up documents that have `qrCode: null` so the sparse index won't include them
+      try {
+        const result = await coll.updateMany({ qrCode: null }, { $unset: { qrCode: "" } });
+        if (result.modifiedCount > 0) {
+          console.log(`Unset qrCode on ${result.modifiedCount} bookings (null -> absent) to prepare for sparse index`);
+        }
+      } catch (uErr) {
+        console.warn("Failed to unset null qrCode values:", uErr.message);
+      }
+
+      // Ensure the Booking model's sparse unique index is created (defined in schema)
       try {
         await import("../models/Booking.js");
         if (mongoose.modelNames().includes("Booking")) {
           await mongoose.model("Booking").createIndexes();
-          console.log("Ensured Booking partial indexes are created");
+          console.log("Ensured Booking sparse unique index is created");
         }
       } catch (idxErr) {
         console.warn("Could not create Booking indexes:", idxErr.message);

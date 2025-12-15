@@ -1,16 +1,22 @@
+// src/routes/eventRoutes.js
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
+import { upload } from "../middleware/multer.js";
+
 import { 
   adminCreateEvent, 
-  adminUpdateEvent, 
-  getEvents 
-} from "../controllers/eventController.js";
-import { upload } from "../middleware/multer.js";
+  adminUpdateEvent 
+} from "../controllers/eventController.js"; // your existing admin controller
+
+import { searchEvents } from "../controllers/eventSearchController.js";
 
 const router = express.Router();
 
-// Admin/Superadmin creates event (with image upload)
+// === PUBLIC / USER SEARCH API (Main Feed) ===
+router.get("/search", searchEvents); // No auth required or optional auth for personalization
+
+// === ADMIN ROUTES ===
 router.post(
   "/create-event",
   authMiddleware,
@@ -19,7 +25,6 @@ router.post(
   adminCreateEvent
 );
 
-// Admin/Superadmin updates event
 router.put(
   "/update-event/:eventId",
   authMiddleware,
@@ -28,7 +33,7 @@ router.put(
   adminUpdateEvent
 );
 
-// Get all events or trending nearby
-router.get("/events", authMiddleware, getEvents);
+// Optional: Keep old /events for backward compatibility or remove
+// router.get("/events", authMiddleware, getEvents);
 
 export default router;

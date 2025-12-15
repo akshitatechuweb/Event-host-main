@@ -93,7 +93,7 @@ export const adminCreateEvent = async (req, res) => {
       imagePath = `/uploads/${req.file.filename}`;
     }
 
-    // Parse passes (only type and price)
+    // Parse passes
     let inputPasses = [];
     try {
       if (req.body.passes) {
@@ -117,9 +117,12 @@ export const adminCreateEvent = async (req, res) => {
 
     const normalizedPasses = defaultPassTypes.map((type) => {
       const found = inputPasses.find((p) => p.type === type) || {};
+      const totalQty = Number(found.totalQuantity) || 0;
       return {
         type,
-        price: found.price || 0,
+        price: Number(found.price) || 0,
+        totalQuantity: totalQty,
+        remainingQuantity: totalQty, // initially same as total
       };
     });
 
@@ -177,6 +180,7 @@ export const adminCreateEvent = async (req, res) => {
       event: {
         ...newEvent.toObject(),
         totalEventsHosted: updatedHost.eventsHosted,
+        category: newEvent.category, // ← Ensures category is returned
       },
     });
 
@@ -273,7 +277,7 @@ export const adminUpdateEvent = async (req, res) => {
       event.eventImage = eventImage;
     }
 
-    // Update passes (only type & price)
+    // Update passes (supports totalQuantity)
     if (req.body.passes) {
       let inputPasses = [];
       try {
@@ -290,35 +294,24 @@ export const adminUpdateEvent = async (req, res) => {
 
       const normalizedPasses = defaultPassTypes.map((type) => {
         const found = inputPasses.find((p) => p.type === type) || {};
+        const totalQty = Number(found.totalQuantity) || 0;
         return {
           type,
-          price: found.price || 0,
+          price: Number(found.price) || 0,
+          totalQuantity: totalQty,
+          remainingQuantity: totalQty,
         };
       });
 
       event.passes = normalizedPasses;
     }
 
-    // Update other fields if provided
+    // Update other fields
     const fieldsToUpdate = {
-      eventName,
-      subtitle,
-      city,
-      about,
-      partyFlow,
-      partyEtiquette,
-      whatsIncluded,
-      houseRules,
-      howItWorks,
-      cancellationPolicy,
-      ageRestriction,
-      whatsIncludedInTicket,
-      expectedGuestCount,
-      maleToFemaleRatio,
-      category,
-      thingsToKnow,
-      partyTerms,
-      maxCapacity,
+      eventName, subtitle, city, about, partyFlow, partyEtiquette,
+      whatsIncluded, houseRules, howItWorks, cancellationPolicy,
+      ageRestriction, whatsIncludedInTicket, expectedGuestCount,
+      maleToFemaleRatio, category, thingsToKnow, partyTerms, maxCapacity,
     };
 
     Object.keys(fieldsToUpdate).forEach((key) => {
@@ -337,6 +330,7 @@ export const adminUpdateEvent = async (req, res) => {
       event: {
         ...event.toObject(),
         totalEventsHosted: updatedHost?.eventsHosted || 0,
+        category: event.category, // ← Ensures category is returned
       },
     });
 
@@ -369,13 +363,14 @@ export const getEvents = async (req, res) => {
     const events = await Event.find(filter)
       .populate("hostId", "name role eventsHosted")
       .sort({ eventDateTime: 1 })
-      .lean(); // Clean output + faster
+      .lean();
 
     const formatted = events.map((ev) => ({
       ...ev,
       hostedBy: ev.hostId?.name || "Unknown",
       totalEventsHosted: ev.hostId?.eventsHosted || 0,
       trending: trendingOnly === "true",
+      category: ev.category || "", // ← Ensures category is always returned
     }));
 
     return res.status(200).json({ success: true, events: formatted });

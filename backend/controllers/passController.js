@@ -13,7 +13,6 @@ export const addPass = async (req, res) => {
       return res.status(404).json({ success: false, message: "Event not found" });
     }
 
-    // Does pass type already exist?
     const exists = event.passes.find(p => p.type === type);
     if (exists) {
       return res.status(400).json({ success: false, message: "Pass type already exists" });
@@ -28,17 +27,12 @@ export const addPass = async (req, res) => {
 
     await event.save();
 
-    return res.json({
-      success: true,
-      message: "Pass added successfully",
-      passes: event.passes
-    });
-
+    res.json({ success: true, message: "Pass added", passes: event.passes });
   } catch (err) {
-    console.error("Add Pass Error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // ===============================
 // UPDATE PASS
@@ -46,7 +40,7 @@ export const addPass = async (req, res) => {
 export const updatePass = async (req, res) => {
   try {
     const { eventId, passId } = req.params;
-    const { price, totalQuantity, remainingQuantity } = req.body;
+    const { price, totalQuantity } = req.body;
 
     const event = await Event.findById(eventId);
     if (!event) {
@@ -59,30 +53,25 @@ export const updatePass = async (req, res) => {
     }
 
     if (price !== undefined) pass.price = price;
-    if (totalQuantity !== undefined) pass.totalQuantity = totalQuantity;
 
-    // Auto adjust remaining stock if needed
-    if (remainingQuantity !== undefined) {
-      pass.remainingQuantity = remainingQuantity;
-    } else if (totalQuantity !== undefined) {
-      // If quantity increased, adjust remaining as well
-      const difference = totalQuantity - pass.totalQuantity;
-      pass.remainingQuantity += difference;
+    if (totalQuantity !== undefined) {
+      const diff = totalQuantity - pass.totalQuantity;
+      pass.totalQuantity = totalQuantity;
+      pass.remainingQuantity += diff;
+
+      if (pass.remainingQuantity < 0) {
+        pass.remainingQuantity = 0;
+      }
     }
 
     await event.save();
 
-    return res.json({
-      success: true,
-      message: "Pass updated successfully",
-      pass
-    });
-
+    res.json({ success: true, message: "Pass updated", pass });
   } catch (err) {
-    console.error("Update Pass Error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // ===============================
 // DELETE PASS
@@ -99,38 +88,25 @@ export const deletePass = async (req, res) => {
     event.passes = event.passes.filter(p => p._id.toString() !== passId);
     await event.save();
 
-    return res.json({
-      success: true,
-      message: "Pass deleted",
-      passes: event.passes
-    });
-
+    res.json({ success: true, message: "Pass deleted", passes: event.passes });
   } catch (err) {
-    console.error("Delete Pass Error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // ===============================
 // GET ALL PASSES FOR EVENT
 // ===============================
 export const getPasses = async (req, res) => {
   try {
-    const { eventId } = req.params;
-
-    const event = await Event.findById(eventId);
-
+    const event = await Event.findById(req.params.eventId).select("passes");
     if (!event) {
       return res.status(404).json({ success: false, message: "Event not found" });
     }
 
-    return res.json({
-      success: true,
-      passes: event.passes
-    });
-
+    res.json({ success: true, passes: event.passes });
   } catch (err) {
-    console.error("Get Passes Error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

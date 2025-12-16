@@ -3,6 +3,7 @@ import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import { upload } from "../middleware/multer.js";
+import { shareEvent } from "../controllers/eventShareController.js";
 
 import { 
   adminCreateEvent, 
@@ -49,6 +50,16 @@ router.get(
   "/saved-events",
   authMiddleware,
   getSavedEvents
+);
+
+
+
+
+// SHARE EVENT
+router.post(
+  "/:eventId/share",
+  authMiddleware, 
+  shareEvent
 );
 
 

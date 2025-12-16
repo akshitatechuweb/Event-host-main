@@ -30,6 +30,27 @@ const eventSchema = new mongoose.Schema(
     partyTerms: { type: String, default: "" },
     maxCapacity: { type: Number },
     currentBookings: { type: Number, default: 0 },
+    
+    
+    
+    shareCount: {
+  type: Number,
+  default: 0,
+},
+
+sharedBy: [
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    sharedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+],
+
     passes: [
       {
         type: { type: String, enum: ["Male", "Female", "Couple"], required: true },
@@ -49,6 +70,10 @@ const eventSchema = new mongoose.Schema(
     toObject: { virtuals: true }
   }
 );
+
+
+
+
 
 // === INDEXES FOR FAST SEARCH ===
 eventSchema.index({ location: "2dsphere" });
@@ -107,5 +132,10 @@ eventSchema.virtual("status").get(function () {
     return "";
   }
 });
+
+
+
+
+
 
 export default mongoose.model("Event", eventSchema);

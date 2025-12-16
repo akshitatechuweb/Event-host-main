@@ -1,8 +1,10 @@
 // src/controllers/eventSearchController.js
+
 import Event from "../models/Event.js";
 import User from "../models/User.js";
 
-const addEventExtras = (event, req) => {
+// Helper to add common extras + trending flag
+const addEventExtras = (event, req, isTrending = false) => {
   let imageUrl = event.eventImage;
   if (imageUrl && imageUrl.startsWith("/")) {
     imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
@@ -12,12 +14,33 @@ const addEventExtras = (event, req) => {
     ? Math.round((event.currentBookings / event.maxCapacity) * 100)
     : null;
 
+  // Optional: Add status virtual if you want (same logic as model)
+  let status = "";
+  try {
+    const now = new Date();
+    const eventDate = event.eventDateTime || event.date;
+    if (eventDate) {
+      const hoursUntilEvent = (new Date(eventDate) - now) / (1000 * 60 * 60);
+      const daysUntilEvent = hoursUntilEvent / 24;
+      const hoursSinceCreation = (now - new Date(event.createdAt || now)) / (1000 * 60 * 60);
+
+      if (bookingPercentage >= 85) status = "Almost Full";
+      else if (daysUntilEvent <= 2 && daysUntilEvent > 0) status = "Filling Fast";
+      else if (bookingPercentage >= 50) status = "High Demand";
+      else if (hoursSinceCreation <= 48) status = "Just Started";
+    }
+  } catch (err) {
+    // ignore
+  }
+
   return {
     ...event,
     eventImage: imageUrl,
     bookingPercentage,
-    hostedBy: event.hostId?.name || event.hostedBy,
+    status,                    // ← Bonus: same as virtual
+    hostedBy: event.hostId?.name || event.hostedBy || "Unknown",
     totalEventsHosted: event.hostId?.eventsHosted || 0,
+    trending: isTrending,      // ← Main feature: user-specific trending
   };
 };
 
@@ -42,7 +65,7 @@ export const searchEvents = async (req, res) => {
     if (q.trim()) filters.$text = { $search: q.trim() };
     if (category.trim()) filters.category = new RegExp(`^${category.trim()}$`, "i");
 
-    // Time filters
+    // Date filters
     if (date) {
       const d = new Date(date);
       const start = new Date(d.setHours(0, 0, 0, 0));
@@ -62,12 +85,14 @@ export const searchEvents = async (req, res) => {
     }
 
     let locationApplied = false;
+    let userProvidedLocation = false; // ← This decides if events are "trending"
 
-    // Priority 1: Near me (lat/lng)
+    // Priority 1: User-provided lat/lng (Near Me)
     if (lat && lng) {
       const userLat = parseFloat(lat);
       const userLng = parseFloat(lng);
       const maxDist = parseInt(radius) || 10000;
+
       if (!isNaN(userLat) && !isNaN(userLng)) {
         filters.location = {
           $near: {
@@ -76,9 +101,9 @@ export const searchEvents = async (req, res) => {
           },
         };
         locationApplied = true;
+        userProvidedLocation = true; // All returned events are nearby → trending
       }
     }
-
     // Priority 2: Logged-in user's saved city
     else if (!locationApplied && req.user?._id) {
       const user = await User.findById(req.user._id).select("city");
@@ -87,7 +112,6 @@ export const searchEvents = async (req, res) => {
         locationApplied = true;
       }
     }
-
     // Priority 3: Manual city param
     else if (!locationApplied && city.trim()) {
       filters.city = new RegExp(`^${city.trim()}$`, "i");
@@ -114,11 +138,15 @@ export const searchEvents = async (req, res) => {
       Event.countDocuments(filters),
     ]);
 
-    const formatted = events.map(ev => addEventExtras(ev, req));
+    // Format events with trending flag
+    const formatted = events.map((ev) => {
+      return addEventExtras(ev, req, userProvidedLocation);
+    });
 
     res.json({
       success: true,
       data: {
+        isNearbySearch: userProvidedLocation, // Optional helper for frontend
         events: formatted,
         pagination: {
           total,

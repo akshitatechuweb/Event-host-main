@@ -4,6 +4,7 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import { upload } from "../middleware/multer.js";
 import { shareEvent } from "../controllers/eventShareController.js";
+import { getEventDirections } from "../controllers/eventDirectionController.js";
 
 import { 
   adminCreateEvent, 
@@ -60,6 +61,12 @@ router.post(
   "/:eventId/share",
   authMiddleware, 
   shareEvent
+);
+
+// GET EVENT DIRECTIONS
+router.get(
+  "/:eventId/directions",
+  getEventDirections // public (no auth needed)
 );
 
 

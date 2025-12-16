@@ -6,7 +6,10 @@ import { upload } from "../middleware/multer.js";
 
 import { 
   adminCreateEvent, 
-  adminUpdateEvent 
+  adminUpdateEvent ,
+  getEvents,
+  toggleSaveEvent,        
+  getSavedEvents,
 } from "../controllers/eventController.js"; // your existing admin controller
 
 import { searchEvents } from "../controllers/eventSearchController.js";
@@ -33,7 +36,23 @@ router.put(
   adminUpdateEvent
 );
 
+
+// === SAVE / UNSAVE EVENT ===
+router.post(
+  "/:eventId/save",
+  authMiddleware,
+  toggleSaveEvent
+);
+
+// === GET USER'S SAVED EVENTS ===
+router.get(
+  "/saved-events",
+  authMiddleware,
+  getSavedEvents
+);
+
+
 // Optional: Keep old /events for backward compatibility or remove
-// router.get("/events", authMiddleware, getEvents);
+router.get("/events", authMiddleware, getEvents);
 
 export default router;

@@ -43,15 +43,35 @@ const userSchema = new mongoose.Schema(
     isHost: { type: Boolean, default: false },
 
     eventsHosted: { type: Number, default: 0 },
-    eventCreationCredits: { type: Number, default: 0 }, // here is the EVENT CREATION CREDITS
+    eventCreationCredits: { type: Number, default: 0 },
 
     isVerified: { type: Boolean, default: false },
     isHostVerified: { type: Boolean, default: false },
     isHostRequestPending: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+
+    // === SAVED / BOOKMARKED EVENTS ===
+    savedEvents: [
+      {
+        event: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Event",
+          required: true,
+        },
+        savedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
+
+// Indexes for performance
+userSchema.index({ "savedEvents.event": 1 }); // For counting saves per event
+userSchema.index({ phone: 1 }); // Already unique
+userSchema.index({ role: 1 });
 
 // Auto-calculate profile completion + auto-upgrade to host
 userSchema.pre("save", function (next) {
@@ -87,7 +107,7 @@ userSchema.pre("save", function (next) {
     this.role = "host";
     this.isVerified = true;
     this.isHostVerified = true;
-    this.isHostRequestPending = false; // just in case
+    this.isHostRequestPending = false;
   }
 
   next();

@@ -475,3 +475,134 @@ export const getEvents = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+
+
+// ========================================================
+// TOGGLE SAVE EVENT (Bookmark)
+// ========================================================
+export const toggleSaveEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.user._id; // from authMiddleware
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Check if already saved
+    const existingSaveIndex = user.savedEvents.findIndex(
+      (save) => save.event.toString() === eventId
+    );
+
+    let isSaved = false;
+    let message = "";
+
+    if (existingSaveIndex !== -1) {
+      // Already saved → unsave
+      user.savedEvents.splice(existingSaveIndex, 1);
+      message = "Event unsaved successfully";
+    } else {
+      // Not saved → save
+      user.savedEvents.push({ event: eventId });
+      isSaved = true;
+      message = "Event saved successfully";
+    }
+
+    await user.save();
+
+    // Optional: Get total saved count for this event
+    const totalSaves = await User.countDocuments({
+      "savedEvents.event": eventId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message,
+      isSaved,
+      totalSaves,
+    });
+  } catch (err) {
+    console.error("Toggle Save Event Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ========================================================
+// GET SAVED EVENTS (with pagination)
+// ========================================================
+export const getSavedEvents = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const user = await User.findById(userId).select("savedEvents");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Extract event IDs in order of savedAt (newest first)
+    const savedEventEntries = user.savedEvents
+      .sort((a, b) => b.savedAt - a.savedAt) // descending
+      .slice(skip, skip + limit);
+
+    const eventIds = savedEventEntries.map((entry) => entry.event);
+
+    // Fetch full event details
+    let events = [];
+    if (eventIds.length > 0) {
+      events = await Event.find({ _id: { $in: eventIds } })
+        .populate("hostId", "name role eventsHosted")
+        .lean();
+
+      // Preserve order from savedEvents (important!)
+      const eventMap = {};
+      events.forEach((ev) => {
+        eventMap[ev._id.toString()] = ev;
+      });
+
+      events = eventIds.map((id) => eventMap[id.toString()]).filter(Boolean);
+    }
+
+    // Apply same formatting as other APIs (image URL, status, booking %, etc.)
+    const formatted = events.map((ev) => {
+      const extras = computeEventExtras(ev, req);
+      return {
+        ...ev,
+        eventImage: extras.eventImage,
+        bookingPercentage: extras.bookingPercentage,
+        status: extras.status,
+        hostedBy: ev.hostId?.name || "Unknown",
+        totalEventsHosted: ev.hostId?.eventsHosted || 0,
+        category: ev.category || "",
+      };
+    });
+
+    // Total count for pagination
+    const total = user.savedEvents.length;
+
+    return res.status(200).json({
+      success: true,
+      savedEvents: formatted,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (err) {
+    console.error("Get Saved Events Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

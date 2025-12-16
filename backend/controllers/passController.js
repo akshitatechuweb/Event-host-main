@@ -1,4 +1,5 @@
 import Event from "../models/Event.js";
+import Booking from "../models/Booking.js"; // Assuming you have a Booking model
 
 // ===============================
 // CREATE / ADD PASS (for custom pass creation)
@@ -106,6 +107,116 @@ export const getPasses = async (req, res) => {
     }
 
     res.json({ success: true, passes: event.passes });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+// ===============================
+// GET USER'S PURCHASED PASSES
+// ===============================
+export const getMyPurchasedPasses = async (req, res) => {
+  try {
+    const userId = req.user._id; // From authMiddleware
+    
+    // Find all bookings for this user with status 'confirmed' or 'paid'
+    const bookings = await Booking.find({
+      user: userId,
+      status: { $in: ['confirmed', 'paid'] }
+    })
+    .populate({
+      path: 'event',
+      select: 'title date location venue'
+    })
+    .populate({
+      path: 'passId',
+      select: 'type price'
+    })
+    .sort({ createdAt: -1 });
+
+    if (!bookings || bookings.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: "No purchased passes found",
+        passes: [] 
+      });
+    }
+
+    // Format the response
+    const purchasedPasses = bookings.map(booking => ({
+      bookingId: booking._id,
+      event: booking.event,
+      pass: {
+        type: booking.passId?.type || booking.passType,
+        price: booking.passId?.price || booking.price
+      },
+      quantity: booking.quantity || 1,
+      totalAmount: booking.totalAmount,
+      purchaseDate: booking.createdAt,
+      status: booking.status,
+      qrCode: booking.qrCode // If you have QR codes
+    }));
+
+    res.json({ 
+      success: true, 
+      count: purchasedPasses.length,
+      passes: purchasedPasses 
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+// ===============================
+// GET USER'S PURCHASED PASSES FOR SPECIFIC EVENT
+// ===============================
+export const getMyPassesForEvent = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { eventId } = req.params;
+
+    const bookings = await Booking.find({
+      user: userId,
+      event: eventId,
+      status: { $in: ['confirmed', 'paid'] }
+    })
+    .populate({
+      path: 'event',
+      select: 'title date location venue'
+    })
+    .populate({
+      path: 'passId',
+      select: 'type price'
+    });
+
+    if (!bookings || bookings.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: "No purchased passes found for this event",
+        passes: [] 
+      });
+    }
+
+    const purchasedPasses = bookings.map(booking => ({
+      bookingId: booking._id,
+      pass: {
+        type: booking.passId?.type || booking.passType,
+        price: booking.passId?.price || booking.price
+      },
+      quantity: booking.quantity || 1,
+      totalAmount: booking.totalAmount,
+      purchaseDate: booking.createdAt,
+      status: booking.status,
+      qrCode: booking.qrCode
+    }));
+
+    res.json({ 
+      success: true, 
+      count: purchasedPasses.length,
+      passes: purchasedPasses 
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

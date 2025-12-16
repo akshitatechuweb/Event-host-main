@@ -6,10 +6,27 @@ import {
   addPass,
   updatePass,
   deletePass,
-  getPasses
+  getPasses,
+  getMyPurchasedPasses,
+  getMyPassesForEvent
 } from "../controllers/passController.js";
 
 const router = express.Router();
+
+// ===============================
+// USER ROUTES (for purchased passes)
+// ===============================
+
+// Get all purchased passes for logged-in user
+router.get("/my-passes", authMiddleware, getMyPurchasedPasses);
+
+// Get user's purchased passes for a specific event
+router.get("/my-passes/:eventId", authMiddleware, getMyPassesForEvent);
+
+
+// ===============================
+// ADMIN ROUTES (for pass management)
+// ===============================
 
 // Get all passes for an event
 router.get("/:eventId", authMiddleware, getPasses);

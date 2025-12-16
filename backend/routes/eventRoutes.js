@@ -54,8 +54,6 @@ router.get(
 );
 
 
-
-
 // SHARE EVENT
 router.post(
   "/:eventId/share",

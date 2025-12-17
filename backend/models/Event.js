@@ -30,7 +30,8 @@ const eventSchema = new mongoose.Schema(
     partyTerms: { type: String, default: "" },
     maxCapacity: { type: Number },
     currentBookings: { type: Number, default: 0 },
-    
+    averageRating: { type: Number, default: 0 },
+totalReviews: { type: Number, default: 0 },
     
     
     shareCount: {

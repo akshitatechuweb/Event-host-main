@@ -33,23 +33,33 @@ export const approveEventHostRequest = async (req, res) => {
 export const requestEventHostAccess = async (req, res) => {
   try {
     const userId = req.user._id;
-    
-    // Optional message from body
-    const message =
-      req.body?.message?.trim() ||
-      "I want permission to organize an event.";
 
-    const user = await User.findById(userId);
+    const {
+      preferredPartyDate,
+      locality,
+      city,
+      pincode,
+    } = req.body;
 
-    // Check if user is a HOST (only hosts can organize events)
-    if (user.role !== "host") {
-      return res.status(403).json({
+    // Validate exactly 4 fields
+    if (!preferredPartyDate || !locality || !city || !pincode) {
+      return res.status(400).json({
         success: false,
-        message: "Only hosts can request to organize events. Please request host access first.",
+        message: "All fields are required",
       });
     }
 
-    // Check if user already has a pending event request
+    const user = await User.findById(userId);
+
+    // Only host users can request
+    if (user.role !== "host") {
+      return res.status(403).json({
+        success: false,
+        message: "Only hosts can request event hosting access",
+      });
+    }
+
+    // Check existing pending request
     const existingPending = await EventHostRequest.findOne({
       userId,
       status: "pending",
@@ -58,27 +68,29 @@ export const requestEventHostAccess = async (req, res) => {
     if (existingPending) {
       return res.status(400).json({
         success: false,
-        message: "You already have a pending event request. Please wait for admin approval.",
+        message: "You already have a pending request. Please wait for approval.",
       });
     }
 
-    // Create NEW event organization request
+    // Create request with ONLY image fields
     const newRequest = await EventHostRequest.create({
       userId,
-      message,
+      preferredPartyDate,
+      locality,
+      city,
+      pincode,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Event organization request sent successfully!",
+      message: "Host request sent successfully!",
       request: newRequest,
     });
   } catch (error) {
-    console.error("Event Request Error:", error);
-    res.status(500).json({
+    console.error("Host request error:", error);
+    return res.status(500).json({
       success: false,
-      message: "Failed to send request",
-      error: error.message,
+      message: "Failed to send host request",
     });
   }
 };

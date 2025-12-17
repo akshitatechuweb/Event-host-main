@@ -9,27 +9,49 @@ const eventHostRequestSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    message: {
+
+    preferredPartyDate: {
+      type: Date,
+      required: true,
+    },
+
+    locality: {
       type: String,
-      default: "I want permission to host events.",
+      required: true,
       trim: true,
     },
+
+    city: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    pincode: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     status: {
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
-    rejectionReason: { type: String },
+
+    rejectionReason: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
 
-// Only one PENDING request per user (but multiple approved/rejected allowed)
+// Only ONE pending request per user
 eventHostRequestSchema.index(
   { userId: 1, status: "pending" },
-  { 
+  {
     unique: true,
-    partialFilterExpression: { status: "pending" }
+    partialFilterExpression: { status: "pending" },
   }
 );
 

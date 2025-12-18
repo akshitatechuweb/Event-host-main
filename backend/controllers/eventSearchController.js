@@ -1,9 +1,5 @@
 // src/controllers/eventSearchController.js
-
 import Event from "../models/Event.js";
-import User from "../models/User.js";
-
-const DEFAULT_NEARBY_RADIUS = 30000; // 30km — ideal for Delhi-NCR
 
 const addEventExtras = (event, req) => {
   let imageUrl = event.eventImage;
@@ -20,6 +16,8 @@ const addEventExtras = (event, req) => {
     ...event,
     eventImage: imageUrl,
     bookingPercentage,
+    status: event.status || "",
+    thingsToKnow: event.thingsToKnow || "",
     hostedBy: event.hostId?.name || event.hostedBy || "Unknown",
     totalEventsHosted: event.hostId?.eventsHosted || 0,
   };
@@ -27,112 +25,85 @@ const addEventExtras = (event, req) => {
 
 export const searchEvents = async (req, res) => {
   try {
+    /* 🔐 REQUIRE LOGIN */
+    if (!req.user?._id) {
+      return res.status(401).json({
+        success: false,
+        message: "Login required to search events",
+      });
+    }
+
     const {
       q = "",
       city = "",
       address = "",
       category = "",
       date = "",
-      showPast = "true",
-      nearby = "true", // 👈 NEW: enable nearby search (default true)
+      showPast = "false",
       page = 1,
       limit = 15,
     } = req.query;
 
     const filters = {};
-    let useGeoNearby = false;
-    let userCoordinates = null;
 
-    // 🔍 TEXT SEARCH
+    /* 🔍 TEXT SEARCH */
     if (q.trim()) {
       filters.$text = { $search: q.trim() };
     }
 
-    // 🎯 CATEGORY
+    /* 🏷️ CATEGORY — ARRAY SAFE */
     if (category.trim()) {
-      filters.category = new RegExp(category.trim(), "i");
+      filters.categories = {
+        $regex: category.trim(),
+        $options: "i",
+      };
     }
 
-    // 📍 ADDRESS / LOCALITY
+    /* 📍 CITY */
+    if (city.trim()) {
+      filters.city = new RegExp(`^${city.trim()}$`, "i");
+    }
+
+    /* 📍 ADDRESS */
     if (address.trim()) {
       filters.fullAddress = new RegExp(address.trim(), "i");
     }
 
-    // 📅 DATE FILTER
+    /* 📅 DATE FILTER (WORKS FOR BOTH FIELDS) */
     if (date) {
       const d = new Date(date);
       const start = new Date(d.setHours(0, 0, 0, 0));
       const end = new Date(d.setHours(23, 59, 59, 999));
-      filters.eventDateTime = { $gte: start, $lte: end };
+
+      filters.$or = [
+        { eventDateTime: { $gte: start, $lte: end } },
+        { date: { $gte: start, $lte: end } },
+      ];
     }
 
-    // ⏳ FUTURE EVENTS ONLY?
+    /* ⏳ FUTURE EVENTS (FIXED) */
     if (showPast !== "true") {
-      filters.eventDateTime = {
-        ...(filters.eventDateTime || {}),
-        $gte: new Date(),
-      };
-    }
+      const now = new Date();
 
-    // 🏙️ CITY FILTER LOGIC (Smart for NCR)
-    if (city.trim()) {
-      // User explicitly wants only this city
-      filters.city = new RegExp(city.trim(), "i");
-    } 
-    else if (req.user?._id && nearby === "true") {
-      // Auto-detect user's location for nearby results
-      const currentUser = await User.findById(req.user._id)
-        .select("location")
-        .lean();
-
-      if (
-        currentUser?.location?.coordinates &&
-        currentUser.location.coordinates[0] !== 0 &&
-        currentUser.location.coordinates[1] !== 0
-      ) {
-        userCoordinates = currentUser.location.coordinates; // [lng, lat]
-        useGeoNearby = true;
-      }
-    }
-
-    // 🌍 APPLY GEO NEARBY FILTER (Best for Delhi-NCR!)
-    if (useGeoNearby && userCoordinates) {
-      filters.location = {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: userCoordinates,
-          },
-          $maxDistance: DEFAULT_NEARBY_RADIUS, // 30km
-        },
-      };
+      filters.$or = [
+        { eventDateTime: { $gte: now } },
+        { eventDateTime: { $exists: false }, date: { $gte: now } },
+      ];
     }
 
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    let query = Event.find(filters)
+    const eventsQuery = Event.find(filters)
       .populate("hostId", "name eventsHosted")
+      .sort({ eventDateTime: 1, date: 1 })
       .skip(skip)
       .limit(limitNum)
-      .lean();
-
-    // 🔃 SORTING
-    if (q.trim()) {
-      query = query.sort({
-        score: { $meta: "textScore" },
-        eventDateTime: -1,
-      });
-    } else if (useGeoNearby) {
-      // For nearby searches, sort by distance (closest first)
-      query = query.sort({ eventDateTime: -1 }); // or add distance if needed
-    } else {
-      query = query.sort({ eventDateTime: -1 });
-    }
+      .lean({ virtuals: true });
 
     const [events, total] = await Promise.all([
-      query,
+      eventsQuery,
       Event.countDocuments(filters),
     ]);
 
@@ -149,12 +120,6 @@ export const searchEvents = async (req, res) => {
           totalPages: Math.ceil(total / limitNum),
           hasNext: pageNum < Math.ceil(total / limitNum),
           hasPrev: pageNum > 1,
-        },
-        appliedFilters: {
-          textSearch: !!q.trim(),
-          city: city.trim() || (req.user?.city || "Nearby"),
-          nearbyApplied: useGeoNearby,
-          radiusKm: useGeoNearby ? DEFAULT_NEARBY_RADIUS / 1000 : null,
         },
       },
     });

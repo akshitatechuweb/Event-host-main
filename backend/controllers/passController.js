@@ -14,29 +14,49 @@ export const addPass = async (req, res) => {
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
-    const exists = event.passes.find(p => p.type === type);
+    const exists = event.passes.find((p) => p.type === type);
     if (exists) {
-      return res.status(400).json({ success: false, message: "Pass type already exists" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Pass type already exists" });
     }
 
     event.passes.push({
       type,
       price,
       totalQuantity,
-      remainingQuantity: totalQuantity
+      remainingQuantity: totalQuantity,
     });
 
     await event.save();
+
+    // 🔔 NOTIFICATION: PASS CREATED
+    broadcastNotification(
+      {
+        type: "pass_created",
+        title: "Pass Created 🎟️",
+        message: `A new ${type} pass has been added to your event.`,
+        meta: {
+          eventId: event._id,
+          passType: type,
+          price,
+          totalQuantity,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [event.hostId]
+    );
 
     res.json({ success: true, message: "Pass added", passes: event.passes });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 // ===============================
 // UPDATE PASS
@@ -48,12 +68,16 @@ export const updatePass = async (req, res) => {
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     const pass = event.passes.id(passId);
     if (!pass) {
-      return res.status(404).json({ success: false, message: "Pass not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Pass not found" });
     }
 
     if (price !== undefined) pass.price = price;
@@ -70,12 +94,29 @@ export const updatePass = async (req, res) => {
 
     await event.save();
 
+    // 🔔 NOTIFICATION: PASS UPDATED
+    broadcastNotification(
+      {
+        type: "pass_updated",
+        title: "Pass Updated ✏️",
+        message: `The ${pass.type} pass for your event has been updated.`,
+        meta: {
+          eventId: event._id,
+          passId: pass._id,
+          price: pass.price,
+          totalQuantity: pass.totalQuantity,
+          remainingQuantity: pass.remainingQuantity,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [event.hostId]
+    );
+
     res.json({ success: true, message: "Pass updated", pass });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 // ===============================
 // DELETE PASS
@@ -86,18 +127,44 @@ export const deletePass = async (req, res) => {
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
-    event.passes = event.passes.filter(p => p._id.toString() !== passId);
+    event.passes = event.passes.filter((p) => p._id.toString() !== passId);
     await event.save();
+
+    const pass = event.passes.id(passId);
+    if (!pass) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Pass not found" });
+    }
+
+    event.passes = event.passes.filter((p) => p._id.toString() !== passId);
+    await event.save();
+
+    // 🔔 NOTIFICATION: PASS DELETED
+    broadcastNotification(
+      {
+        type: "pass_deleted",
+        title: "Pass Deleted 🗑️",
+        message: `The ${pass.type} pass has been removed from your event.`,
+        meta: {
+          eventId: event._id,
+          passType: pass.type,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [event.hostId]
+    );
 
     res.json({ success: true, message: "Pass deleted", passes: event.passes });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 // ===============================
 // GET ALL PASSES FOR EVENT
@@ -106,7 +173,9 @@ export const getPasses = async (req, res) => {
   try {
     const event = await Event.findById(req.params.eventId).select("passes");
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     res.json({ success: true, passes: event.passes });
@@ -115,59 +184,40 @@ export const getPasses = async (req, res) => {
   }
 };
 
-
 // ===============================
 // GET USER'S PURCHASED PASSES
 // ===============================
+
+
 export const getMyPurchasedPasses = async (req, res) => {
   try {
-    const userId = req.user._id; // From authMiddleware
-    
-    // Find all bookings for this user with status 'confirmed' or 'paid'
-    const bookings = await Booking.find({
-      user: userId,
-      status: { $in: ['confirmed', 'paid'] }
-    })
-    .populate({
-      path: 'event',
-      select: 'title date location venue'
-    })
-    .populate({
-      path: 'passId',
-      select: 'type price'
-    })
-    .sort({ createdAt: -1 });
+    const userId = req.user._id;
 
-    if (!bookings || bookings.length === 0) {
-      return res.json({ 
-        success: true, 
+    const tickets = await GeneratedTicket
+      .find({ userId })
+      .populate("eventId", "eventName date time city eventImage")
+      .sort({ createdAt: -1 });
+
+    if (!tickets.length) {
+      return res.status(200).json({
+        success: true,
         message: "No purchased passes found",
-        passes: [] 
+        passes: []
       });
     }
 
-    // Format the response
-    const purchasedPasses = bookings.map(booking => ({
-      bookingId: booking._id,
-      event: booking.event,
-      pass: {
-        type: booking.passId?.type || booking.passType,
-        price: booking.passId?.price || booking.price
-      },
-      quantity: booking.quantity || 1,
-      totalAmount: booking.totalAmount,
-      purchaseDate: booking.createdAt,
-      status: booking.status,
-      qrCode: booking.qrCode // If you have QR codes
-    }));
-
-    res.json({ 
-      success: true, 
-      count: purchasedPasses.length,
-      passes: purchasedPasses 
+    res.status(200).json({
+      success: true,
+      message: "Purchased passes fetched",
+      passes: tickets
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+
+  } catch (error) {
+    console.error("Get My Passes Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch passes"
+    });
   }
 };
 
@@ -180,51 +230,20 @@ export const getMyPassesForEvent = async (req, res) => {
     const userId = req.user._id;
     const { eventId } = req.params;
 
-    const bookings = await Booking.find({
-      user: userId,
-      event: eventId,
-      status: { $in: ['confirmed', 'paid'] }
-    })
-    .populate({
-      path: 'event',
-      select: 'title date location venue'
-    })
-    .populate({
-      path: 'passId',
-      select: 'type price'
+    const tickets = await GeneratedTicket.find({
+      userId,
+      eventId
     });
 
-    if (!bookings || bookings.length === 0) {
-      return res.json({ 
-        success: true, 
-        message: "No purchased passes found for this event",
-        passes: [] 
-      });
-    }
-
-    const purchasedPasses = bookings.map(booking => ({
-      bookingId: booking._id,
-      pass: {
-        type: booking.passId?.type || booking.passType,
-        price: booking.passId?.price || booking.price
-      },
-      quantity: booking.quantity || 1,
-      totalAmount: booking.totalAmount,
-      purchaseDate: booking.createdAt,
-      status: booking.status,
-      qrCode: booking.qrCode
-    }));
-
-    res.json({ 
-      success: true, 
-      count: purchasedPasses.length,
-      passes: purchasedPasses 
+    res.json({
+      success: true,
+      passes: tickets
     });
+
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false });
   }
 };
-
 
 
 export const downloadPassTicket = async (req, res) => {
@@ -260,9 +279,15 @@ export const downloadPassTicket = async (req, res) => {
     doc.pipe(res);
 
     // === HEADER ===
-    doc.fontSize(28).fillColor("#2c3e50").text("EVENT TICKET", { align: "center" });
+    doc
+      .fontSize(28)
+      .fillColor("#2c3e50")
+      .text("EVENT TICKET", { align: "center" });
     doc.moveDown(0.5);
-    doc.fontSize(20).fillColor("#34495e").text(event.eventName, { align: "center" });
+    doc
+      .fontSize(20)
+      .fillColor("#34495e")
+      .text(event.eventName, { align: "center" });
     doc.moveDown(1.5);
 
     // === EVENT DETAILS ===
@@ -293,7 +318,7 @@ export const downloadPassTicket = async (req, res) => {
 
       // Price with Rupee Symbol
       doc.fontSize(16).fillColor("#c0392b").font("Helvetica-Bold");
-       doc.text(`Price: Rs. ${ticket.price}`);
+      doc.text(`Price: Rs. ${ticket.price}`);
       doc.font("Helvetica").fontSize(13).fillColor("#2c3e50"); // reset font
       doc.moveDown(1.5);
 
@@ -318,8 +343,13 @@ export const downloadPassTicket = async (req, res) => {
       });
 
       doc.moveDown(1);
-      doc.fontSize(11).fillColor("#7f8c8d").text("Scan this QR code at the entrance", { align: "center" });
-      doc.fontSize(10).text(`Ticket ID: ${ticket.ticketNumber}`, { align: "center" });
+      doc
+        .fontSize(11)
+        .fillColor("#7f8c8d")
+        .text("Scan this QR code at the entrance", { align: "center" });
+      doc
+        .fontSize(10)
+        .text(`Ticket ID: ${ticket.ticketNumber}`, { align: "center" });
       doc.moveDown(2);
 
       // Dashed line separator (except after last ticket)
@@ -337,15 +367,38 @@ export const downloadPassTicket = async (req, res) => {
 
     // === FOOTER ===
     doc.moveDown(3);
-    doc.fontSize(10).fillColor("#95a5a6").text("Thank you for booking with us!", { align: "center" });
-    doc.text("This is your official entry ticket. Please carry a valid ID proof.", { align: "center" });
+    doc
+      .fontSize(10)
+      .fillColor("#95a5a6")
+      .text("Thank you for booking with us!", { align: "center" });
+    doc.text(
+      "This is your official entry ticket. Please carry a valid ID proof.",
+      { align: "center" }
+    );
 
     // Finalize PDF
     doc.end();
+
+    // 🔔 NOTIFICATION: TICKET DOWNLOADED
+    broadcastNotification(
+      {
+        type: "ticket_downloaded",
+        title: "Ticket Downloaded 📄",
+        message: "Your ticket PDF has been downloaded.",
+        meta: {
+          bookingId,
+          eventId: event._id,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [userId]
+    );
   } catch (err) {
     console.error("PDF Generation Error:", err);
     if (!res.headersSent) {
-      res.status(500).json({ success: false, message: "Failed to generate PDF ticket" });
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to generate PDF ticket" });
     }
   }
 };

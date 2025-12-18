@@ -3,6 +3,7 @@ import Event from "../models/Event.js";
 import Booking from "../models/Booking.js";
 import GeneratedTicket from "../models/GeneratedTicket.js";
 import Transaction from "../models/Transaction.js";
+import { broadcastNotification } from "./sseController.js";
 
 // Razorpay instance
 const razorpay = new Razorpay({
@@ -61,16 +62,11 @@ export const createOrder = async (req, res) => {
 
       totalAmount += pass.price * item.quantity;
       totalPersons +=
-        item.passType === "Couple"
-          ? item.quantity * 2
-          : item.quantity;
+        item.passType === "Couple" ? item.quantity * 2 : item.quantity;
     }
 
     // Capacity check
-    if (
-      event.currentBookings + totalPersons >
-      event.maxCapacity
-    ) {
+    if (event.currentBookings + totalPersons > event.maxCapacity) {
       return res.status(400).json({
         success: false,
         message: "Event sold out or insufficient capacity",
@@ -101,9 +97,7 @@ export const createOrder = async (req, res) => {
     });
   } catch (error) {
     console.error("CREATE ORDER ERROR:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -112,12 +106,7 @@ export const createOrder = async (req, res) => {
 ===================================================== */
 export const verifyPayment = async (req, res) => {
   try {
-    const {
-      razorpay_order_id,
-      eventId,
-      items = [],
-      attendees = [],
-    } = req.body;
+    const { razorpay_order_id, eventId, items = [], attendees = [] } = req.body;
 
     if (!razorpay_order_id) {
       return res.status(400).json({
@@ -162,9 +151,7 @@ export const verifyPayment = async (req, res) => {
 
       totalAmount += pass.price * item.quantity;
       totalPersons +=
-        item.passType === "Couple"
-          ? item.quantity * 2
-          : item.quantity;
+        item.passType === "Couple" ? item.quantity * 2 : item.quantity;
     }
 
     // Attendee validation
@@ -180,10 +167,7 @@ export const verifyPayment = async (req, res) => {
       {
         _id: eventId,
         $expr: {
-          $lte: [
-            { $add: ["$currentBookings", totalPersons] },
-            "$maxCapacity",
-          ],
+          $lte: [{ $add: ["$currentBookings", totalPersons] }, "$maxCapacity"],
         },
       },
       { $inc: { currentBookings: totalPersons } },
@@ -209,6 +193,24 @@ export const verifyPayment = async (req, res) => {
       status: "confirmed",
     });
 
+    // 🔔 NOTIFICATION: BOOKING CONFIRMED (USER)
+    if (userId) {
+      broadcastNotification(
+        {
+          type: "booking_confirmed",
+          title: "Booking Confirmed 🎉",
+          message: `Your booking for ${event.eventName} is confirmed.`,
+          meta: {
+            bookingId: booking._id,
+            eventId: event._id,
+            eventName: event.eventName,
+          },
+          createdAt: new Date().toISOString(),
+        },
+        [userId]
+      );
+    }
+
     // Generate tickets
     const generatedTickets = [];
 
@@ -228,9 +230,7 @@ export const verifyPayment = async (req, res) => {
 
       const pass = passMap[attendee.passType];
       const price =
-        attendee.passType === "Couple"
-          ? pass.price / 2
-          : pass.price;
+        attendee.passType === "Couple" ? pass.price / 2 : pass.price;
 
       const ticket = await GeneratedTicket.create({
         bookingId: booking._id,
@@ -244,6 +244,25 @@ export const verifyPayment = async (req, res) => {
       });
 
       generatedTickets.push(ticket);
+    }
+
+    // 🔔 NOTIFICATION: TICKETS GENERATED (USER)
+    if (userId) {
+      broadcastNotification(
+        {
+          type: "tickets_generated",
+          title: "Tickets Ready 🎫",
+          message: `Your tickets for ${event.eventName} are ready.`,
+          meta: {
+            bookingId: booking._id,
+            eventId: event._id,
+            eventName: event.eventName,
+            ticketCount: generatedTickets.length,
+          },
+          createdAt: new Date().toISOString(),
+        },
+        [userId]
+      );
     }
 
     // Save transaction

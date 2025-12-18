@@ -1,15 +1,22 @@
 // controllers/hostController.js
 import EventHostRequest from "../models/HostRequest.js";
+import { broadcastNotification } from "./sseController.js";
 import User from "../models/User.js";
 
 export const approveEventHostRequest = async (req, res) => {
   try {
     const requestId = req.params.id;
     const request = await EventHostRequest.findById(requestId);
-    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    if (!request)
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found" });
 
     const user = await User.findById(request.userId);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
     // Approve request
     request.status = "approved";
@@ -19,11 +26,26 @@ export const approveEventHostRequest = async (req, res) => {
     user.eventCreationCredits += 1;
     await user.save();
 
+    // 🔔 NOTIFICATION: HOST REQUEST APPROVED
+    broadcastNotification(
+      {
+        type: "host_request_approved",
+        title: "Host Access Approved 🎉",
+        message:
+          "Your request to host events has been approved. You can now create events.",
+        meta: {
+          requestId: request._id,
+          userId: user._id,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [user._id]
+    );
+
     return res.json({
       success: true,
       message: "Event hosting approved! Host can now create one event.",
     });
-
   } catch (error) {
     console.error("Approve event host request error:", error);
     return res.status(500).json({ success: false, message: error.message });
@@ -34,12 +56,7 @@ export const requestEventHostAccess = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const {
-      preferredPartyDate,
-      locality,
-      city,
-      pincode,
-    } = req.body;
+    const { preferredPartyDate, locality, city, pincode } = req.body;
 
     // Validate exactly 4 fields
     if (!preferredPartyDate || !locality || !city || !pincode) {
@@ -68,7 +85,8 @@ export const requestEventHostAccess = async (req, res) => {
     if (existingPending) {
       return res.status(400).json({
         success: false,
-        message: "You already have a pending request. Please wait for approval.",
+        message:
+          "You already have a pending request. Please wait for approval.",
       });
     }
 
@@ -79,6 +97,20 @@ export const requestEventHostAccess = async (req, res) => {
       locality,
       city,
       pincode,
+    });
+
+    // 🔔 NOTIFICATION: NEW HOST REQUEST (ADMIN)
+    broadcastNotification({
+      type: "host_request_submitted",
+      title: "New Host Request 📝",
+      message: `A new host request has been submitted from ${city}.`,
+      meta: {
+        requestId: newRequest._id,
+        userId,
+        city,
+        locality,
+      },
+      createdAt: new Date().toISOString(),
     });
 
     return res.status(201).json({

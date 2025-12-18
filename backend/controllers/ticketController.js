@@ -4,6 +4,7 @@ import Ticket from "../models/Ticket.js";
 import Event from "../models/Event.js";
 import Booking from "../models/Booking.js";
 import GeneratedTicket from "../models/GeneratedTicket.js";
+import { broadcastNotification } from "./sseController.js";
 
 /* ================= HOST: CREATE TICKET TYPE ================= */
 
@@ -14,11 +15,15 @@ export const createTicket = async (req, res) => {
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     if (event.hostId.toString() !== hostId.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
     }
 
     const finalQuantity =
@@ -34,6 +39,23 @@ export const createTicket = async (req, res) => {
       refundPolicy,
     });
 
+    // 🔔 NOTIFICATION: TICKET TYPE CREATED
+    broadcastNotification(
+      {
+        type: "ticket_created",
+        title: "Ticket Created 🎟️",
+        message: `Ticket "${name}" has been created for your event.`,
+        meta: {
+          eventId,
+          ticketId: ticket._id,
+          price,
+          quantity: finalQuantity.total || quantity,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [hostId]
+    );
+
     res.status(201).json({
       success: true,
       message: "Ticket type created",
@@ -41,7 +63,9 @@ export const createTicket = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: "Failed to create ticket" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to create ticket" });
   }
 };
 
@@ -60,7 +84,9 @@ export const getTicketsByEvent = async (req, res) => {
       passes: event?.passes || [],
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch tickets" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch tickets" });
   }
 };
 
@@ -71,19 +97,40 @@ export const updateTicket = async (req, res) => {
     const ticket = await Ticket.findById(req.params.id).populate("eventId");
 
     if (!ticket) {
-      return res.status(404).json({ success: false, message: "Ticket not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Ticket not found" });
     }
 
     if (ticket.eventId.hostId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
     }
 
     Object.assign(ticket, req.body);
     await ticket.save();
 
+    // 🔔 NOTIFICATION: TICKET UPDATED
+    broadcastNotification(
+      {
+        type: "ticket_updated",
+        title: "Ticket Updated ✏️",
+        message: `A ticket for your event has been updated.`,
+        meta: {
+          ticketId: ticket._id,
+          eventId: ticket.eventId._id,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [req.user._id]
+    );
+
     res.json({ success: true, ticket });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to update ticket" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update ticket" });
   }
 };
 
@@ -94,21 +141,42 @@ export const deleteTicket = async (req, res) => {
     const ticket = await Ticket.findById(req.params.id).populate("eventId");
 
     if (!ticket) {
-      return res.status(404).json({ success: false, message: "Ticket not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Ticket not found" });
     }
 
     if (
       req.user.role !== "admin" &&
       ticket.eventId.hostId.toString() !== req.user._id.toString()
     ) {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
     }
 
     await Ticket.findByIdAndDelete(req.params.id);
 
+    // 🔔 NOTIFICATION: TICKET DELETED
+    broadcastNotification(
+      {
+        type: "ticket_deleted",
+        title: "Ticket Deleted 🗑️",
+        message: "A ticket type has been removed from your event.",
+        meta: {
+          ticketId: req.params.id,
+          eventId: ticket.eventId._id,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [req.user._id]
+    );
+
     res.json({ success: true, message: "Ticket deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to delete ticket" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete ticket" });
   }
 };
 
@@ -123,14 +191,18 @@ export const verifyGeneratedTicket = async (req, res) => {
     const ticket = await GeneratedTicket.findOne(query).populate("eventId");
 
     if (!ticket) {
-      return res.status(404).json({ success: false, message: "Ticket not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Ticket not found" });
     }
 
     if (
       req.user.role !== "admin" &&
       ticket.eventId.hostId.toString() !== req.user._id.toString()
     ) {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
     }
 
     if (ticket.status === "used") {
@@ -140,6 +212,21 @@ export const verifyGeneratedTicket = async (req, res) => {
     ticket.status = "used";
     ticket.checkedInAt = new Date();
     await ticket.save();
+
+    // 🔔 NOTIFICATION: ENTRY CONFIRMED
+    broadcastNotification(
+      {
+        type: "ticket_checked_in",
+        title: "Entry Confirmed ✅",
+        message: `Your entry for "${ticket.eventId.eventName}" has been confirmed.`,
+        meta: {
+          ticketId: ticket._id,
+          eventId: ticket.eventId._id,
+        },
+        createdAt: new Date().toISOString(),
+      },
+      [ticket.userId]
+    );
 
     res.json({ success: true, message: "Entry allowed", ticket });
   } catch (err) {
@@ -156,7 +243,9 @@ export const generateMultipleTickets = async (req, res) => {
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     let totalAmount = 0;
@@ -214,7 +303,9 @@ export const generateMultipleTickets = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: "Ticket generation failed" });
+    res
+      .status(500)
+      .json({ success: false, message: "Ticket generation failed" });
   }
 };
 
@@ -288,5 +379,3 @@ export const getTicketsByUser = async (req, res) => {
     });
   }
 };
-
-

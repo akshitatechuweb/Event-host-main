@@ -3,9 +3,9 @@ import User from "../models/User.js";
 import axios from "axios";
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const DEFAULT_RADIUS = 10000;
+const DEFAULT_RADIUS = 20000; // 20km — perfect for Delhi NCR (increased from 10km)
 
-// Helper to compute image URL, bookingPercentage and status for an event object
+// Helper to compute image URL, bookingPercentage and status
 function computeEventExtras(ev, req) {
   let imageUrl = ev.eventImage || null;
   try {
@@ -396,17 +396,44 @@ export const adminUpdateEvent = async (req, res) => {
 // ========================================================
 export const getEvents = async (req, res) => {
   try {
-    const { userLat, userLng, trendingOnly } = req.query;
-    let filter = {};
+    let { userLat, userLng, trendingOnly } = req.query;
 
-    if (trendingOnly === "true" && userLat && userLng) {
+    let useGeoFilter = false;
+    let coordinates = null; // [lng, lat]
+    let isTrendingRequested = trendingOnly === "true";
+
+    if (isTrendingRequested) {
+      // Priority 1: Use explicit coords from frontend (for testing/manual override)
+      if (userLat && userLng) {
+        coordinates = [parseFloat(userLng), parseFloat(userLat)];
+        useGeoFilter = true;
+      }
+      // Priority 2: Auto fallback to logged-in user's saved location
+      else if (req.user?._id) {
+        const currentUser = await User.findById(req.user._id)
+          .select("location")
+          .lean();
+
+        if (
+          currentUser?.location?.coordinates &&
+          currentUser.location.coordinates[0] !== 0 &&  // Avoid invalid [0,0]
+          currentUser.location.coordinates[1] !== 0
+        ) {
+          coordinates = currentUser.location.coordinates; // already [lng, lat]
+          useGeoFilter = true;
+        }
+      }
+    }
+
+    const filter = {};
+    if (useGeoFilter && coordinates) {
       filter.location = {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(userLng), parseFloat(userLat)],
+            coordinates,
           },
-          $maxDistance: DEFAULT_RADIUS,
+          $maxDistance: 20000, // 20km — covers all of Delhi-NCR comfortably
         },
       };
     }
@@ -417,23 +444,18 @@ export const getEvents = async (req, res) => {
       .lean();
 
     const formatted = events.map((ev) => {
-      // Full image URL if stored as a relative upload path
       let imageUrl = ev.eventImage || null;
       try {
         if (imageUrl && imageUrl.startsWith("/")) {
           imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
         }
-      } catch (err) {
-        // ignore if req isn't available for some reason
-      }
+      } catch (err) {}
 
-      // Compute booking percentage
       let bookingPercentage = null;
       if (ev.maxCapacity && ev.maxCapacity > 0 && typeof ev.currentBookings === "number") {
         bookingPercentage = Math.round((ev.currentBookings / ev.maxCapacity) * 100);
       }
 
-      // Compute status (same rules as the model virtual)
       let status = "";
       try {
         const now = new Date();
@@ -443,25 +465,18 @@ export const getEvents = async (req, res) => {
         const daysUntilEvent = hoursUntilEvent !== null ? hoursUntilEvent / 24 : null;
         const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
 
-        if (bookingPercentage !== null && bookingPercentage >= 85) {
-          status = "Almost Full";
-        } else if (daysUntilEvent !== null && daysUntilEvent <= 2 && daysUntilEvent > 0) {
-          status = "Filling Fast";
-        } else if (bookingPercentage !== null && bookingPercentage >= 50) {
-          status = "High Demand";
-        } else if (hoursSinceCreation <= 48) {
-          status = "Just Started";
-        }
-      } catch (err) {
-        // swallow and continue
-      }
+        if (bookingPercentage !== null && bookingPercentage >= 85) status = "Almost Full";
+        else if (daysUntilEvent !== null && daysUntilEvent <= 2 && daysUntilEvent > 0) status = "Filling Fast";
+        else if (bookingPercentage !== null && bookingPercentage >= 50) status = "High Demand";
+        else if (hoursSinceCreation <= 48) status = "Just Started";
+      } catch (err) {}
 
       return {
         ...ev,
         eventImage: imageUrl,
         hostedBy: ev.hostId?.name || "Unknown",
         totalEventsHosted: ev.hostId?.eventsHosted || 0,
-        trending: trendingOnly === "true",
+        trending: useGeoFilter, // Now true when nearby events are shown
         category: ev.category || "",
         bookingPercentage,
         status,
@@ -469,7 +484,6 @@ export const getEvents = async (req, res) => {
     });
 
     return res.status(200).json({ success: true, events: formatted });
-
   } catch (err) {
     console.error("Get Events Error:", err);
     return res.status(500).json({ success: false, message: err.message });

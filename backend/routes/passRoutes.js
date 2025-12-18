@@ -10,6 +10,7 @@ import {
   getMyPurchasedPasses,
   getMyPassesForEvent
 } from "../controllers/passController.js";
+import { downloadPassTicket } from "../controllers/passController.js";
 
 const router = express.Router();
 
@@ -55,4 +56,9 @@ router.delete(
   deletePass
 );
 
+
+
+
+// Download ticket PDF for a specific booking
+router.get("/my-passes/download/:bookingId", authMiddleware, downloadPassTicket);
 export default router;

@@ -20,7 +20,7 @@ import { searchEvents } from "../controllers/eventSearchController.js";
 const router = express.Router();
 
 // === PUBLIC / USER SEARCH API (Main Feed) ===
-router.get("/search", searchEvents); // No auth required or optional auth for personalization
+router.get("/search", authMiddleware, searchEvents); 
 
 // === ADMIN ROUTES ===
 router.post(

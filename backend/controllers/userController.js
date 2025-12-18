@@ -1,4 +1,33 @@
 import User from "../models/User.js";
+import axios from "axios";
+
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+// Helper to geocode city (reused pattern from event creation)
+const geocodeCity = async (city) => {
+  if (!city?.trim()) return null;
+
+  try {
+    const response = await axios.get(
+      "https://maps.googleapis.com/maps/api/geocode/json",
+      {
+        params: {
+          address: `${city.trim()}, India`, // Adjust country if your app supports others
+          key: GOOGLE_MAPS_API_KEY,
+        },
+      }
+    );
+
+    if (response.data.results.length > 0) {
+      const { lat, lng } = response.data.results[0].geometry.location;
+      return { lat, lng };
+    }
+    return null;
+  } catch (error) {
+    console.warn("Geocoding failed for city:", city, error.message);
+    return null;
+  }
+};
 
 // Get current user profile
 export const getMyProfile = async (req, res) => {
@@ -186,6 +215,15 @@ export const createProfile = async (req, res) => {
     user.gender = gender;
     if (email?.trim()) user.email = email.trim().toLowerCase();
 
+    // Geocode the city
+    const geo = await geocodeCity(user.city);
+    if (geo) {
+      user.location = {
+        type: "Point",
+        coordinates: [geo.lng, geo.lat],
+      };
+    }
+
     await user.save();
 
     res.json({
@@ -205,9 +243,18 @@ export const completeProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
+    let cityChanged = false;
+    let newCity = user.city;
+
     // Basic fields
     if (req.body.name?.trim()) user.name = req.body.name.trim();
-    if (req.body.city?.trim()) user.city = req.body.city.trim();
+    if (req.body.city?.trim()) {
+      newCity = req.body.city.trim();
+      if (user.city !== newCity) {
+        user.city = newCity;
+        cityChanged = true;
+      }
+    }
     if (req.body.email?.trim()) user.email = req.body.email.trim().toLowerCase();
     if (req.body.gender) user.gender = req.body.gender;
 
@@ -248,6 +295,17 @@ export const completeProfile = async (req, res) => {
       }
       if (req.files.drivingLicense) {
         user.documents.drivingLicense = `/uploads/${req.files.drivingLicense[0].filename}`;
+      }
+    }
+
+    // Geocode only if city changed or never geocoded before
+    if (cityChanged || (user.location.coordinates[0] === 0 && user.location.coordinates[1] === 0)) {
+      const geo = await geocodeCity(user.city);
+      if (geo) {
+        user.location = {
+          type: "Point",
+          coordinates: [geo.lng, geo.lat],
+        };
       }
     }
 

@@ -64,6 +64,12 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+
+    // === NEW: USER LOCATION FOR GEO QUERIES ===
+    location: {
+      type: { type: String, enum: ["Point"], default: "Point" },
+      coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
+    },
   },
   { timestamps: true }
 );
@@ -72,6 +78,8 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ "savedEvents.event": 1 }); // For counting saves per event
 userSchema.index({ phone: 1 }); // Already unique
 userSchema.index({ role: 1 });
+userSchema.index({ location: "2dsphere" }); // Crucial for geo queries
+userSchema.index({ city: 1 }); // Helpful for city-based filters
 
 // Auto-calculate profile completion + auto-upgrade to host
 userSchema.pre("save", function (next) {

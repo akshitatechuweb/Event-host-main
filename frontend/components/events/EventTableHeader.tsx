@@ -2,14 +2,14 @@
 
 export function EventTableHeader() {
   return (
-    <div className="grid grid-cols-7 gap-4 bg-linear-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 rounded-t-xl font-semibold">
-      <div>Event Name</div>
-      <div>Host</div>
-      <div>Date</div>
-      <div>Location</div>
-      <div>Attendees</div>
-      <div>Status</div>
-      <div>Actions</div>
+    <div className="grid grid-cols-7 gap-4 px-6 py-3 bg-muted/30 border-b border-border">
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Event Name</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Host</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Attendees</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</div>
     </div>
   )
 }

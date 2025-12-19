@@ -5,7 +5,7 @@ import { RecentTransactions } from "@/components/dashboard/RecentTransactions"
 
 export const metadata = {
   title: "Dashboard - Event Host",
-  description: "Manage your events and transactions",
+  description: "Event management dashboard",
 }
 
 export default function DashboardPage() {
@@ -13,19 +13,15 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard Overview</h1>
-          <p className="text-muted-foreground mt-1">Welcome back! Heres your event management summary.</p>
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Overview of your event management system</p>
         </div>
 
         <StatsOverview />
 
-        <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <RecentEventsTable />
-          </div>
-          <div>
-            <RecentTransactions />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <RecentEventsTable />
+          <RecentTransactions />
         </div>
       </div>
     </DashboardLayout>

@@ -1,55 +1,88 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Home, Users, Zap, Calendar, Ticket, CreditCard } from "lucide-react"
-import { LogoutSection } from "../dashboard/LogoutSection"
+import {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  Ticket,
+  CreditCard,
+  User,
+  LogOut,
+} from "lucide-react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 
-const navigationItems = [
-  { label: "Dashboard", icon: Home, href: "/dashboard" },
-  { label: "Users", icon: Users, href: "/users" },
-  { label: "Hosts", icon: Zap, href: "/hosts" },
-  { label: "Events", icon: Calendar, href: "/events" },
-  { label: "Tickets", icon: Ticket, href: "/tickets" },
-  { label: "Transactions", icon: CreditCard, href: "/transactions" },
-]
+import { Moon, Sun } from "lucide-react";
+
+const navItems = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: Calendar, label: "Events", href: "/events" },
+  { icon: Users, label: "Hosts", href: "/hosts" },
+  { icon: Ticket, label: "Tickets", href: "/tickets" },
+  { icon: CreditCard, label: "Transactions", href: "/transactions" },
+  { icon: User, label: "Users", href: "/users" },
+];
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
+
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    root.classList.toggle("dark");
+    localStorage.theme = root.classList.contains("dark") ? "dark" : "light";
+  };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-60 bg-linear-to-br from-indigo-600 via-purple-600 to-indigo-700 text-white shadow-xl flex flex-col border-r border-white/10">
-      
-      {/* Logo Section */}
-      <div className="border-b border-white/20 px-6 py-5">
-        <h1 className="text-xl font-bold tracking-wide">Event Host</h1>
+    <aside className="fixed left-0 top-0 h-screen w-60 bg-[var(--sidebar-gradient)] flex flex-col shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)] dark:shadow-[inset_-1px_0_0_rgba(255,255,255,0.06)]">
+      <div className="px-6 py-8 border-none">
+        <h1 className="text-xl font-semibold tracking-tight text-sidebar-foreground">
+          Event Host
+        </h1>
+        <p className="text-xs text-muted-foreground mt-1 tracking-wide uppercase">
+          Admin Portal
+        </p>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-2">
-        {navigationItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href
+      <nav className="flex-1 px-3 py-6 space-y-1">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
 
           return (
-            <Link key={item.href} href={item.href}>
-              <div
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-all cursor-pointer
-                  ${isActive
-                    ? "bg-white/20 shadow-sm backdrop-blur-md"
-                    : "hover:bg-white/10"
-                  }`}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="font-medium">{item.label}</span>
-              </div>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium
+                transition-smooth group
+                ${
+                  isActive
+  ? "bg-gradient-to-r from-white/6 to-white/2 text-sidebar-foreground"
+                    : "text-muted-foreground hover:bg-white/4 dark:hover:bg-white/6 hover:text-sidebar-foreground"
+                }
+              `}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{item.label}</span>
             </Link>
-          )
+          );
         })}
       </nav>
 
-      {/* Logout Section */}
-      <LogoutSection />
+      <div className="px-3 py-6 border-t border-sidebar-border">
+        <button className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-smooth w-full">
+          <LogOut className="w-4 h-4" />
+          <span>Sign Out</span>
+        </button>
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition w-full"
+        >
+          <Sun className="w-4 h-4 dark:hidden" />
+          <Moon className="w-4 h-4 hidden dark:block" />
+          <span>Toggle Theme</span>
+        </button>
+      </div>
     </aside>
-  )
+  );
 }

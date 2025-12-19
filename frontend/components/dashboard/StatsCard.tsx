@@ -1,36 +1,28 @@
-import { Card, CardContent } from "@/components/ui/card"
-import type { ReactNode } from "react"
+"use client"
 
-interface StatCardProps {
+import type { LucideIcon } from "lucide-react"
+
+interface StatsCardProps {
   title: string
-  value: string | number
+  value: string
   change: string
-  changeType: "positive" | "negative"
-  icon: ReactNode
-  iconBgColor: string
+  isPositive: boolean
+  icon: LucideIcon
 }
 
-export function StatCard({ title, value, change, changeType, icon, iconBgColor }: StatCardProps) {
+export function StatsCard({ title, value, change, isPositive, icon: Icon }: StatsCardProps) {
   return (
-    <Card className="shadow-md border-none bg-linear-to-br from-purple-50 via-indigo-50 to-blue-50">
-      <CardContent className="pt-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
-
-            <p className={`mt-1 text-sm font-semibold ${changeType === "positive" ? "text-green-600" : "text-red-600"}`}>
-              {changeType === "positive" ? "+" : "-"} {change}
-            </p>
-          </div>
-
-          <div
-            className={`rounded-xl p-4 shadow-sm ${iconBgColor} text-white flex items-center justify-center`}
-          >
-            {icon}
-          </div>
+    <div className="bg-card border border-border rounded-lg p-6 transition-smooth hover:border-muted-foreground/30 group">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+          <h3 className="text-3xl font-semibold text-foreground mt-3 tracking-tight">{value}</h3>
+          <p className={`text-xs font-medium mt-3 ${isPositive ? "text-chart-1" : "text-destructive"}`}>{change}</p>
         </div>
-      </CardContent>
-    </Card>
+        <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center transition-smooth group-hover:bg-accent">
+          <Icon className="w-5 h-5 text-muted-foreground group-hover:text-accent-foreground" />
+        </div>
+      </div>
+    </div>
   )
 }

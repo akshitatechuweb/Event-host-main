@@ -1,58 +1,42 @@
 "use client"
 
-import { MoreVertical, CheckCircle, Clock, XCircle } from "lucide-react"
+import { Eye, Edit2, Trash2 } from "lucide-react"
 
 interface HostTableRowProps {
-  name: string
-  email: string
-  eventsHosted: number
-  revenue: string
-  status: "approved" | "pending" | "rejected"
+  host: {
+    name: string
+    email: string
+    eventsHosted: number
+    totalRevenue: string
+    status: "active" | "pending" | "suspended"
+  }
 }
 
-export function HostTableRow({ name, email, eventsHosted, revenue, status }: HostTableRowProps) {
-  const statusConfig = {
-    approved: {
-      icon: CheckCircle,
-      text: "Approved",
-      bgColor: "bg-green-100",
-      textColor: "text-green-700",
-      iconColor: "text-green-500"
-    },
-    pending: {
-      icon: Clock,
-      text: "Pending",
-      bgColor: "bg-yellow-100",
-      textColor: "text-yellow-700",
-      iconColor: "text-yellow-500"
-    },
-    rejected: {
-      icon: XCircle,
-      text: "Rejected",
-      bgColor: "bg-red-100",
-      textColor: "text-red-700",
-      iconColor: "text-red-500"
-    }
+export function HostTableRow({ host }: HostTableRowProps) {
+  const statusColors = {
+    active: "bg-chart-1/10 text-chart-1",
+    pending: "bg-accent/10 text-accent-foreground",
+    suspended: "bg-destructive/10 text-destructive",
   }
 
-  const config = statusConfig[status]
-  const StatusIcon = config.icon
-
   return (
-    <div className="grid grid-cols-6 gap-4 px-6 py-4 border-b border-gray-100 hover:bg-indigo-50/50 transition-colors items-center">
-      <div className="font-medium text-gray-900">{name}</div>
-      <div className="text-gray-600">{email}</div>
-      <div className="text-gray-900 font-medium">{eventsHosted}</div>
-      <div className="text-gray-900 font-semibold">{revenue}</div>
-      <div className="flex items-center gap-2">
-        <StatusIcon className={`h-5 w-5 ${config.iconColor}`} />
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}>
-          {config.text}
-        </span>
-      </div>
+    <div className="grid grid-cols-6 gap-4 px-6 py-4 border-b border-border hover:bg-muted/30 transition-smooth group">
+      <div className="text-sm font-medium text-foreground">{host.name}</div>
+      <div className="text-sm text-muted-foreground">{host.email}</div>
+      <div className="text-sm text-foreground font-medium">{host.eventsHosted}</div>
+      <div className="text-sm text-foreground font-medium">{host.totalRevenue}</div>
       <div>
-        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <MoreVertical className="h-5 w-5 text-gray-600" />
+        <span className={`text-xs px-2 py-1 rounded-md font-medium ${statusColors[host.status]}`}>{host.status}</span>
+      </div>
+      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-smooth">
+        <button className="p-1.5 hover:bg-card rounded transition-smooth">
+          <Eye className="w-4 h-4 text-muted-foreground" />
+        </button>
+        <button className="p-1.5 hover:bg-card rounded transition-smooth">
+          <Edit2 className="w-4 h-4 text-muted-foreground" />
+        </button>
+        <button className="p-1.5 hover:bg-card rounded transition-smooth">
+          <Trash2 className="w-4 h-4 text-destructive" />
         </button>
       </div>
     </div>

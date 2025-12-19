@@ -33,20 +33,32 @@ export const listNotifications = async (req, res) => {
 export const markRead = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { ids, all } = req.body || {};
+    const { notification_ids, all } = req.body || {};  
 
-    if (all) {
-      await Notification.updateMany({ userId, isRead: false }, { isRead: true, readAt: new Date() });
-      return res.json({ success: true, message: "All notifications marked read" });
+    if (all === true) {  
+      await Notification.updateMany(
+        { userId, isRead: false },
+        { isRead: true, readAt: new Date() }
+      );
+      return res.json({ success: true, marked_read: "all" });
     }
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ success: false, message: "Provide ids or set all: true" });
+    if (!notification_ids || !Array.isArray(notification_ids) || notification_ids.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Provide notification_ids array or set all: true" 
+      });
     }
 
-    await Notification.updateMany({ _id: { $in: ids }, userId }, { isRead: true, readAt: new Date() });
+    const result = await Notification.updateMany(
+      { _id: { $in: notification_ids }, userId },
+      { isRead: true, readAt: new Date() }
+    );
 
-    res.json({ success: true, message: "Notifications marked read" });
+    res.json({ 
+      success: true, 
+      marked_read: result.modifiedCount 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Failed to mark notifications" });

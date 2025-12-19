@@ -17,6 +17,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import passRoutes from "./routes/passRoutes.js";
 import sseRoutes from "./routes/sseRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 
 dotenv.config();
@@ -78,6 +79,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/passes", passRoutes);
 app.use("/api/sse", sseRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Start server
 app.listen(PORT, () => {

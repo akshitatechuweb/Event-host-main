@@ -1,4 +1,5 @@
 // controllers/sseController.js
+import Notification from "../models/Notification.js";
 
 // Store all active SSE clients (userId → response)
 const clients = new Map(); // Better than Set because we can target by userId
@@ -42,8 +43,25 @@ export const sseConnect = (req, res) => {
 };
 
 // Function to send notification to specific users or everyone
-export const broadcastNotification = (data, targetUserIds = null) => {
+export const broadcastNotification = async (data, targetUserIds = null) => {
   const payload = `data: ${JSON.stringify(data)}\n\n`;
+
+  // Persist targeted notifications (only when we have target user ids and persist !== false)
+  if (targetUserIds && data?.persist !== false) {
+    try {
+      const docs = targetUserIds.map((userId) => ({
+        userId,
+        type: data.type || "generic",
+        title: data.title || "",
+        message: data.message || "",
+        meta: data.meta || {},
+      }));
+      // insertMany is fine for small batches; controllers targeting many users should be careful
+      await Notification.insertMany(docs);
+    } catch (err) {
+      console.error("Failed to persist notifications:", err);
+    }
+  }
 
   if (targetUserIds) {
     // Send only to specific users

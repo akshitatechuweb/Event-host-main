@@ -1,42 +1,42 @@
 "use client"
 
-import { MoreVertical, CheckCircle, XCircle } from "lucide-react"
+import { Eye, Edit2, Trash2 } from "lucide-react"
 
 interface UserTableRowProps {
-  name: string
-  phone: string
-  city: string
-  role: string
-  verified: boolean
+  user: {
+    name: string
+    email: string
+    role: string
+    eventsAttended: number
+    status: "active" | "inactive" | "banned"
+  }
 }
 
-export function UserTableRow({ name, phone, city, role, verified }: UserTableRowProps) {
+export function UserTableRow({ user }: UserTableRowProps) {
+  const statusColors = {
+    active: "bg-chart-1/10 text-chart-1",
+    inactive: "bg-muted text-muted-foreground",
+    banned: "bg-destructive/10 text-destructive",
+  }
+
   return (
-    <div className="grid grid-cols-6 gap-4 px-6 py-4 border-b border-gray-100 hover:bg-indigo-50/50 transition-colors items-center">
-      <div className="font-medium text-gray-900">{name}</div>
-      <div className="text-gray-600">{phone}</div>
-      <div className="text-gray-600">{city}</div>
+    <div className="grid grid-cols-6 gap-4 px-6 py-4 border-b border-border hover:bg-muted/30 transition-smooth group">
+      <div className="text-sm font-medium text-foreground">{user.name}</div>
+      <div className="text-sm text-muted-foreground">{user.email}</div>
+      <div className="text-sm text-muted-foreground">{user.role}</div>
+      <div className="text-sm text-foreground font-medium">{user.eventsAttended}</div>
       <div>
-        <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
-          {role}
-        </span>
+        <span className={`text-xs px-2 py-1 rounded-md font-medium ${statusColors[user.status]}`}>{user.status}</span>
       </div>
-      <div className="flex items-center gap-2">
-        {verified ? (
-          <>
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <span className="text-sm text-green-600 font-medium">Verified</span>
-          </>
-        ) : (
-          <>
-            <XCircle className="h-5 w-5 text-gray-400" />
-            <span className="text-sm text-gray-500">Not Verified</span>
-          </>
-        )}
-      </div>
-      <div>
-        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <MoreVertical className="h-5 w-5 text-gray-600" />
+      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-smooth">
+        <button className="p-1.5 hover:bg-card rounded transition-smooth">
+          <Eye className="w-4 h-4 text-muted-foreground" />
+        </button>
+        <button className="p-1.5 hover:bg-card rounded transition-smooth">
+          <Edit2 className="w-4 h-4 text-muted-foreground" />
+        </button>
+        <button className="p-1.5 hover:bg-card rounded transition-smooth">
+          <Trash2 className="w-4 h-4 text-destructive" />
         </button>
       </div>
     </div>

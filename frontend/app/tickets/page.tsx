@@ -12,12 +12,11 @@ export default function TicketsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Ticket Management</h1>
-          <p className="text-gray-600 mt-1">Track ticket sales and availability</p>
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">Tickets</h1>
+          <p className="text-muted-foreground mt-1">Track ticket sales and availability</p>
         </div>
 
         <TicketSearch />
-
         <TicketTable />
       </div>
     </DashboardLayout>

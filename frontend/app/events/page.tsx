@@ -12,12 +12,11 @@ export default function EventsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Events Management</h1>
-          <p className="text-gray-600 mt-1">View and manage all events</p>
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">Events</h1>
+          <p className="text-muted-foreground mt-1">Manage and monitor all events</p>
         </div>
 
         <EventSearch />
-
         <EventTable />
       </div>
     </DashboardLayout>

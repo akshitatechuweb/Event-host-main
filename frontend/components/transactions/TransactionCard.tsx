@@ -1,56 +1,38 @@
 "use client"
 
-import { CreditCard, Calendar, User, Ticket } from "lucide-react"
-
 interface TransactionCardProps {
-  userName: string
-  eventName: string
-  amount: string
-  date: string
-  status: "completed" | "pending" | "failed"
-  paymentMethod: string
+  transaction: {
+    id: string
+    event: string
+    user: string
+    amount: string
+    date: string
+    status: "completed" | "pending" | "failed"
+  }
 }
 
-export function TransactionCard({ 
-  userName, 
-  eventName, 
-  amount, 
-  date, 
-  status,
-  paymentMethod 
-}: TransactionCardProps) {
-  const statusConfig = {
-    completed: { bgColor: "bg-green-100", textColor: "text-green-700", text: "Completed" },
-    pending: { bgColor: "bg-yellow-100", textColor: "text-yellow-700", text: "Pending" },
-    failed: { bgColor: "bg-red-100", textColor: "text-red-700", text: "Failed" }
+export function TransactionCard({ transaction }: TransactionCardProps) {
+  const statusColors = {
+    completed: "bg-chart-1/10 text-chart-1",
+    pending: "bg-accent/10 text-accent-foreground",
+    failed: "bg-destructive/10 text-destructive",
   }
 
-  const config = statusConfig[status]
-
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h3 className="font-semibold text-gray-900 text-lg">{userName}</h3>
-          <p className="text-sm text-gray-600 mt-1">{eventName}</p>
+    <div className="bg-card border border-border rounded-lg p-6 hover:border-muted-foreground/30 transition-smooth">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-foreground">{transaction.event}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{transaction.user}</p>
+          <p className="text-xs text-muted-foreground mt-2">{transaction.date}</p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}>
-          {config.text}
-        </span>
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-gray-600">
-            <CreditCard className="h-4 w-4" />
-            <span className="text-sm">{paymentMethod}</span>
-          </div>
-          <span className="text-xl font-bold text-indigo-600">{amount}</span>
-        </div>
-
-        <div className="flex items-center gap-2 text-gray-500 text-sm">
-          <Calendar className="h-4 w-4" />
-          <span>{date}</span>
+        <div className="text-right">
+          <p className="text-lg font-semibold text-foreground">{transaction.amount}</p>
+          <span
+            className={`inline-block text-xs px-2 py-1 rounded-md font-medium mt-2 ${statusColors[transaction.status]}`}
+          >
+            {transaction.status}
+          </span>
         </div>
       </div>
     </div>

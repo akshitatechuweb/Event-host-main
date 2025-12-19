@@ -2,76 +2,46 @@
 
 import { TransactionCard } from "./TransactionCard"
 
-const dummyTransactions = [
-  {
-    id: 1,
-    userName: "Rahul Kumar",
-    eventName: "Tech Conference 2024",
-    amount: "₹2,500",
-    date: "10 Dec, 2024 - 2:30 PM",
-    status: "completed" as const,
-    paymentMethod: "UPI"
-  },
-  {
-    id: 2,
-    userName: "Priya Singh",
-    eventName: "Music Festival",
-    amount: "₹1,800",
-    date: "9 Dec, 2024 - 5:15 PM",
-    status: "completed" as const,
-    paymentMethod: "Credit Card"
-  },
-  {
-    id: 3,
-    userName: "Amit Patel",
-    eventName: "Food Carnival",
-    amount: "₹3,200",
-    date: "8 Dec, 2024 - 11:45 AM",
-    status: "pending" as const,
-    paymentMethod: "Net Banking"
-  },
-  {
-    id: 4,
-    userName: "Sneha Sharma",
-    eventName: "Art Exhibition",
-    amount: "₹800",
-    date: "7 Dec, 2024 - 3:20 PM",
-    status: "completed" as const,
-    paymentMethod: "Debit Card"
-  },
-  {
-    id: 5,
-    userName: "Vikram Rao",
-    eventName: "Tech Conference 2024",
-    amount: "₹2,500",
-    date: "6 Dec, 2024 - 9:10 AM",
-    status: "failed" as const,
-    paymentMethod: "UPI"
-  },
-  {
-    id: 6,
-    userName: "Anita Desai",
-    eventName: "Music Festival",
-    amount: "₹1,200",
-    date: "5 Dec, 2024 - 6:30 PM",
-    status: "completed" as const,
-    paymentMethod: "Wallet"
-  },
-]
-
 export function TransactionList() {
+  const transactions = [
+    {
+      id: "1",
+      event: "Summer Music Festival",
+      user: "Alice Johnson",
+      amount: "$150",
+      date: "Dec 15, 2024",
+      status: "completed" as const,
+    },
+    {
+      id: "2",
+      event: "Tech Conference 2024",
+      user: "Bob Smith",
+      amount: "$200",
+      date: "Dec 14, 2024",
+      status: "completed" as const,
+    },
+    {
+      id: "3",
+      event: "Art Gallery Opening",
+      user: "Carol White",
+      amount: "$50",
+      date: "Dec 13, 2024",
+      status: "pending" as const,
+    },
+    {
+      id: "4",
+      event: "Food & Wine Expo",
+      user: "David Brown",
+      amount: "$100",
+      date: "Dec 12, 2024",
+      status: "failed" as const,
+    },
+  ]
+
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {dummyTransactions.map((transaction) => (
-        <TransactionCard
-          key={transaction.id}
-          userName={transaction.userName}
-          eventName={transaction.eventName}
-          amount={transaction.amount}
-          date={transaction.date}
-          status={transaction.status}
-          paymentMethod={transaction.paymentMethod}
-        />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {transactions.map((transaction) => (
+        <TransactionCard key={transaction.id} transaction={transaction} />
       ))}
     </div>
   )

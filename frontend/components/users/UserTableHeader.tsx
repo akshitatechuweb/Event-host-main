@@ -2,13 +2,13 @@
 
 export function UserTableHeader() {
   return (
-    <div className="grid grid-cols-6 gap-4 bg-linear-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 rounded-t-xl font-semibold">
-      <div>Name</div>
-      <div>Phone</div>
-      <div>City</div>
-      <div>Role</div>
-      <div>Verified</div>
-      <div>Actions</div>
+    <div className="grid grid-cols-6 gap-4 px-6 py-3 bg-muted/30 border-b border-border">
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Events Attended</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</div>
     </div>
   )
 }

@@ -3,7 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Prevent ugly outlines */
 * {
   outline-color: transparent;
 }
@@ -19,92 +18,124 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-ring: var(--ring);
+
+  --shadow-premium:
+    0 30px 60px -20px rgba(236, 72, 153, 0.12),
+    0 20px 40px -25px rgba(59, 130, 246, 0.10);
 }
 
 /* =========================
-   LIGHT MODE (Luxury Neutral)
+   LIGHT MODE — Cotton Candy
 ========================= */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.9rem;
 
-  --background: #f7f7f9;
-  --foreground: #0f0b14;
+  --background: #fdfafb;
+  --foreground: #2d263b;
 
   --bg-gradient: linear-gradient(
-    180deg,
-    #fbfbfd 0%,
-    #f3f3f6 100%
+    135deg,
+    #fdf2f8 0%,
+    #f0f9ff 45%,
+    #faf5ff 100%
   );
 
-  --card: #ffffff;
-  --card-foreground: #0f0b14;
+  --card: rgba(255, 255, 255, 0.75);
+  --card-foreground: #2d263b;
 
   --surface-gradient: linear-gradient(
-    180deg,
-    #ffffff 0%,
-    #f5f5f8 100%
+    145deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(255, 255, 255, 0.85)
   );
 
-  --border: rgba(15, 11, 20, 0.08);
+  --border: rgba(219, 39, 119, 0.08);
 
-  --muted: #f1f1f4;
-  --muted-foreground: #8f8b9a;
+  --muted: #f1f5f9;
+  --muted-foreground: #6b7280;
 
-  /* 🔥 BRAND */
-  --accent-primary: #e91e8d;
-  --accent-secondary: #8e2de2;
+  --accent-primary: #ec4899;
+  --accent-secondary: #3b82f6;
 
   --accent-gradient: linear-gradient(
     135deg,
-    #e91e8d 0%,
-    #8e2de2 100%
+    #ec4899,
+    #8b5cf6,
+    #3b82f6
   );
 
   --primary: var(--accent-primary);
   --primary-foreground: #ffffff;
 
-  --ring: 262 80% 65%;
+  --ring: 325 70% 60%;
 }
 
 /* =========================
-   DARK MODE (Premium Graphite)
+   DARK MODE — Midnight Violet
 ========================= */
 .dark {
-  --background: #0f0b14;
-  --foreground: #ffffff;
+  --background: #09090b;
+  --foreground: #f8fafc;
 
-  --bg-gradient: linear-gradient(
-    180deg,
-    #0f0b14 0%,
-    #17121f 100%
+  --bg-gradient: radial-gradient(
+    at top left,
+    #1e1b4b,
+    #09090b
   );
 
-  --card: #1c1626;
-  --card-foreground: #ffffff;
+  --card: rgba(24, 24, 27, 0.85);
+  --card-foreground: #f8fafc;
 
   --surface-gradient: linear-gradient(
     180deg,
-    #1c1626 0%,
-    #17121f 100%
+    rgba(39, 39, 42, 0.6),
+    rgba(24, 24, 27, 0.6)
   );
 
-  --border: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.06);
 
-  --muted: #1a1623;
-  --muted-foreground: #b8b5c2;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
 
-  --primary: var(--accent-primary);
+  --primary: #f472b6;
   --primary-foreground: #ffffff;
-
-  --ring: 262 80% 65%;
 }
 
 /* =========================
-   BASE
+   BASE & COMPONENTS
 ========================= */
 @layer base {
   body {
     background: var(--bg-gradient);
+    background-attachment: fixed;
     color: var(--foreground);
+    min-height: 100vh;
+  }
+
+  * {
+    @apply transition-all duration-300 ease-out;
   }
 }
+
+@layer components {
+  .premium-card {
+    background: var(--surface-gradient);
+    backdrop-filter: blur(14px) saturate(130%);
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-premium);
+  }
+}
+
+@layer components {
+  /* smaller surface (search) */
+  .premium-surface {
+    @apply rounded-[1.6rem] p-5 bg-white/85 backdrop-blur-xl border border-pink-100/40 shadow-[0_20px_50px_rgba(236,72,153,0.12)];
+  }
+
+  /* larger surface (tables) */
+  .premium-surface-lg {
+    @apply rounded-[2rem] p-6 bg-white/90 backdrop-blur-xl border border-pink-100/40 shadow-[0_30px_80px_rgba(59,130,246,0.12)];
+  }
+}
+

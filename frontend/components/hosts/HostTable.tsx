@@ -1,48 +1,49 @@
-"use client"
+"use client";
 
-import { HostTableHeader } from "./HostTableHeader"
-import { HostTableRow } from "./HostTableRow"
+import { HostTableHeader } from "./HostTableHeader";
+import { HostTableRow } from "./HostTableRow";
 
-export function HostTable() {
-  const hosts = [
+interface HostTableProps {
+  onView: () => void;
+}
+
+export function HostTable({ onView }: HostTableProps) {
+  const hostRequests = [
     {
-      name: "John Doe",
-      email: "john@example.com",
-      eventsHosted: 12,
-      totalRevenue: "$15,400",
-      status: "active" as const,
-    },
-    {
-      name: "Jane Smith",
-      email: "jane@example.com",
-      eventsHosted: 8,
-      totalRevenue: "$12,200",
-      status: "active" as const,
-    },
-    {
-      name: "Mike Johnson",
-      email: "mike@example.com",
-      eventsHosted: 5,
-      totalRevenue: "$8,500",
+      userName: "John Doe",
+      phone: "9999999999",
+      city: "Delhi",
+      preferredPartyDate: "2025-02-15",
       status: "pending" as const,
     },
     {
-      name: "Sarah Williams",
-      email: "sarah@example.com",
-      eventsHosted: 15,
-      totalRevenue: "$22,800",
-      status: "active" as const,
+      userName: "Jane Smith",
+      phone: "8888888888",
+      city: "Mumbai",
+      preferredPartyDate: "2025-02-20",
+      status: "approved" as const,
     },
-  ]
+    {
+      userName: "Mike Johnson",
+      phone: "7777777777",
+      city: "Bangalore",
+      preferredPartyDate: "2025-03-01",
+      status: "rejected" as const,
+    },
+  ];
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       <HostTableHeader />
       <div>
-        {hosts.map((host, index) => (
-          <HostTableRow key={index} host={host} />
+        {hostRequests.map((host, index) => (
+          <HostTableRow
+            key={index}
+            host={host}
+            onView={onView}
+          />
         ))}
       </div>
     </div>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout"
 import { UserSearch } from "@/components/users/UserSearch"
-import { UserTable } from "@/components/users/UserTable"
+import { UserTableHeader } from "@/components/users/UserTable"
 
 export const metadata = {
   title: "Users - Event Host",
@@ -17,7 +17,7 @@ export default function UsersPage() {
         </div>
 
         <UserSearch />
-        <UserTable />
+        <UserTableHeader />
       </div>
     </DashboardLayout>
   )

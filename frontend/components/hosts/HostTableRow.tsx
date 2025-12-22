@@ -1,56 +1,63 @@
-"use client";
+"use client"
 
-import { Eye } from "lucide-react";
+import { Eye, Check, X } from "lucide-react"
 
-interface HostTableRowProps {
-  host: {
-    userName: string;
-    phone: string;
-    city: string;
-    preferredPartyDate: string;
-    status: "pending" | "approved" | "rejected";
-  };
-  onView: () => void;
+interface Host {
+  id: string
+  userName: string
+  phone: string
+  city: string
+  preferredPartyDate: string
+  status: "pending" | "approved" | "rejected"
 }
 
-export function HostTableRow({ host, onView }: HostTableRowProps) {
-  const statusColors = {
-    pending: "bg-accent/10 text-accent-foreground",
-    approved: "bg-chart-1/10 text-chart-1",
-    rejected: "bg-destructive/10 text-destructive",
-  };
+export function HostTableRow({ host }: { host: Host }) {
+  const statusStyles = {
+    pending: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400",
+    approved: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    rejected: "bg-red-500/15 text-red-600 dark:text-red-400",
+  }
 
   return (
-    <div className="grid grid-cols-5 gap-4 px-6 py-4 border-b border-border hover:bg-muted/30 group">
-      <div className="text-sm font-medium">
-        {host.userName}
-        <div className="text-xs text-muted-foreground">
-          {host.phone}
-        </div>
+    <div className="
+      grid grid-cols-6 gap-4 px-6 py-5
+      border-b border-border
+      hover:bg-muted/40 transition
+    ">
+      <div>
+        <p className="font-medium">{host.userName}</p>
+        <p className="text-xs text-muted-foreground">{host.phone}</p>
       </div>
 
-      <div className="text-sm">{host.city}</div>
+      <div>{host.city}</div>
 
-      <div className="text-sm">
+      <div>
         {new Date(host.preferredPartyDate).toLocaleDateString()}
       </div>
 
       <div>
-        <span
-          className={`text-xs px-2 py-1 rounded-md font-medium ${statusColors[host.status]}`}
-        >
+        <span className={`text-xs px-3 py-1 rounded-full font-medium ${statusStyles[host.status]}`}>
           {host.status}
         </span>
       </div>
 
-      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
-        <button
-          onClick={onView}
-          className="p-1.5 hover:bg-card rounded"
-        >
-          <Eye className="w-4 h-4 text-muted-foreground" />
+      {/* ACTIONS — ALWAYS VISIBLE */}
+      <div className="flex justify-center gap-2">
+        <button className="icon-btn">
+          <Eye className="w-4 h-4" />
         </button>
+
+        {host.status === "pending" && (
+          <>
+            <button className="icon-btn text-emerald-500">
+              <Check className="w-4 h-4" />
+            </button>
+            <button className="icon-btn text-red-500">
+              <X className="w-4 h-4" />
+            </button>
+          </>
+        )}
       </div>
     </div>
-  );
+  )
 }

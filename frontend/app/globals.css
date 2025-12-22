@@ -20,8 +20,8 @@
   --color-ring: var(--ring);
 
   --shadow-premium:
-    0 30px 60px -20px rgba(236, 72, 153, 0.12),
-    0 20px 40px -25px rgba(59, 130, 246, 0.10);
+  0 20px 40px -20px rgba(236, 72, 153, 0.08),
+  0 10px 30px -25px rgba(59, 130, 246, 0.06);
 }
 
 /* =========================
@@ -83,7 +83,7 @@
     #09090b
   );
 
-  --card: rgba(24, 24, 27, 0.85);
+  --card: rgba(24, 24, 27, 0.7);
   --card-foreground: #f8fafc;
 
   --surface-gradient: linear-gradient(
@@ -94,12 +94,32 @@
 
   --border: rgba(255, 255, 255, 0.06);
 
-  --muted: #18181b;
+  --muted: rgba(39, 39, 42, 0.6);
   --muted-foreground: #a1a1aa;
 
   --primary: #f472b6;
   --primary-foreground: #ffffff;
 }
+
+.icon-btn {
+  padding: 0.45rem;
+  border-radius: 0.5rem;
+  background: rgba(0,0,0,0.04);
+  transition: all 0.2s ease;
+}
+
+.dark .icon-btn {
+  background: rgba(255,255,255,0.06);
+}
+
+.icon-btn:hover {
+  background: rgba(0,0,0,0.1);
+}
+
+.dark .icon-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 
 /* =========================
    BASE & COMPONENTS

@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { EventTableHeader } from "./EventTableHeader"
-import { EventTableRow } from "./EventTableRow"
+import { EventTableHeader } from "./EventTableHeader";
+import { EventTableRow } from "./EventTableRow";
 
 export function EventTable() {
   const events = [
@@ -37,16 +37,14 @@ export function EventTable() {
       attendees: 280,
       status: "active" as const,
     },
-  ]
+  ];
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden">
+    <div className="divide-y divide-border">
       <EventTableHeader />
-      <div>
-        {events.map((event, index) => (
-          <EventTableRow key={index} event={event} />
-        ))}
-      </div>
+      {events.map((event, i) => (
+        <EventTableRow key={i} event={event} />
+      ))}
     </div>
-  )
+  );
 }

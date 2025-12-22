@@ -6,13 +6,14 @@ import {
   Users,
   Ticket,
   CreditCard,
-  User,
+  UserCircle, // ✅ NEW
   LogOut,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 import { Moon, Sun } from "lucide-react";
+import { SidebarFooter } from "./SidebarFooter";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -20,7 +21,10 @@ const navItems = [
   { icon: Users, label: "Hosts", href: "/hosts" },
   { icon: Ticket, label: "Tickets", href: "/tickets" },
   { icon: CreditCard, label: "Transactions", href: "/transactions" },
-  { icon: User, label: "Users", href: "/users" },
+
+  // 👥 All users
+  { icon: Users, label: "Users", href: "/users" },
+
 ];
 
 export function Sidebar() {
@@ -45,6 +49,7 @@ export function Sidebar() {
 
       <nav className="flex-1 px-3 py-6 space-y-1">
         {navItems.map((item) => {
+          const isProfile = item.href === "/profile";
           const isActive = pathname === item.href;
           const Icon = item.icon;
 
@@ -57,8 +62,10 @@ export function Sidebar() {
                 transition-smooth group
                 ${
                   isActive
-  ? "bg-gradient-to-r from-white/6 to-white/2 text-sidebar-foreground"
-                    : "text-muted-foreground hover:bg-white/4 dark:hover:bg-white/6 hover:text-sidebar-foreground"
+                    ? isProfile
+                      ? "bg-gradient-to-r from-pink-500/10 to-violet-500/10 text-sidebar-foreground"
+                      : "bg-gradient-to-r from-white/6 to-white/2 text-sidebar-foreground"
+                    : "text-muted-foreground hover:bg-white/4 hover:text-sidebar-foreground"
                 }
               `}
             >
@@ -70,10 +77,7 @@ export function Sidebar() {
       </nav>
 
       <div className="px-3 py-6 border-t border-sidebar-border">
-        <button className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-smooth w-full">
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
-        </button>
+        <SidebarFooter/>
         <button
           onClick={toggleTheme}
           className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition w-full"

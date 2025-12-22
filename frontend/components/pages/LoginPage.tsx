@@ -1,102 +1,96 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
-import { Mail, Lock } from "lucide-react"
+import { Phone, Lock } from "lucide-react"
+import { useOtpAuth } from "@/hooks/useOtpAuth"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [otp, setOtp] = useState("")
-  const [step, setStep] = useState<"email" | "otp">("email")
+  const [step, setStep] = useState<"phone" | "otp">("phone")
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const { sendOtp, confirmOtp, loading, error } = useOtpAuth()
+
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setStep("otp")
+    const success = await sendOtp(phone)
+    if (success) setStep("otp")
   }
 
-  const handleOtpSubmit = (e: React.FormEvent) => {
+  const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle OTP verification
+    const success = await confirmOtp(phone, otp)
+    if (success) {
+      window.location.href = "/dashboard"
+    }
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-semibold text-foreground tracking-tight">Event Host</h1>
-          <p className="text-sm text-muted-foreground mt-2">Admin Portal</p>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold">Event Host</h1>
+          <p className="text-sm text-muted-foreground">Admin Portal</p>
         </div>
 
-        <div className="bg-card border border-border rounded-lg p-8">
-          {step === "email" ? (
-            <form onSubmit={handleEmailSubmit} className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">Sign In</h2>
-                <p className="text-sm text-muted-foreground mt-1">Enter your email to continue</p>
+        <div className="bg-card border border-border rounded-lg p-6">
+          {step === "phone" ? (
+            <form onSubmit={handlePhoneSubmit} className="space-y-4">
+              <h2 className="text-lg font-medium">Sign In</h2>
+
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="tel"
+                  placeholder="Enter mobile number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-md border border-border bg-background text-sm"
+                  required
+                />
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-smooth"
-                    required
-                  />
-                </div>
-              </div>
+              {error && <p className="text-sm text-red-500">{error}</p>}
 
               <button
-                type="submit"
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-smooth"
+                disabled={loading}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm"
               >
-                Continue
+                {loading ? "Sending OTP..." : "Send OTP"}
               </button>
             </form>
           ) : (
-            <form onSubmit={handleOtpSubmit} className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">Verify Code</h2>
-                <p className="text-sm text-muted-foreground mt-1">Enter the code sent to {email}</p>
+            <form onSubmit={handleOtpSubmit} className="space-y-4">
+              <h2 className="text-lg font-medium">Verify OTP</h2>
+              <p className="text-sm text-muted-foreground">
+                Sent to +91 {phone}
+              </p>
+
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-md border border-border bg-background text-sm"
+                  required
+                />
               </div>
 
-              <div>
-                <label htmlFor="otp" className="block text-sm font-medium text-foreground mb-2">
-                  Verification Code
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    id="otp"
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="000000"
-                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-smooth"
-                    required
-                  />
-                </div>
-              </div>
+              {error && <p className="text-sm text-red-500">{error}</p>}
 
               <button
-                type="submit"
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-smooth"
+                disabled={loading}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm"
               >
-                Verify & Sign In
+                {loading ? "Verifying..." : "Verify & Login"}
               </button>
 
               <button
                 type="button"
-                onClick={() => setStep("email")}
-                className="w-full py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-smooth"
+                onClick={() => setStep("phone")}
+                className="text-sm text-muted-foreground"
               >
                 Back
               </button>

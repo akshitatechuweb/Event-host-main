@@ -1,18 +1,24 @@
-// src/lib/api.ts
-import axios from "axios";
+export async function apiFetch(
+  endpoint: string,
+  options: RequestInit = {}
+) {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
+    {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    }
+  )
 
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api",
-  withCredentials: true, 
-  timeout: 10000,
-});
+  const data = await res.json()
 
-api.interceptors.response.use(
-  (res) => res,
-  (error) => {
-    console.error("API Error:", error.response?.data || error.message);
-    return Promise.reject(error);
+  if (!res.ok) {
+    throw new Error(data.message || "Request failed")
   }
-);
 
-export default api;
+  return data
+}

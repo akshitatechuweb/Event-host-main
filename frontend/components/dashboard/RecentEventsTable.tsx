@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 export function RecentEventsTable() {
   const events = [
@@ -9,42 +9,43 @@ export function RecentEventsTable() {
   ]
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden">
-      <div className="px-6 py-4 border-b border-border">
-        <h2 className="text-lg font-semibold text-foreground">Recent Events</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">Latest event activity</p>
+    <div className="rounded-2xl border border-border bg-card/80 backdrop-blur-xl overflow-hidden">
+
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-border">
+        <h2 className="text-lg font-semibold">Recent Events</h2>
+        <p className="text-sm text-muted-foreground">Latest event activity</p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Event Name
+      {/* Table */}
+      <table className="w-full">
+        <thead className="bg-muted/40">
+          <tr>
+            {["Event", "Host", "Date", "Attendees"].map((h) => (
+              <th
+                key={h}
+                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                {h}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Host
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Date
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Attendees
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {events.map((event) => (
-              <tr key={event.id} className="hover:bg-muted/30 transition-smooth">
-                <td className="px-6 py-4 text-sm font-medium text-foreground">{event.name}</td>
-                <td className="px-6 py-4 text-sm text-muted-foreground">{event.host}</td>
-                <td className="px-6 py-4 text-sm text-muted-foreground">{event.date}</td>
-                <td className="px-6 py-4 text-sm text-foreground text-right font-medium">{event.attendees}</td>
-              </tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-border">
+          {events.map((e) => (
+            <tr
+              key={e.id}
+              className="hover:bg-muted/30 transition-colors"
+            >
+              <td className="px-6 py-4 font-medium">{e.name}</td>
+              <td className="px-6 py-4 text-muted-foreground">{e.host}</td>
+              <td className="px-6 py-4 text-muted-foreground">{e.date}</td>
+              <td className="px-6 py-4 text-right font-semibold">{e.attendees}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

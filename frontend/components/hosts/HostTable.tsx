@@ -1,15 +1,12 @@
-"use client";
+"use client"
 
-import { HostTableHeader } from "./HostTableHeader";
-import { HostTableRow } from "./HostTableRow";
+import { HostTableHeader } from "./HostTableHeader"
+import { HostTableRow } from "./HostTableRow"
 
-interface HostTableProps {
-  onView: () => void;
-}
-
-export function HostTable({ onView }: HostTableProps) {
-  const hostRequests = [
+export function HostTable() {
+  const hosts = [
     {
+      id: "1",
       userName: "John Doe",
       phone: "9999999999",
       city: "Delhi",
@@ -17,33 +14,26 @@ export function HostTable({ onView }: HostTableProps) {
       status: "pending" as const,
     },
     {
+      id: "2",
       userName: "Jane Smith",
       phone: "8888888888",
       city: "Mumbai",
       preferredPartyDate: "2025-02-20",
       status: "approved" as const,
     },
-    {
-      userName: "Mike Johnson",
-      phone: "7777777777",
-      city: "Bangalore",
-      preferredPartyDate: "2025-03-01",
-      status: "rejected" as const,
-    },
-  ];
+  ]
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden">
+    <div className="
+      rounded-2xl overflow-hidden
+      bg-white dark:bg-black/40
+      border border-border
+      shadow-[0_25px_70px_rgba(0,0,0,0.12)]
+    ">
       <HostTableHeader />
-      <div>
-        {hostRequests.map((host, index) => (
-          <HostTableRow
-            key={index}
-            host={host}
-            onView={onView}
-          />
-        ))}
-      </div>
+      {hosts.map((host) => (
+        <HostTableRow key={host.id} host={host} />
+      ))}
     </div>
-  );
+  )
 }

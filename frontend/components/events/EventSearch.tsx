@@ -4,13 +4,23 @@ import { Search } from "lucide-react"
 
 export function EventSearch() {
   return (
-    <div className="relative max-w-md">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <input
-        type="text"
-        placeholder="Search events..."
-        className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-smooth"
-      />
+    <div className="px-6 py-4 border-b border-border">
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input
+          placeholder="Search events"
+          className="
+            h-9 w-full pl-9 pr-3
+            rounded-md
+            bg-background
+            border border-border
+            text-sm
+            focus:outline-none
+            focus:ring-2 focus:ring-primary/20
+          "
+        />
+      </div>
     </div>
   )
 }
+

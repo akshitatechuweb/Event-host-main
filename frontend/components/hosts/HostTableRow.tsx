@@ -1,15 +1,7 @@
 "use client"
 
 import { Eye, Check, X } from "lucide-react"
-
-interface Host {
-  id: string
-  userName: string
-  phone: string
-  city: string
-  preferredPartyDate: string
-  status: "pending" | "approved" | "rejected"
-}
+import type { Host } from "./HostTable"
 
 export function HostTableRow({ host }: { host: Host }) {
   const statusStyles = {
@@ -19,11 +11,13 @@ export function HostTableRow({ host }: { host: Host }) {
   }
 
   return (
-    <div className="
-      grid grid-cols-6 gap-4 px-6 py-5
-      border-b border-border
-      hover:bg-muted/40 transition
-    ">
+    <div
+      className="
+        grid grid-cols-6 gap-4 px-6 py-5
+        border-b border-border
+        hover:bg-muted/40 transition
+      "
+    >
       <div>
         <p className="font-medium">{host.userName}</p>
         <p className="text-xs text-muted-foreground">{host.phone}</p>
@@ -36,7 +30,9 @@ export function HostTableRow({ host }: { host: Host }) {
       </div>
 
       <div>
-        <span className={`text-xs px-3 py-1 rounded-full font-medium ${statusStyles[host.status]}`}>
+        <span
+          className={`text-xs px-3 py-1 rounded-full font-medium ${statusStyles[host.status]}`}
+        >
           {host.status}
         </span>
       </div>

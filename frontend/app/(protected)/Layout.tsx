@@ -1,14 +1,16 @@
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
-export default function ProtectedLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const token = cookies().get("token")
+  // ✅ cookies() is async in App Router
+  const cookieStore = await cookies()
+  const token = cookieStore.get("token")?.value
 
-  // 🔒 No token → login
+  // 🔐 No token → login
   if (!token) {
     redirect("/login")
   }

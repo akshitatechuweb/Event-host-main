@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///D:/Event-host-main/frontend/app/events/layout.tsx"],"sourcesContent":["export const metadata = {\r\n  title: \"Events - Event Host\",\r\n  description: \"Manage all events\",\r\n};\r\n\r\nexport default function EventsLayout({\r\n  children,\r\n}: {\r\n  children: React.ReactNode;\r\n}) {\r\n  return children;\r\n}\r\n"],"names":[],"mappings":";;;;;;AAAO,MAAM,WAAW;IACtB,OAAO;IACP,aAAa;AACf;AAEe,SAAS,aAAa,EACnC,QAAQ,EAGT;IACC,OAAO;AACT"}}]
+}

@@ -76,7 +76,6 @@ const userSchema = new mongoose.Schema(
 
 // Indexes for performance
 userSchema.index({ "savedEvents.event": 1 }); // For counting saves per event
-userSchema.index({ phone: 1 }); // Already unique
 userSchema.index({ role: 1 });
 userSchema.index({ location: "2dsphere" }); // Crucial for geo queries
 userSchema.index({ city: 1 }); // Helpful for city-based filters

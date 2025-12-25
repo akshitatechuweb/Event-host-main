@@ -60,31 +60,36 @@ app.use(
 // ─────────────── SERVE IMAGES CORRECTLY (THIS FIXES EVERYTHING) ───────────────
 app.use("/uploads", express.static(UPLOADS_FOLDER));
 
-// Database
-connectDB();
+// Database and start server after a successful DB connection
+// This ensures the app doesn't accept requests before DB is ready.
+const startServer = async () => {
+  await connectDB();
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("Server is running! Images are now served correctly.");
-});
+  // Test route
+  app.get("/", (req, res) => {
+    res.send("Server is running! Images are now served correctly.");
+  });
 
-// === ALL ROUTES ===
-app.use("/api/auth", authRoutes);
-app.use("/api/user", userRoutes);
-app.use("/api/event", eventRoutes);
-app.use("/api/booking", bookingRouts);
-app.use("/api/ticket", ticketRoutes);
-app.use("/api/host", hostRoutes);
-app.use("/api/payment", paymentRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/passes", passRoutes);
-app.use("/api/sse", sseRoutes);
-app.use("/api/notifications", notificationRoutes);
+  // === ALL ROUTES ===
+  app.use("/api/auth", authRoutes);
+  app.use("/api/user", userRoutes);
+  app.use("/api/event", eventRoutes);
+  app.use("/api/booking", bookingRouts);
+  app.use("/api/ticket", ticketRoutes);
+  app.use("/api/host", hostRoutes);
+  app.use("/api/payment", paymentRoutes);
+  app.use("/api/admin", adminRoutes);
+  app.use("/api/passes", passRoutes);
+  app.use("/api/sse", sseRoutes);
+  app.use("/api/notifications", notificationRoutes);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Images → http://api.unrealvibe.com/uploads/filename.png`);
-});
+  // Start server
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Images → http://api.unrealvibe.com/uploads/filename.png`);
+  });
+};
+
+startServer();
 
 export default app;

@@ -1,40 +1,54 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Phone, Lock } from "lucide-react"
-import { useOtpAuth } from "@/hooks/useOtpAuth"
+import { useState } from "react";
+import { Phone, Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useOtpAuth } from "@/hooks/useOtpAuth";
 
 export default function LoginPage() {
-  const [phone, setPhone] = useState("")
-  const [otp, setOtp] = useState("")
-  const [step, setStep] = useState<"phone" | "otp">("phone")
+  const router = useRouter();
 
-  const { sendOtp, confirmOtp, loading, error } = useOtpAuth()
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<"phone" | "otp">("phone");
+
+  const { sendOtp, confirmOtp, loading, error } = useOtpAuth();
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const success = await sendOtp(phone)
-    if (success) setStep("otp")
-  }
+    e.preventDefault();
+
+    if (phone.length < 10) return;
+
+    const success = await sendOtp(phone);
+    if (success) {
+      setStep("otp");
+    }
+  };
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const success = await confirmOtp(phone, otp)
+    e.preventDefault();
+
+    if (otp.length < 4) return;
+
+    const success = await confirmOtp(phone, otp);
     if (success) {
-      window.location.href = "/dashboard"
+      router.replace("/dashboard"); // ✅ App Router way
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
+        {/* Header */}
         <div className="text-center">
           <h1 className="text-2xl font-semibold">Event Host</h1>
           <p className="text-sm text-muted-foreground">Admin Portal</p>
         </div>
 
+        {/* Card */}
         <div className="bg-card border border-border rounded-lg p-6">
           {step === "phone" ? (
+            /* ---------------- PHONE STEP ---------------- */
             <form onSubmit={handlePhoneSubmit} className="space-y-4">
               <h2 className="text-lg font-medium">Sign In</h2>
 
@@ -50,18 +64,23 @@ export default function LoginPage() {
                 />
               </div>
 
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
 
               <button
+                type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm"
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm disabled:opacity-60"
               >
                 {loading ? "Sending OTP..." : "Send OTP"}
               </button>
             </form>
           ) : (
+            /* ---------------- OTP STEP ---------------- */
             <form onSubmit={handleOtpSubmit} className="space-y-4">
               <h2 className="text-lg font-medium">Verify OTP</h2>
+
               <p className="text-sm text-muted-foreground">
                 Sent to +91 {phone}
               </p>
@@ -70,6 +89,7 @@ export default function LoginPage() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="text"
+                  inputMode="numeric"
                   placeholder="Enter OTP"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
@@ -78,18 +98,24 @@ export default function LoginPage() {
                 />
               </div>
 
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
 
               <button
+                type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm"
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm disabled:opacity-60"
               >
                 {loading ? "Verifying..." : "Verify & Login"}
               </button>
 
               <button
                 type="button"
-                onClick={() => setStep("phone")}
+                onClick={() => {
+                  setOtp("");
+                  setStep("phone");
+                }}
                 className="text-sm text-muted-foreground"
               >
                 Back
@@ -99,5 +125,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,37 +1,46 @@
-import { useState } from "react"
-import { requestOtp, verifyOtp } from "@/lib/auth"
+import { useState } from "react";
 
 export function useOtpAuth() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const sendOtp = async (phone: string) => {
     try {
-      setLoading(true)
-      setError(null)
-      await requestOtp(phone)
-      return true
-    } catch (err: any) {
-      setError(err.message)
-      return false
+      setLoading(true);
+      setError(null);
+
+      await fetch("/api/auth?action=request-otp", {
+        method: "POST",
+        body: JSON.stringify({ phone }),
+      });
+
+      return true;
+    } catch {
+      setError("Failed to send OTP");
+      return false;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const confirmOtp = async (phone: string, otp: string) => {
     try {
-      setLoading(true)
-      setError(null)
-      await verifyOtp(phone, otp)
-      return true
-    } catch (err: any) {
-      setError(err.message)
-      return false
-    } finally {
-      setLoading(false)
-    }
-  }
+      setLoading(true);
+      setError(null);
 
-  return { sendOtp, confirmOtp, loading, error }
+      await fetch("/api/auth?action=verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ phone, otp }),
+      });
+
+      return true;
+    } catch {
+      setError("Invalid OTP");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { sendOtp, confirmOtp, loading, error };
 }

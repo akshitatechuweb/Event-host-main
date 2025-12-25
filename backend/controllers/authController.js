@@ -6,12 +6,17 @@ import { sendSms } from "../utils/sendSms.js";
 
 dotenv.config();
 
+// ===========================
+// 📩 REQUEST OTP
+// ===========================
 export const requestOtp = async (req, res) => {
   try {
- const { phone } = req.body || {};           // safe destructure
-if (!phone) {
-  return res.status(400).json({ success:false, message: "Phone number is required" });
-}
+    const { phone } = req.body || {};
+    if (!phone) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Phone number is required" });
+    }
 
     if (!process.env.RENFLAIR_API_KEY) {
       return res.status(500).json({
@@ -33,9 +38,8 @@ if (!phone) {
 
     console.log(`🔢 OTP for ${phone}: ${otp}`);
 
-    // 📩 Send SMS
+    // Send SMS
     const smsResponse = await sendSms(phone, otp);
-
     console.log("📨 Renflair API Response:", smsResponse);
 
     if (!smsResponse) {
@@ -48,7 +52,7 @@ if (!phone) {
     return res.json({
       success: true,
       message: "OTP sent successfully",
-      otp,
+      otp, // ⚠️ remove in production
       details: smsResponse,
     });
   } catch (error) {
@@ -60,8 +64,6 @@ if (!phone) {
 // ===========================
 // 💬 VERIFY OTP
 // ===========================
-// controllers/authController.js → Only this part changed in verifyOtp
-
 export const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body || {};
@@ -73,10 +75,11 @@ export const verifyOtp = async (req, res) => {
     }
 
     const otpRecord = await Otp.findOne({ phone, otp });
-    if (!otpRecord)
+    if (!otpRecord) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid OTP" });
+    }
 
     if (otpRecord.expiresAt < new Date()) {
       await Otp.deleteOne({ phone });
@@ -86,8 +89,7 @@ export const verifyOtp = async (req, res) => {
     }
 
     let user = await User.findOne({ phone });
-
-    let responseMessage = ""; 
+    let responseMessage = "";
 
     if (!user) {
       // New user
@@ -123,7 +125,7 @@ export const verifyOtp = async (req, res) => {
 
     return res.json({
       success: true,
-      message: responseMessage, 
+      message: responseMessage,
       token,
       isProfileComplete: user.isProfileComplete || false,
     });
@@ -133,3 +135,37 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
+// ===========================
+// 👤 GET CURRENT USER (/me)
+// ===========================
+export const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("-__v");
+    if (!user) {
+      return res.status(401).json({ success: false });
+    }
+
+    return res.json({
+      success: true,
+      user,
+    });
+  } catch {
+    return res.status(401).json({ success: false });
+  }
+};
+
+// ===========================
+// 🚪 LOGOUT
+// ===========================
+export const logout = async (req, res) => {
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  return res.json({
+    success: true,
+    message: "Logged out successfully",
+  });
+};

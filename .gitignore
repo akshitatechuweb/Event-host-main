@@ -24,6 +24,7 @@ admin/node_modules/
 frontend/build/
 frontend/dist/
 frontend/.next/
+admin/.next/
 backend/dist/
 
 # Editor directories
@@ -40,3 +41,5 @@ Thumbs.db
 
 # Misc
 coverage/
+
+

@@ -1,33 +1,26 @@
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import User from "../models/User.js";
 
-dotenv.config();
-
-export const authMiddleware = (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   try {
-    // ✅ JWT ONLY from cookie
     const token = req.cookies?.accessToken;
 
     if (!token) {
-      return res.status(401).json({ success: false });
+      return res.status(401).json({ success: false, message: "No token" });
     }
 
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
-        success: false,
-        message: "JWT secret missing in environment",
-      });
-    }
-
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.sub);
 
-    // Attach userId for controllers (/me, protected routes)
-    req.userId = decoded.sub;
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    req.user = user;       // ✅ REQUIRED
+    req.userId = user._id; // ✅ REQUIRED
 
     next();
-  } catch (error) {
-    console.error("Auth middleware error:", error);
-    return res.status(401).json({ success: false });
+  } catch (err) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 };

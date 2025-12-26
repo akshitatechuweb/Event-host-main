@@ -4,110 +4,133 @@ import { cookies } from "next/headers";
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 /* ============================
-   GET → FETCH HOST REQUESTS
+   GET → HOST REQUESTS
 ============================ */
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const action = searchParams.get("action");
-  const id = searchParams.get("id");
+  try {
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get("action");
+    const id = searchParams.get("id");
 
-  const cookieStore = cookies();
+    if (!action) {
+      return NextResponse.json({ message: "Action required" }, { status: 400 });
+    }
 
-  if (!action) {
-    return NextResponse.json(
-      { message: "Action is required" },
-      { status: 400 }
-    );
-  }
+    let endpoint = "";
 
-  let endpoint = "";
+    if (action === "list") {
+      endpoint = `${BACKEND_URL}/api/admin/host-requests`;
+    } else if (action === "single") {
+      if (!id) {
+        return NextResponse.json(
+          { message: "Request ID required" },
+          { status: 400 }
+        );
+      }
+      endpoint = `${BACKEND_URL}/api/admin/host-requests/${id}`;
+    } else {
+      return NextResponse.json({ message: "Invalid action" }, { status: 400 });
+    }
 
-  // 🔹 All host requests
-  if (action === "list") {
-    endpoint = `${BACKEND_URL}/admin/hosts`;
-  }
+    // ✅ CORRECT for your Next.js version
+    const cookieStore = await cookies();
 
-  // 🔹 Only pending requests
-  else if (action === "pending") {
-    endpoint = `${BACKEND_URL}/admin/hosts/pending`;
-  }
+    const cookieHeader = cookieStore
+      .getAll()
+      .map((c: { name: string; value: string }) => `${c.name}=${c.value}`)
+      .join("; ");
 
-  // 🔹 Single request
-  else if (action === "single") {
-    if (!id) {
+    const res = await fetch(endpoint, {
+      headers: {
+        Cookie: cookieHeader,
+      },
+      cache: "no-store",
+    });
+
+    const text = await res.text();
+
+    if (text.startsWith("<")) {
+      console.error("Backend returned HTML:", text);
       return NextResponse.json(
-        { message: "Request ID is required" },
-        { status: 400 }
+        { message: "Unauthorized" },
+        { status: res.status }
       );
     }
-    endpoint = `${BACKEND_URL}/admin/hosts/${id}`;
-  }
 
-  else {
+    return NextResponse.json(JSON.parse(text), { status: res.status });
+  } catch (error) {
+    console.error("HOSTS GET ERROR:", error);
     return NextResponse.json(
-      { message: "Invalid action" },
-      { status: 400 }
+      { message: "Internal Server Error" },
+      { status: 500 }
     );
   }
-
-  const res = await fetch(endpoint, {
-    headers: {
-      Cookie: cookieStore.toString(),
-    },
-    credentials: "include",
-  });
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
 }
 
 /* ============================
    POST → APPROVE / REJECT
 ============================ */
 export async function POST(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const action = searchParams.get("action");
-  const id = searchParams.get("id");
+  try {
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get("action");
+    const id = searchParams.get("id");
 
-  const cookieStore = cookies();
-  const body = await req.json().catch(() => ({}));
+    if (!action || !id) {
+      return NextResponse.json(
+        { message: "Action and ID required" },
+        { status: 400 }
+      );
+    }
 
-  if (!action || !id) {
+    let endpoint = "";
+
+    if (action === "approve") {
+      endpoint = `${BACKEND_URL}/api/admin/approve-event-request/${id}`;
+    } else if (action === "reject") {
+      endpoint = `${BACKEND_URL}/api/admin/host-requests/reject/${id}`;
+    } else {
+      return NextResponse.json(
+        { message: "Invalid action" },
+        { status: 400 }
+      );
+    }
+
+    const body = await req.json().catch(() => ({}));
+
+    // ✅ MUST await here too
+    const cookieStore = await cookies();
+
+    const cookieHeader = cookieStore
+      .getAll()
+      .map((c: { name: string; value: string }) => `${c.name}=${c.value}`)
+      .join("; ");
+
+    const res = await fetch(endpoint, {
+      method: action === "approve" ? "PUT" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookieHeader,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const text = await res.text();
+
+    if (text.startsWith("<")) {
+      console.error("Backend returned HTML:", text);
+      return NextResponse.json(
+        { message: "Unauthorized or invalid backend route" },
+        { status: res.status }
+      );
+    }
+
+    return NextResponse.json(JSON.parse(text), { status: res.status });
+  } catch (error) {
+    console.error("HOSTS POST ERROR:", error);
     return NextResponse.json(
-      { message: "Action and Request ID are required" },
-      { status: 400 }
+      { message: "Internal Server Error" },
+      { status: 500 }
     );
   }
-
-  let endpoint = "";
-
-  // ✅ Approve host request
-  if (action === "approve") {
-    endpoint = `${BACKEND_URL}/admin/hosts/${id}/approve`;
-  }
-
-  // ❌ Reject host request
-  else if (action === "reject") {
-    endpoint = `${BACKEND_URL}/admin/hosts/${id}/reject`;
-  }
-
-  else {
-    return NextResponse.json(
-      { message: "Invalid action" },
-      { status: 400 }
-    );
-  }
-
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookieStore.toString(),
-    },
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
 }

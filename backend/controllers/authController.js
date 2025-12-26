@@ -76,16 +76,12 @@ export const verifyOtp = async (req, res) => {
 
     const otpRecord = await Otp.findOne({ phone, otp });
     if (!otpRecord) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid OTP" });
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
 
     if (otpRecord.expiresAt < new Date()) {
       await Otp.deleteOne({ phone });
-      return res
-        .status(400)
-        .json({ success: false, message: "OTP expired" });
+      return res.status(400).json({ success: false, message: "OTP expired" });
     }
 
     let user = await User.findOne({ phone });
@@ -118,8 +114,13 @@ export const verifyOtp = async (req, res) => {
 
     res.cookie("accessToken", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+
+      // ✅ CORRECT for localhost + same-site proxy
       sameSite: "lax",
+
+      // ✅ must be false in localhost
+      secure: false,
+
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 

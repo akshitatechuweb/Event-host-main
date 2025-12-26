@@ -9,11 +9,13 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
-      await fetch("/api/auth?action=request-otp", {
+      const res = await fetch("/api/auth?action=request-otp", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
 
+      if (!res.ok) throw new Error();
       return true;
     } catch {
       setError("Failed to send OTP");
@@ -28,11 +30,17 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
-      await fetch("/api/auth?action=verify-otp", {
+      const res = await fetch("/api/auth?action=verify-otp", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+
+        // 🔥 REQUIRED
+        credentials: "include",
+
         body: JSON.stringify({ phone, otp }),
       });
 
+      if (!res.ok) throw new Error();
       return true;
     } catch {
       setError("Invalid OTP");

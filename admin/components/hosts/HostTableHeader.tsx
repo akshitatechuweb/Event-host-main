@@ -11,5 +11,5 @@ export function HostTableHeader() {
       <div>Status</div>
       <div className="text-center">Actions</div>
     </div>
-  )
+  );
 }

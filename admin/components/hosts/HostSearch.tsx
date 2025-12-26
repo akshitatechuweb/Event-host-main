@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { Search } from "lucide-react"
+import { Search } from "lucide-react";
 
 export function HostSearch() {
   return (
@@ -19,5 +19,5 @@ export function HostSearch() {
         "
       />
     </div>
-  )
+  );
 }

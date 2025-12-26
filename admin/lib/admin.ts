@@ -1,15 +1,41 @@
-import { apiFetch } from "./api"
+// admin/lib/admin.ts
 
-// 🔹 Get all host requests
-export const getHostRequests = async () => {
-  return apiFetch("/admin/host-requests", {
-    method: "GET",
-  })
+export async function getHosts() {
+  const res = await fetch("/api/hosts?action=list", {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch hosts");
+  }
+
+  return res.json();
 }
 
-// 🔹 Get all approved hosts
-export const getHosts = async () => {
-  return apiFetch("/admin/hosts", {
-    method: "GET",
-  })
+export async function approveHost(id: string) {
+  const res = await fetch(`/api/hosts?action=approve&id=${id}`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to approve host");
+  }
+
+  return res.json();
+}
+
+export async function rejectHost(id: string, reason?: string) {
+  const res = await fetch(`/api/hosts?action=reject&id=${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ reason }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to reject host");
+  }
+
+  return res.json();
 }

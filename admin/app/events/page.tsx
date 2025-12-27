@@ -9,12 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 export default function EventsPage() {
-  const [openAddEvent, setOpenAddEvent] = useState(false)
+  const [openAddEvent, setOpenAddEvent] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleEventCreated = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
 
   return (
     <DashboardLayout>
-
-      {/* Header */}
       <header className="flex items-center justify-between mb-10">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">
@@ -29,28 +32,23 @@ export default function EventsPage() {
 
         <Button
           onClick={() => setOpenAddEvent(true)}
-          className="
-            h-10 px-5 rounded-lg
-            bg-background
-            border border-border
-            text-foreground
-            shadow-sm
-            hover:bg-muted
-            dark:bg-primary dark:text-primary-foreground
-          "
+          className="h-10 px-5 rounded-lg bg-background border border-border text-foreground shadow-sm hover:bg-muted dark:bg-primary dark:text-primary-foreground"
         >
           <Plus className="mr-2 h-4 w-4" />
           Add Event
         </Button>
       </header>
 
-      {/* Unified surface */}
       <section className="rounded-xl border border-border bg-card overflow-hidden">
         <EventSearch />
-        <EventTable />
+        <EventTable refresh={refreshKey} />
       </section>
 
-      <AddEventModal open={openAddEvent} onClose={() => setOpenAddEvent(false)} />
+      <AddEventModal
+        open={openAddEvent}
+        onClose={() => setOpenAddEvent(false)}
+        onEventCreated={handleEventCreated}
+      />
     </DashboardLayout>
-  )
+  );
 }

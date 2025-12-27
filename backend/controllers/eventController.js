@@ -3,9 +3,9 @@ import User from "../models/User.js";
 import axios from "axios";
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const DEFAULT_RADIUS = 20000; // 20km — perfect for Delhi NCR (increased from 10km)
+const DEFAULT_RADIUS = 20000; 
 
-// Helper to compute image URL, bookingPercentage and status
+
 function computeEventExtras(ev, req) {
   let imageUrl = ev.eventImage || null;
   try {
@@ -13,13 +13,15 @@ function computeEventExtras(ev, req) {
       imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
     }
   } catch (err) {
-    // ignore
+    
   }
+
 
   let bookingPercentage = null;
   if (ev.maxCapacity && ev.maxCapacity > 0 && typeof ev.currentBookings === "number") {
     bookingPercentage = Math.round((ev.currentBookings / ev.maxCapacity) * 100);
   }
+
 
   let status = "";
   try {
@@ -293,7 +295,7 @@ export const adminUpdateEvent = async (req, res) => {
       if (time) {
         const [h, m] = time.split(":");
         const dt = new Date(eventDate);
-        dt.setHours(parseInt(h), parInt(m), 0, 0);
+        dt.setHours(parseInt(h), parseInt(m), 0, 0);
         event.eventDateTime = dt;
         event.time = time;
       }

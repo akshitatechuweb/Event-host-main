@@ -1,5 +1,6 @@
 // src/routes/eventRoutes.js
 import express from "express";
+import Event from "../models/Event.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import { upload } from "../middleware/multer.js";
@@ -66,6 +67,20 @@ router.post(
 router.get(
   "/:eventId/directions",
   getEventDirections // public (no auth needed)
+);
+
+
+router.delete(
+  "/delete-event/:eventId",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  async (req, res) => {
+    const event = await Event.findByIdAndDelete(req.params.eventId);
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+    res.json({ success: true, message: "Event deleted" });
+  }
 );
 
 

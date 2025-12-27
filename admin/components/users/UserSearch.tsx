@@ -1,16 +1,38 @@
-"use client"
+"use client";
 
-import { Search } from "lucide-react"
+import { useState } from "react";
+import { Search } from "lucide-react";
 
-export function UserSearch() {
+interface UserSearchProps {
+  onSearch: (query: string) => void;
+}
+
+export function UserSearch({ onSearch }: UserSearchProps) {
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(searchValue);
+  };
+
   return (
-    <div className="relative max-w-md">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <input
-        type="text"
-        placeholder="Search users..."
-        className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-smooth"
-      />
-    </div>
-  )
+    <form onSubmit={handleSearch} className="flex gap-2">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search by name, email, or phone..."
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </div>
+      <button
+        type="submit"
+        className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-smooth"
+      >
+        Search
+      </button>
+    </form>
+  );
 }

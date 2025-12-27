@@ -12,12 +12,18 @@ export function StepSchedule() {
         <Input type="time" />
       </Field>
 
-      <Field label="Address *">
-        <Input placeholder="123 Main Street" />
+      <Field label="Entry Fees *">
+        <Input type="number" placeholder="599" min={0} />
       </Field>
 
+      <div className="md:col-span-2">
+        <Field label="Full Address *">
+          <Input placeholder="Canvas Laugh Club, DLF Cyber Hub, Gurgaon" />
+        </Field>
+      </div>
+
       <Field label="City *">
-        <Input placeholder="New York" />
+        <Input placeholder="Gurgaon" />
       </Field>
     </div>
   )

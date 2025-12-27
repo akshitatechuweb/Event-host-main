@@ -15,6 +15,14 @@ export function StepDescription() {
       <Field label="What’s Included">
         <Textarea rows={3} />
       </Field>
+
+      <Field label="How It Works">
+        <Textarea rows={3} />
+      </Field>
+
+      <Field label="What’s Included In Ticket">
+        <Textarea rows={2} />
+      </Field>
     </div>
   )
 }

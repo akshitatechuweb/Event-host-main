@@ -8,9 +8,10 @@ import { EventFormData } from "@/components/events/AddEventModal";
 interface StepBasicsProps {
   formData: EventFormData;
   updateFormData: (data: Partial<EventFormData>) => void;
+  hosts?: Array<{ hostId: string; name: string; email?: string; city?: string }>;
 }
 
-export function StepBasics({ formData, updateFormData }: StepBasicsProps) {
+export function StepBasics({ formData, updateFormData, hosts }: StepBasicsProps) {
   const [categoryInput, setCategoryInput] = useState("");
   const [categories, setCategories] = useState<string[]>(
     formData.category ? formData.category.split(",") : []
@@ -51,12 +52,32 @@ export function StepBasics({ formData, updateFormData }: StepBasicsProps) {
 
   return (
     <div className="space-y-6">
-      <Field label="Event Name *">
+          <Field label="Event Name *">
         <Input
           placeholder="Summer Music Festival"
           value={formData.eventName}
           onChange={(e) => updateFormData({ eventName: e.target.value })}
         />
+      </Field>
+
+      <Field label="Assign Host">
+        <select
+          value={formData.hostId ?? ""}
+          onChange={(e) => {
+            const id = e.target.value || null;
+            updateFormData({ hostId: id });
+            const selected = (hosts || []).find((h) => h.hostId === id);
+            if (selected) updateFormData({ hostedBy: selected.name });
+          }}
+          className="h-11 w-full rounded-xl px-3 border bg-white dark:bg-black/10"
+        >
+          <option value="">(Select a host - optional)</option>
+          {(hosts || []).map((h) => (
+            <option key={h.hostId} value={h.hostId}>
+              {h.name} {h.city ? `— ${h.city}` : ""}
+            </option>
+          ))}
+        </select>
       </Field>
 
       <Field label="Hosted By *">
@@ -106,7 +127,7 @@ export function StepBasics({ formData, updateFormData }: StepBasicsProps) {
             className="h-11 bg-white dark:bg-black/20 border-black/10 dark:border-white/10 focus:border-violet-500 dark:focus:border-violet-500"
           />
           <p className="text-xs text-black/50 dark:text-white/50">
-            Type "Festival, Music, Party" or press Enter after each category
+            Type Festival, Music, Party or press Enter after each category
           </p>
         </div>
       </Field>

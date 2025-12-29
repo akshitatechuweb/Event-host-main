@@ -12,6 +12,19 @@ export async function getHosts() {
   return res.json();
 }
 
+// Fetch approved hosts (for assigning events)
+export async function getApprovedHosts() {
+  const res = await fetch(`/api/admin/hosts`, {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch approved hosts");
+  }
+
+  return res.json();
+}
+
 export async function approveHost(id: string) {
   const res = await fetch(`/api/hosts?action=approve&id=${id}`, {
     method: "POST",

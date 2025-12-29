@@ -4,21 +4,27 @@ import { Eye, Edit2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
-interface EventTableRowProps {
-  event: {
-    _id: string;
-    eventName: string;
-    hostedBy: string;
-    date: string;
-    city: string;
-    currentBookings: number;
-    maxCapacity: number;
-    status?: "active" | "completed" | "cancelled";
-  };
-  onRefresh: () => void;
+interface EventType {
+  _id: string;
+  eventName: string;
+  hostedBy: string;
+  date: string;
+  city: string;
+  currentBookings: number;
+  maxCapacity: number;
+  status?: "active" | "completed" | "cancelled";
+  // include any extra fields we might need when editing
+  hostId?: string;
+  passes?: Record<string, unknown>[];
 }
 
-export function EventTableRow({ event, onRefresh }: EventTableRowProps) {
+interface EventTableRowProps {
+  event: EventType;
+  onRefresh: () => void;
+  onEdit?: (event: EventType) => void;
+}
+
+export function EventTableRow({ event, onRefresh, onEdit }: EventTableRowProps) {
   const [deleting, setDeleting] = useState(false);
 
   const status = {
@@ -54,7 +60,8 @@ export function EventTableRow({ event, onRefresh }: EventTableRowProps) {
       toast.success("Event deleted successfully");
 
       onRefresh();
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
       toast.error(error.message || "Failed to delete event");
     } finally {
       setDeleting(false);
@@ -81,7 +88,10 @@ export function EventTableRow({ event, onRefresh }: EventTableRowProps) {
 
       <div className="flex justify-end gap-2">
         <Eye className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer" />
-        <Edit2 className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer" />
+        <Edit2
+          className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer"
+          onClick={() => onEdit?.(event)}
+        />
         <Trash2
           className={`w-4 h-4 cursor-pointer ${
             deleting ? "text-muted-foreground" : "text-destructive hover:text-destructive/80"

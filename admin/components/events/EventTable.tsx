@@ -18,9 +18,10 @@ interface Event {
 
 interface EventTableProps {
   refresh?: number;
+  onEdit?: (event: Event) => void;
 }
 
-export function EventTable({ refresh }: EventTableProps) {
+export function EventTable({ refresh, onEdit }: EventTableProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +36,8 @@ export function EventTable({ refresh }: EventTableProps) {
       }
 
       setEvents(data.events || []);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
       toast.error(error.message || "Failed to fetch events");
     } finally {
       setLoading(false);
@@ -69,7 +71,12 @@ export function EventTable({ refresh }: EventTableProps) {
     <div className="divide-y divide-border">
       <EventTableHeader />
       {events.map((event) => (
-        <EventTableRow key={event._id} event={event} onRefresh={fetchEvents} />
+        <EventTableRow
+          key={event._id}
+          event={event}
+          onRefresh={fetchEvents}
+          onEdit={onEdit}
+        />
       ))}
     </div>
   );

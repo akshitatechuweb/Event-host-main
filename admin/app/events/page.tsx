@@ -8,12 +8,31 @@ import AddEventModal from "@/components/events/AddEventModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
+export type EventType = {
+  _id: string;
+  eventName: string;
+  hostedBy: string;
+  date: string;
+  city: string;
+  currentBookings: number;
+  maxCapacity: number;
+  status?: "active" | "completed" | "cancelled";
+  hostId?: string;
+  passes?: Record<string, unknown>[];
+};
+
 export default function EventsPage() {
   const [openAddEvent, setOpenAddEvent] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
 
   const handleEventCreated = () => {
     setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleEdit = (event: EventType) => {
+    setEditingEvent(event);
+    setOpenAddEvent(true);
   };
 
   return (
@@ -21,7 +40,7 @@ export default function EventsPage() {
       <header className="flex items-center justify-between mb-10">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">
-            <span className="bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">
               Events
             </span>
           </h1>
@@ -31,7 +50,10 @@ export default function EventsPage() {
         </div>
 
         <Button
-          onClick={() => setOpenAddEvent(true)}
+          onClick={() => {
+            setEditingEvent(null);
+            setOpenAddEvent(true);
+          }}
           className="h-10 px-5 rounded-lg bg-background border border-border text-foreground shadow-sm hover:bg-muted dark:bg-primary dark:text-primary-foreground"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -41,13 +63,15 @@ export default function EventsPage() {
 
       <section className="rounded-xl border border-border bg-card overflow-hidden">
         <EventSearch />
-        <EventTable refresh={refreshKey} />
+        <EventTable refresh={refreshKey} onEdit={handleEdit} />
       </section>
 
       <AddEventModal
         open={openAddEvent}
-        onClose={() => setOpenAddEvent(false)}
+        onClose={() => { setOpenAddEvent(false); setEditingEvent(null); }}
         onEventCreated={handleEventCreated}
+        onEventUpdated={handleEventCreated}
+        editingEvent={editingEvent}
       />
     </DashboardLayout>
   );

@@ -4,15 +4,16 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /**
- * GET /api/admin/events/:eventId/transactions
+ * GET /api/events/:eventId/transactions
  * Proxies admin-authenticated request to backend
  */
 export async function GET(
   req: NextRequest,
-  context: { params: { eventId: string } }
+  context: { params: Promise<{ eventId: string }> }  // ✅ FIXED: Changed to Promise
 ) {
   try {
-    const { eventId } = context.params;
+    // ✅ FIXED: await params
+    const { eventId } = await context.params;
 
     if (!eventId) {
       return NextResponse.json(

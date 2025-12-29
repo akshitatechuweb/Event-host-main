@@ -1,11 +1,19 @@
 "use client"
 
-export function TransactionStats() {
+interface TransactionStatsProps {
+  totals: {
+    totalRevenue: number
+    totalTransactions: number
+    totalTickets: number
+  }
+}
+
+export function TransactionStats({ totals }: TransactionStatsProps) {
   const stats = [
-    { label: "Total Transactions", value: "1,234" },
-    { label: "Total Volume", value: "$123,456" },
-    { label: "Success Rate", value: "98.5%" },
-    { label: "Avg. Transaction", value: "$100" },
+    { label: "Total Transactions", value: totals.totalTransactions.toLocaleString() },
+    { label: "Total Revenue", value: `₹${totals.totalRevenue.toLocaleString()}` },
+    { label: "Tickets Sold", value: totals.totalTickets.toLocaleString() },
+    { label: "Avg. Transaction", value: totals.totalTransactions > 0 ? `₹${Math.round(totals.totalRevenue / totals.totalTransactions).toLocaleString()}` : "₹0" },
   ]
 
   return (

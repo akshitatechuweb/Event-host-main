@@ -1,48 +1,42 @@
 "use client"
 
 import { TransactionCard } from "./TransactionCard"
+import { Transaction } from "@/types/transaction"
 
-export function TransactionList() {
-  const transactions = [
-    {
-      id: "1",
-      event: "Summer Music Festival",
-      user: "Alice Johnson",
-      amount: "$150",
-      date: "Dec 15, 2024",
-      status: "completed" as const,
-    },
-    {
-      id: "2",
-      event: "Tech Conference 2024",
-      user: "Bob Smith",
-      amount: "$200",
-      date: "Dec 14, 2024",
-      status: "completed" as const,
-    },
-    {
-      id: "3",
-      event: "Art Gallery Opening",
-      user: "Carol White",
-      amount: "$50",
-      date: "Dec 13, 2024",
-      status: "pending" as const,
-    },
-    {
-      id: "4",
-      event: "Food & Wine Expo",
-      user: "David Brown",
-      amount: "$100",
-      date: "Dec 12, 2024",
-      status: "failed" as const,
-    },
-  ]
+interface TransactionListProps {
+  transactions: Transaction[]
+}
+
+export function TransactionList({ transactions }: TransactionListProps) {
+  if (transactions.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-lg p-12 text-center">
+        <p className="text-muted-foreground">No transactions found for this event.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {transactions.map((transaction) => (
-        <TransactionCard key={transaction.id} transaction={transaction} />
-      ))}
+      {transactions.map((transaction) => {
+        // Transform backend transaction to component format
+        const formattedTransaction = {
+          id: transaction._id,
+          event: transaction.booking?.items?.map(item => `${item.passType} × ${item.quantity}`).join(", ") || "N/A",
+          user: transaction.booking?.buyer?.name || "Guest",
+          amount: `₹${transaction.amount.toLocaleString()}`,
+          date: new Date(transaction.createdAt).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+          status: transaction.status as "completed" | "pending" | "failed",
+        }
+
+        return (
+          <TransactionCard key={transaction._id} transaction={formattedTransaction} />
+        )
+      })}
     </div>
   )
 }

@@ -6,7 +6,14 @@ export async function getHosts() {
   });
 
   if (!res.ok) {
-    throw new Error("Failed to fetch hosts");
+    const errorData = await res.json().catch(() => ({ message: "Failed to fetch hosts" }));
+    
+    if (res.status === 401) {
+      // Redirect to login or show better error
+      throw new Error("Your session has expired. Please log in again.");
+    }
+    
+    throw new Error(errorData.message || "Failed to fetch hosts");
   }
 
   return res.json();
@@ -15,14 +22,20 @@ export async function getHosts() {
 // Get transactions for an event (admin)
 export async function getEventTransactions(eventId: string) {
   const res = await fetch(
-    `/api/admin/events/${eventId}/transactions`,
+    `/api/events/${eventId}/transactions`,
     {
       credentials: "include",
     }
   );
 
   if (!res.ok) {
-    throw new Error("Failed to fetch event transactions");
+    const errorData = await res.json().catch(() => ({ message: "Failed to fetch event transactions" }));
+    
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log in again.");
+    }
+    
+    throw new Error(errorData.message || "Failed to fetch event transactions");
   }
 
   return res.json();
@@ -65,6 +78,25 @@ export async function rejectHost(id: string, reason?: string) {
 
   if (!res.ok) {
     throw new Error("Failed to reject host");
+  }
+
+  return res.json();
+}
+
+// Get all tickets (passes) from all events (admin)
+export async function getAllTickets() {
+  const res = await fetch("/api/tickets", {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: "Failed to fetch tickets" }));
+    
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log in again.");
+    }
+    
+    throw new Error(errorData.message || "Failed to fetch tickets");
   }
 
   return res.json();

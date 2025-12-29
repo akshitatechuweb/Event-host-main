@@ -32,29 +32,74 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: "Invalid action" }, { status: 400 });
     }
 
-    // ✅ CORRECT for your Next.js version
+    // ✅ Get cookies and specifically extract accessToken
     const cookieStore = await cookies();
+    const accessToken = cookieStore.get("accessToken");
 
-    const cookieHeader = cookieStore
-      .getAll()
-      .map((c: { name: string; value: string }) => `${c.name}=${c.value}`)
-      .join("; ");
+    if (!accessToken) {
+      console.error("❌ No accessToken cookie found");
+      return NextResponse.json(
+        { 
+          success: false,
+          message: "Unauthorized: Please log in again" 
+        },
+        { status: 401 }
+      );
+    }
 
+    // ✅ Forward only the accessToken cookie (like user route does)
     const res = await fetch(endpoint, {
       headers: {
-        Cookie: cookieHeader,
+        Cookie: `accessToken=${accessToken.value}`,
+        "Content-Type": "application/json",
       },
       cache: "no-store",
     });
 
     const text = await res.text();
 
-    if (text.startsWith("<")) {
-      console.error("Backend returned HTML:", text);
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: res.status }
-      );
+    if (!res.ok) {
+      console.error(`❌ Backend error (${res.status}):`, text.substring(0, 200));
+      
+      if (res.status === 401) {
+        return NextResponse.json(
+          { 
+            success: false,
+            message: "Unauthorized: Your session may have expired. Please log in again." 
+          },
+          { status: 401 }
+        );
+      }
+
+      if (text.startsWith("<")) {
+        console.error("Backend returned HTML:", text);
+        return NextResponse.json(
+          { 
+            success: false,
+            message: "Unauthorized or invalid backend route" 
+          },
+          { status: res.status }
+        );
+      }
+
+      try {
+        const errorData = JSON.parse(text);
+        return NextResponse.json(
+          { 
+            success: false,
+            message: errorData.message || "Failed to fetch hosts" 
+          },
+          { status: res.status }
+        );
+      } catch {
+        return NextResponse.json(
+          { 
+            success: false,
+            message: "Failed to fetch hosts" 
+          },
+          { status: res.status }
+        );
+      }
     }
 
     return NextResponse.json(JSON.parse(text), { status: res.status });
@@ -66,10 +111,22 @@ export async function GET(req: Request) {
     const cause = error?.cause;
     if (cause && cause.code === "ECONNREFUSED") {
       console.error("Backend unreachable at:", backendUrl, "(ECONNREFUSED)");
-      return NextResponse.json({ message: `Backend unreachable at ${backendUrl}` }, { status: 502 });
+      return NextResponse.json(
+        { 
+          success: false,
+          message: `Backend unreachable at ${backendUrl}` 
+        },
+        { status: 502 }
+      );
     }
 
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { 
+        success: false,
+        message: "Internal Server Error" 
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -84,7 +141,10 @@ export async function POST(req: Request) {
 
     if (!action || !id) {
       return NextResponse.json(
-        { message: "Action and ID required" },
+        { 
+          success: false,
+          message: "Action and ID required" 
+        },
         { status: 400 }
       );
     }
@@ -97,45 +157,94 @@ export async function POST(req: Request) {
       endpoint = `${BACKEND_URL}/api/admin/host-requests/reject/${id}`;
     } else {
       return NextResponse.json(
-        { message: "Invalid action" },
+        { 
+          success: false,
+          message: "Invalid action" 
+        },
         { status: 400 }
       );
     }
 
     const body = await req.json().catch(() => ({}));
 
-    // ✅ MUST await here too
+    // ✅ Get cookies and specifically extract accessToken
     const cookieStore = await cookies();
+    const accessToken = cookieStore.get("accessToken");
 
-    const cookieHeader = cookieStore
-      .getAll()
-      .map((c: { name: string; value: string }) => `${c.name}=${c.value}`)
-      .join("; ");
+    if (!accessToken) {
+      console.error("❌ No accessToken cookie found");
+      return NextResponse.json(
+        { 
+          success: false,
+          message: "Unauthorized: Please log in again" 
+        },
+        { status: 401 }
+      );
+    }
 
     const res = await fetch(endpoint, {
       method: action === "approve" ? "PUT" : "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: cookieHeader,
+        Cookie: `accessToken=${accessToken.value}`,
       },
       body: JSON.stringify(body),
     });
 
     const text = await res.text();
 
-    if (text.startsWith("<")) {
-      console.error("Backend returned HTML:", text);
-      return NextResponse.json(
-        { message: "Unauthorized or invalid backend route" },
-        { status: res.status }
-      );
+    if (!res.ok) {
+      console.error(`❌ Backend error (${res.status}):`, text.substring(0, 200));
+
+      if (res.status === 401) {
+        return NextResponse.json(
+          { 
+            success: false,
+            message: "Unauthorized: Your session may have expired. Please log in again." 
+          },
+          { status: 401 }
+        );
+      }
+
+      if (text.startsWith("<")) {
+        console.error("Backend returned HTML:", text);
+        return NextResponse.json(
+          { 
+            success: false,
+            message: "Unauthorized or invalid backend route" 
+          },
+          { status: res.status }
+        );
+      }
+
+      try {
+        const errorData = JSON.parse(text);
+        return NextResponse.json(
+          { 
+            success: false,
+            message: errorData.message || "Failed to process request" 
+          },
+          { status: res.status }
+        );
+      } catch {
+        return NextResponse.json(
+          { 
+            success: false,
+            message: "Failed to process request" 
+          },
+          { status: res.status }
+        );
+      }
     }
 
     return NextResponse.json(JSON.parse(text), { status: res.status });
   } catch (error) {
     console.error("HOSTS POST ERROR:", error);
     return NextResponse.json(
-      { message: "Internal Server Error" },
+      { 
+        success: false,
+        message: "Internal Server Error" 
+      },
       { status: 500 }
     );
   }

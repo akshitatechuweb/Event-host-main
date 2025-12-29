@@ -11,11 +11,15 @@ export async function getHosts() {
 
   return res.json();
 }
+
 // Get transactions for an event (admin)
 export async function getEventTransactions(eventId: string) {
-  const res = await fetch(`/api/events/${eventId}/transactions`, {
-    credentials: "include",
-  });
+  const res = await fetch(
+    `/api/admin/events/${eventId}/transactions`,
+    {
+      credentials: "include",
+    }
+  );
 
   if (!res.ok) {
     throw new Error("Failed to fetch event transactions");
@@ -23,6 +27,8 @@ export async function getEventTransactions(eventId: string) {
 
   return res.json();
 }
+
+
 // Fetch approved hosts (for assigning events)
 export async function getApprovedHosts() {
   const res = await fetch(`/api/admin/hosts`, {

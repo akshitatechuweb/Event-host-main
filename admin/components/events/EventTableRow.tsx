@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Edit2, Trash2 } from "lucide-react";
+import { Eye, Edit2, Trash2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -22,9 +22,10 @@ interface EventTableRowProps {
   event: EventType;
   onRefresh: () => void;
   onEdit?: (event: EventType) => void;
+  onViewTransactions?: (eventId: string, eventName?: string) => void;
 }
 
-export function EventTableRow({ event, onRefresh, onEdit }: EventTableRowProps) {
+export function EventTableRow({ event, onRefresh, onEdit, onViewTransactions }: EventTableRowProps) {
   const [deleting, setDeleting] = useState(false);
 
   const status = {
@@ -88,6 +89,10 @@ export function EventTableRow({ event, onRefresh, onEdit }: EventTableRowProps) 
 
       <div className="flex justify-end gap-2">
         <Eye className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer" />
+        <CreditCard
+          className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer"
+          onClick={() => onViewTransactions?.(event._id, event.eventName)}
+        />
         <Edit2
           className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onEdit?.(event)}

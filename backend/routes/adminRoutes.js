@@ -8,6 +8,7 @@ import {
   getRequestById,
   getAllHosts,
   getHostIdFromRequestId,
+  getEventTransactions,
 } from "../controllers/adminController.js";
 import { approveEventHostRequest } from "../controllers/hostController.js";
 import { adminCreateEvent, getEvents } from "../controllers/eventController.js"; 
@@ -40,5 +41,13 @@ router.get("/host-requests/:requestId/host-id", authMiddleware, requireRole("adm
 // 🔥 Event Management Routes (Add these)
 router.post("/create-event", authMiddleware, requireRole("admin", "superadmin"), upload.single("eventImage"), adminCreateEvent);
 router.get("/events", authMiddleware, requireRole("admin", "superadmin"), getEvents);
+
+// Get transactions for a specific event (admin)
+router.get(
+  "/events/:eventId/transactions",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getEventTransactions
+);
 
 export default router;

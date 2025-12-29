@@ -19,9 +19,10 @@ interface Event {
 interface EventTableProps {
   refresh?: number;
   onEdit?: (event: Event) => void;
+  onViewTransactions?: (eventId: string, eventName?: string) => void;
 }
 
-export function EventTable({ refresh, onEdit }: EventTableProps) {
+export function EventTable({ refresh, onEdit, onViewTransactions }: EventTableProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -76,6 +77,7 @@ export function EventTable({ refresh, onEdit }: EventTableProps) {
           event={event}
           onRefresh={fetchEvents}
           onEdit={onEdit}
+          onViewTransactions={onViewTransactions}
         />
       ))}
     </div>

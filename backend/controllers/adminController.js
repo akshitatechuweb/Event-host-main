@@ -1,6 +1,8 @@
 // controllers/adminController.js
 import EventHostRequest from "../models/HostRequest.js";
 import User from "../models/User.js";
+import Booking from "../models/Booking.js";
+import Transaction from "../models/Transaction.js";
 
 // Approve Event Host Request
 export const approveEventHost = async (req, res) => {
@@ -246,5 +248,79 @@ export const getHostIdFromRequestId = async (req, res) => {
       message: "Server error",
       error: error.message,
     });
+  }
+};
+
+
+// ========================================================
+// ADMIN: Get all transactions/bookings for a specific event
+// ========================================================
+export const getEventTransactions = async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+
+    // Find bookings for the event
+    const bookings = await Booking.find({ eventId })
+      .populate("userId", "name email phone")
+      .lean();
+
+    if (!bookings || bookings.length === 0) {
+      return res.status(200).json({ success: true, transactions: [], totals: { totalRevenue: 0, totalTransactions: 0, totalTickets: 0 } });
+    }
+
+    const bookingMap = {};
+    const bookingIds = bookings.map((b) => {
+      bookingMap[b._id.toString()] = b;
+      return b._id;
+    });
+
+    // Find transactions for those bookings
+    const transactions = await Transaction.find({ bookingId: { $in: bookingIds } })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Map transactions to include booking and buyer info
+    let totalRevenue = 0;
+    let totalTickets = 0;
+
+    const items = transactions.map((t) => {
+      const booking = bookingMap[t.bookingId.toString()];
+      const ticketCount = booking?.ticketCount || 0;
+      totalTickets += ticketCount;
+      totalRevenue += Number(t.amount || 0);
+
+      return {
+        _id: t._id,
+        amount: t.amount,
+        platformFee: t.platformFee,
+        payoutToHost: t.payoutToHost,
+        providerTxnId: t.providerTxnId,
+        status: t.status,
+        createdAt: t.createdAt,
+        booking: booking
+          ? {
+              _id: booking._id,
+              orderId: booking.orderId,
+              totalAmount: booking.totalAmount,
+              ticketCount: booking.ticketCount,
+              items: booking.items,
+              buyer: booking.userId ? { _id: booking.userId._id, name: booking.userId.name, email: booking.userId.email } : null,
+            }
+          : null,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      transactions: items,
+      totals: {
+        totalRevenue,
+        totalTransactions: transactions.length,
+        totalTickets,
+      },
+    });
+  } catch (error) {
+    console.error("Get Event Transactions Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

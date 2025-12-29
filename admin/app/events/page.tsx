@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { EventSearch } from "@/components/events/EventSearch";
 import { EventTable } from "@/components/events/EventTable";
 import AddEventModal from "@/components/events/AddEventModal";
+import EventTransactionsModal from "@/components/events/EventTransactionsModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
@@ -25,6 +26,9 @@ export default function EventsPage() {
   const [openAddEvent, setOpenAddEvent] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
+  const [transactionsOpen, setTransactionsOpen] = useState(false);
+  const [transactionsEventId, setTransactionsEventId] = useState<string | null>(null);
+  const [transactionsEventName, setTransactionsEventName] = useState<string | undefined>(undefined);
 
   const handleEventCreated = () => {
     setRefreshKey((prev) => prev + 1);
@@ -33,6 +37,12 @@ export default function EventsPage() {
   const handleEdit = (event: EventType) => {
     setEditingEvent(event);
     setOpenAddEvent(true);
+  };
+
+  const handleViewTransactions = (eventId: string, eventName?: string) => {
+    setTransactionsEventId(eventId);
+    setTransactionsEventName(eventName);
+    setTransactionsOpen(true);
   };
 
   return (
@@ -63,7 +73,13 @@ export default function EventsPage() {
 
       <section className="rounded-xl border border-border bg-card overflow-hidden">
         <EventSearch />
-        <EventTable refresh={refreshKey} onEdit={handleEdit} />
+        <EventTable refresh={refreshKey} onEdit={handleEdit} onViewTransactions={handleViewTransactions} />
+      <EventTransactionsModal
+        open={transactionsOpen}
+        onClose={() => setTransactionsOpen(false)}
+        eventId={transactionsEventId}
+        eventName={transactionsEventName}
+      />
       </section>
 
       <AddEventModal

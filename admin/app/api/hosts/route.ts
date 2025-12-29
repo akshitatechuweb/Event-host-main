@@ -58,12 +58,18 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(JSON.parse(text), { status: res.status });
-  } catch (error) {
+  } catch (error: any) {
     console.error("HOSTS GET ERROR:", error);
-    return NextResponse.json(
-      { message: "Internal Server Error" },
-      { status: 500 }
-    );
+
+    // Detect backend connection refused and return a helpful message
+    const backendUrl = BACKEND_URL || "<unset>";
+    const cause = error?.cause;
+    if (cause && cause.code === "ECONNREFUSED") {
+      console.error("Backend unreachable at:", backendUrl, "(ECONNREFUSED)");
+      return NextResponse.json({ message: `Backend unreachable at ${backendUrl}` }, { status: 502 });
+    }
+
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
 

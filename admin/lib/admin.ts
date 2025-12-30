@@ -101,3 +101,25 @@ export async function getAllTickets() {
 
   return res.json();
 }
+
+
+
+export async function getDashboardStats() {
+  const res = await fetch("/api/dashboard/stats", {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({
+      message: "Failed to fetch dashboard stats",
+    }));
+
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log in again.");
+    }
+
+    throw new Error(errorData.message || "Failed to fetch dashboard stats");
+  }
+
+  return res.json();
+}

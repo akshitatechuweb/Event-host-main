@@ -1,48 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /**
  * GET /api/dashboard/stats
  * Fetches dashboard statistics for admin
+ * Uses existing Next.js API routes which handle auth properly
  */
 export async function GET(req: NextRequest) {
   try {
-    // ✅ Extract accessToken cookie like other routes do
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken");
+    // Get the base URL for internal API calls
+    const baseUrl = req.nextUrl.origin; // e.g., http://localhost:3000
+    const cookieHeader = req.headers.get("cookie") || "";
 
-    if (!accessToken) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized: No access token" },
-        { status: 401 }
-      );
-    }
-
-    // ✅ Format cookie header correctly
-    const cookieHeader = `accessToken=${accessToken.value}`;
-
-    console.log("🍪 Access Token:", accessToken.value ? "Present" : "Missing");
-
-    // ✅ Use admin endpoints
+    // ✅ Use existing Next.js API routes instead of calling backend directly
     const [eventsRes, bookingsRes, usersRes] = await Promise.all([
-      fetch(`${API_BASE_URL}/api/admin/events`, {  // ✅ Changed to admin endpoint
-        headers: { Cookie: cookieHeader },
+      fetch(`${baseUrl}/api/events`, {
+        headers: {
+          cookie: cookieHeader,
+        },
+        cache: "no-store",
       }),
-      fetch(`${API_BASE_URL}/api/booking/admin`, {
-        headers: { Cookie: cookieHeader },
+      fetch(`${baseUrl}/api/booking/admin`, {
+        headers: {
+          cookie: cookieHeader,
+        },
+        cache: "no-store",
       }),
-      fetch(`${API_BASE_URL}/api/user`, {
-        headers: { Cookie: cookieHeader },
+      fetch(`${baseUrl}/api/user`, {
+        headers: {
+          cookie: cookieHeader,
+        },
+        cache: "no-store",
       }),
     ]);
 
     // Log responses for debugging
-    console.log("Events status:", eventsRes.status);
-    console.log("Bookings status:", bookingsRes.status);
-    console.log("Users status:", usersRes.status);
+    console.log("📊 API Responses:");
+    console.log("  Events status:", eventsRes.status);
+    console.log("  Bookings status:", bookingsRes.status);
+    console.log("  Users status:", usersRes.status);
 
     // Parse responses with error handling
     let events: any[] = [];
@@ -52,28 +47,28 @@ export async function GET(req: NextRequest) {
     if (eventsRes.ok) {
       const eventsData = await eventsRes.json();
       events = eventsData.events || eventsData || [];
-      console.log("Events fetched:", events.length);
+      console.log("✅ Events fetched:", events.length);
     } else {
       const errorText = await eventsRes.text();
-      console.error("Events error:", eventsRes.status, errorText);
+      console.error("❌ Events error:", eventsRes.status, errorText.substring(0, 200));
     }
 
     if (bookingsRes.ok) {
       const bookingsData = await bookingsRes.json();
       bookings = bookingsData.bookings || bookingsData || [];
-      console.log("Bookings fetched:", bookings.length);
+      console.log("✅ Bookings fetched:", bookings.length);
     } else {
       const errorText = await bookingsRes.text();
-      console.error("Bookings error:", bookingsRes.status, errorText);
+      console.error("❌ Bookings error:", bookingsRes.status, errorText.substring(0, 200));
     }
 
     if (usersRes.ok) {
       const usersData = await usersRes.json();
       users = usersData.users || usersData || [];
-      console.log("Users fetched:", users.length);
+      console.log("✅ Users fetched:", users.length);
     } else {
       const errorText = await usersRes.text();
-      console.error("Users error:", usersRes.status, errorText);
+      console.error("❌ Users error:", usersRes.status, errorText.substring(0, 200));
     }
 
     // Calculate statistics
@@ -92,7 +87,7 @@ export async function GET(req: NextRequest) {
     // Calculate total transactions
     const totalTransactions = confirmedBookings.length;
 
-    console.log("Stats calculated:", {
+    console.log("📈 Stats calculated:", {
       totalEvents,
       totalUsers,
       totalRevenue,
@@ -141,6 +136,7 @@ export async function GET(req: NextRequest) {
         };
       });
 
+    // ✅ IMPORTANT: Return the correct structure with stats object
     return NextResponse.json({
       success: true,
       stats: {

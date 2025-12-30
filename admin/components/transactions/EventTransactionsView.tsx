@@ -30,8 +30,9 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
       try {
         setLoading(true)
         setError(null)
+
         const response = await getEventTransactions(eventId)
-        
+
         if (!mounted) return
 
         if (!response.success) {
@@ -40,9 +41,10 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
 
         setData(response)
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to load transactions"
-        setError(errorMessage)
-        toast.error(errorMessage)
+        const message =
+          err instanceof Error ? err.message : "Failed to load transactions"
+        setError(message)
+        toast.error(message)
       } finally {
         if (mounted) {
           setLoading(false)
@@ -57,27 +59,47 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
     }
   }, [eventId])
 
+  /* -------------------- Loading -------------------- */
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading transactions...</p>
+      <div className="flex flex-col items-center justify-center py-28">
+        <div className="space-y-3 text-center">
+          <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">
+            Loading transactions…
+          </p>
+        </div>
       </div>
     )
   }
 
+  /* -------------------- Error -------------------- */
   if (error || !data) {
     return (
-      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6">
-        <p className="text-destructive">{error || "Failed to load transactions"}</p>
+      <div className="flex flex-col items-center justify-center py-28">
+        <div className="max-w-sm rounded-xl border border-destructive/10 bg-destructive/5 p-6 text-center">
+          <p className="text-sm font-medium text-destructive mb-1">
+            Unable to load transactions
+          </p>
+          <p className="text-xs text-destructive/70">
+            {error || "An unexpected error occurred"}
+          </p>
+        </div>
       </div>
     )
   }
 
+  /* -------------------- Content -------------------- */
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
+      {/* Stats */}
       <TransactionStats totals={data.totals} />
-      <TransactionSearch />
-      <TransactionList transactions={data.transactions} />
+
+      {/* Controls + List */}
+      <div className="space-y-6">
+        <TransactionSearch />
+        <TransactionList transactions={data.transactions} />
+      </div>
     </div>
   )
 }

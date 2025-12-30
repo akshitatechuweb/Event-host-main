@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import {
   Dialog,
@@ -7,45 +7,33 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AddTicketModalProps {
-  open: boolean;
-  onClose: () => void;
+  open: boolean
+  onClose: () => void
 }
 
-export default function AddTicketModal({
-  open,
-  onClose,
-}: AddTicketModalProps) {
+export default function AddTicketModal({ open, onClose }: AddTicketModalProps) {
   const handleSubmit = () => {
     // static for now
-    console.log("Ticket created (static)");
-    onClose();
-  };
+    console.log("Ticket created (static)")
+    onClose()
+  }
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Add Ticket</DialogTitle>
-          <DialogDescription>
-            Create a new ticket pass for this event.
-          </DialogDescription>
+          <DialogDescription>Create a new ticket pass for this event.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-4">
-          {/* Pass Type */}
           <div className="space-y-2">
             <Label>Pass Type *</Label>
             <Select>
@@ -60,19 +48,16 @@ export default function AddTicketModal({
             </Select>
           </div>
 
-          {/* Price */}
           <div className="space-y-2">
             <Label>Price *</Label>
             <Input type="number" placeholder="e.g. 999" />
           </div>
 
-          {/* Total Quantity */}
           <div className="space-y-2">
             <Label>Total Quantity *</Label>
             <Input type="number" placeholder="e.g. 100" />
           </div>
 
-          {/* Remaining Quantity (read-only for now) */}
           <div className="space-y-2">
             <Label>Remaining Quantity</Label>
             <Input type="number" placeholder="Auto calculated" disabled />
@@ -87,5 +72,5 @@ export default function AddTicketModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -13,7 +13,7 @@ interface TicketTableRowProps {
 
 export function TicketTableRow({ ticket }: TicketTableRowProps) {
   return (
-    <div className="grid grid-cols-6 gap-4 px-6 py-4 border-b border-border hover:bg-muted/30 transition-smooth">
+    <div className="grid grid-cols-7 gap-4 px-4 py-3.5 border-t border-border/20 text-sm hover:bg-muted/10 transition-all">
       <div className="text-sm font-medium text-foreground">{ticket.eventName}</div>
       <div className="text-sm text-muted-foreground">{ticket.ticketType}</div>
       <div className="text-sm text-foreground font-medium">{ticket.price}</div>

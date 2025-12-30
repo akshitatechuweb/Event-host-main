@@ -1,5 +1,7 @@
 "use client"
 
+import { ArrowRight } from "lucide-react"
+
 interface TransactionCardProps {
   transaction: {
     id: string
@@ -12,27 +14,77 @@ interface TransactionCardProps {
 }
 
 export function TransactionCard({ transaction }: TransactionCardProps) {
-  const statusColors = {
-    completed: "bg-chart-1/10 text-chart-1",
-    pending: "bg-accent/10 text-accent-foreground",
-    failed: "bg-destructive/10 text-destructive",
+  const statusMap = {
+    completed: {
+      label: "Completed",
+      dot: "bg-emerald-500",
+      text: "text-emerald-600",
+    },
+    pending: {
+      label: "Pending",
+      dot: "bg-amber-500",
+      text: "text-amber-600",
+    },
+    failed: {
+      label: "Failed",
+      dot: "bg-destructive",
+      text: "text-destructive",
+    },
   }
 
+  const status = statusMap[transaction.status]
+
   return (
-    <div className="bg-card border border-border rounded-lg p-6 hover:border-muted-foreground/30 transition-smooth">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h3 className="text-sm font-semibold text-foreground">{transaction.event}</h3>
-          <p className="text-sm text-muted-foreground mt-1">{transaction.user}</p>
-          <p className="text-xs text-muted-foreground mt-2">{transaction.date}</p>
+    <div
+      className="
+        group relative
+        rounded-xl
+        bg-card
+        border border-border/50
+        p-6
+        transition-all duration-300 ease-out
+        hover:-translate-y-1
+        hover:shadow-lg hover:shadow-black/10
+      "
+    >
+      {/* Subtle hover wash */}
+      <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-white/5" />
+
+      <div className="relative flex flex-col gap-5">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <h3 className="text-sm font-medium text-foreground truncate">
+            {transaction.event}
+          </h3>
+
+          {/* Status */}
+          <div className={`flex items-center gap-2 text-xs font-medium ${status.text}`}>
+            <span className={`h-2 w-2 rounded-full ${status.dot}`} />
+            <span className="whitespace-nowrap">{status.label}</span>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-semibold text-foreground">{transaction.amount}</p>
-          <span
-            className={`inline-block text-xs px-2 py-1 rounded-md font-medium mt-2 ${statusColors[transaction.status]}`}
-          >
-            {transaction.status}
-          </span>
+
+        {/* Meta */}
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm text-muted-foreground truncate">
+              {transaction.user}
+            </p>
+
+            <p className="text-lg font-semibold tabular-nums text-foreground">
+              {transaction.amount}
+            </p>
+          </div>
+
+          <p className="text-xs text-muted-foreground/60">
+            {transaction.date}
+          </p>
+        </div>
+
+        {/* CTA */}
+        <div className="flex items-center pt-1 text-sm font-medium text-muted-foreground transition-colors duration-200 group-hover:text-foreground">
+          <span>View details</span>
+          <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </div>
       </div>
     </div>

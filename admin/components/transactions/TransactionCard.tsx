@@ -80,12 +80,6 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
             {transaction.date}
           </p>
         </div>
-
-        {/* CTA */}
-        <div className="flex items-center pt-1 text-sm font-medium text-muted-foreground transition-colors duration-200 group-hover:text-foreground">
-          <span>View details</span>
-          <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-        </div>
       </div>
     </div>
   )

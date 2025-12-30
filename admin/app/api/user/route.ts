@@ -4,92 +4,137 @@ import { cookies } from "next/headers";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Helper function - moved to top to ensure it's in scope
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "Just now";
+  if (diffInSeconds < 3600)
+    return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400)
+    return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 604800)
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// Define basic interfaces based on expected backend responses
+interface Event {
+  _id: string;
+  eventName?: string;
+  title?: string;
+  hostedBy?: string;
+  date: string | Date;
+  createdAt?: string | Date;
+  currentBookings?: number;
+}
+
+interface Booking {
+  _id: string;
+  eventId: string;
+  totalAmount?: number;
+  status: string;
+  createdAt: string | Date;
+}
+
+interface User {
+  _id: string;
+  // add other fields if needed
+}
+
 /**
  * GET /api/dashboard/stats
  * Fetches dashboard statistics for admin
  */
 export async function GET(req: NextRequest) {
   try {
-    // ✅ Extract accessToken cookie like other routes do
+    // Extract accessToken cookie
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("accessToken");
 
-    if (!accessToken) {
+    if (!accessToken?.value) {
       return NextResponse.json(
         { success: false, message: "Unauthorized: No access token" },
         { status: 401 }
       );
     }
 
-    // ✅ Format cookie header correctly
     const cookieHeader = `accessToken=${accessToken.value}`;
 
-    console.log("🍪 Access Token:", accessToken.value ? "Present" : "Missing");
+    console.log("🍪 Access Token: Present");
 
-    // ✅ Use admin endpoints
+    // Fetch data from admin endpoints in parallel
     const [eventsRes, bookingsRes, usersRes] = await Promise.all([
-      fetch(`${API_BASE_URL}/api/admin/events`, {  // ✅ Changed to admin endpoint
+      fetch(`${API_BASE_URL}/api/admin/events`, {
         headers: { Cookie: cookieHeader },
+        cache: "no-store", // optional: prevent caching sensitive admin data
       }),
       fetch(`${API_BASE_URL}/api/booking/admin`, {
         headers: { Cookie: cookieHeader },
+        cache: "no-store",
       }),
       fetch(`${API_BASE_URL}/api/user`, {
         headers: { Cookie: cookieHeader },
+        cache: "no-store",
       }),
     ]);
 
-    // Log responses for debugging
+    // Log statuses
     console.log("Events status:", eventsRes.status);
     console.log("Bookings status:", bookingsRes.status);
     console.log("Users status:", usersRes.status);
 
-    // Parse responses with error handling
-    let events: any[] = [];
-    let bookings: any[] = [];
-    let users: any[] = [];
+    // Parse responses safely
+    const events: Event[] = eventsRes.ok
+      ? ((await eventsRes.json()) as any).events ||
+        ((await eventsRes.json()) as any) ||
+        []
+      : [];
 
-    if (eventsRes.ok) {
-      const eventsData = await eventsRes.json();
-      events = eventsData.events || eventsData || [];
-      console.log("Events fetched:", events.length);
-    } else {
-      const errorText = await eventsRes.text();
-      console.error("Events error:", eventsRes.status, errorText);
+    const bookings: Booking[] = bookingsRes.ok
+      ? ((await bookingsRes.json()) as any).bookings ||
+        ((await bookingsRes.json()) as any) ||
+        []
+      : [];
+
+    const users: User[] = usersRes.ok
+      ? ((await usersRes.json()) as any).users ||
+        ((await usersRes.json()) as any) ||
+        []
+      : [];
+
+    if (!eventsRes.ok) {
+      const text = await eventsRes.text();
+      console.error("Events fetch failed:", eventsRes.status, text);
     }
-
-    if (bookingsRes.ok) {
-      const bookingsData = await bookingsRes.json();
-      bookings = bookingsData.bookings || bookingsData || [];
-      console.log("Bookings fetched:", bookings.length);
-    } else {
-      const errorText = await bookingsRes.text();
-      console.error("Bookings error:", bookingsRes.status, errorText);
+    if (!bookingsRes.ok) {
+      const text = await bookingsRes.text();
+      console.error("Bookings fetch failed:", bookingsRes.status, text);
     }
-
-    if (usersRes.ok) {
-      const usersData = await usersRes.json();
-      users = usersData.users || usersData || [];
-      console.log("Users fetched:", users.length);
-    } else {
-      const errorText = await usersRes.text();
-      console.error("Users error:", usersRes.status, errorText);
+    if (!usersRes.ok) {
+      const text = await usersRes.text();
+      console.error("Users fetch failed:", usersRes.status, text);
     }
 
     // Calculate statistics
     const totalEvents = events.length;
     const totalUsers = users.length;
-    
-    // Calculate total revenue from confirmed bookings
+
     const confirmedBookings = bookings.filter(
-      (b: any) => b.status === "confirmed"
+      (b) => b.status === "confirmed"
     );
+
     const totalRevenue = confirmedBookings.reduce(
-      (sum: number, booking: any) => sum + (booking.totalAmount || 0),
+      (sum, booking) => sum + (booking.totalAmount ?? 0),
       0
     );
 
-    // Calculate total transactions
     const totalTransactions = confirmedBookings.length;
 
     console.log("Stats calculated:", {
@@ -99,17 +144,17 @@ export async function GET(req: NextRequest) {
       totalTransactions,
     });
 
-    // Get recent events (last 5)
+    // Recent events (last 5)
     const recentEvents = events
       .sort(
-        (a: any, b: any) =>
+        (a, b) =>
           new Date(b.createdAt || b.date).getTime() -
           new Date(a.createdAt || a.date).getTime()
       )
       .slice(0, 5)
-      .map((event: any) => ({
+      .map((event) => ({
         id: event._id,
-        name: event.eventName || event.title,
+        name: event.eventName || event.title || "Untitled Event",
         host: event.hostedBy || "Unknown",
         date: new Date(event.date).toLocaleDateString("en-US", {
           month: "short",
@@ -119,25 +164,24 @@ export async function GET(req: NextRequest) {
         attendees: event.currentBookings || 0,
       }));
 
-    // Get recent transactions (last 5)
+    // Recent transactions (last 5 confirmed bookings)
     const recentTransactions = confirmedBookings
       .sort(
-        (a: any, b: any) =>
+        (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )
       .slice(0, 5)
-      .map((booking: any) => {
+      .map((booking) => {
         const event = events.find(
-          (e: any) => e._id?.toString() === booking.eventId?.toString()
+          (e) => e._id === booking.eventId
         );
-        const timeAgo = getTimeAgo(new Date(booking.createdAt));
-        
+
         return {
           id: booking._id,
-          event: event?.eventName || "Unknown Event",
-          amount: `₹${(booking.totalAmount || 0).toLocaleString("en-IN")}`,
-          date: timeAgo,
-          status: booking.status || "completed",
+          event: event?.eventName || event?.title || "Unknown Event",
+          amount: `₹${(booking.totalAmount ?? 0).toLocaleString("en-IN")}`,
+          date: getTimeAgo(new Date(booking.createdAt)),
+          status: booking.status,
         };
       });
 
@@ -163,21 +207,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-function getTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (diffInSeconds < 60) return "Just now";
-  if (diffInSeconds < 3600)
-    return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-  if (diffInSeconds < 86400)
-    return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-  if (diffInSeconds < 604800)
-    return `${Math.floor(diffInSeconds / 86400)} days ago`;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
 }

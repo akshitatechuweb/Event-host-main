@@ -23,7 +23,7 @@ export default function TicketsPage() {
               </p>
             </div>
 
-            <Button onClick={() => setOpenAddTicket(true)} className="gap-2 shrink-0">
+            <Button onClick={() => setOpenAddTicket(true)} className="h-10 px-5 rounded-lg bg-background border border-border text-foreground shadow-sm hover:bg-muted bg-primary text-primary-foreground">
               <Plus className="h-4 w-4" />
               Add Ticket
             </Button>

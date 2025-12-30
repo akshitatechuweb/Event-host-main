@@ -11,11 +11,12 @@ interface EventType {
   date: string;
   city: string;
   currentBookings: number;
-  maxCapacity: number;
+  maxCapacity?: number; // ← optional (important)
   status?: "active" | "completed" | "cancelled";
-  // include any extra fields we might need when editing
   hostId?: string;
-  passes?: Record<string, unknown>[];
+  passes?: Array<{
+    totalQuantity?: number;
+  }>;
 }
 
 interface EventTableRowProps {
@@ -25,7 +26,12 @@ interface EventTableRowProps {
   onViewTransactions?: (eventId: string, eventName?: string) => void;
 }
 
-export function EventTableRow({ event, onRefresh, onEdit, onViewTransactions }: EventTableRowProps) {
+export function EventTableRow({
+  event,
+  onRefresh,
+  onEdit,
+  onViewTransactions,
+}: EventTableRowProps) {
   const [deleting, setDeleting] = useState(false);
 
   const status = {
@@ -43,6 +49,15 @@ export function EventTableRow({ event, onRefresh, onEdit, onViewTransactions }: 
     });
   };
 
+  // ✅ FIX: safely derive capacity
+  const derivedCapacity =
+    event.maxCapacity && event.maxCapacity > 0
+      ? event.maxCapacity
+      : event.passes?.reduce(
+          (sum, pass) => sum + (pass.totalQuantity || 0),
+          0
+        ) || null;
+
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this event?")) return;
 
@@ -59,7 +74,6 @@ export function EventTableRow({ event, onRefresh, onEdit, onViewTransactions }: 
       }
 
       toast.success("Event deleted successfully");
-
       onRefresh();
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
@@ -72,34 +86,44 @@ export function EventTableRow({ event, onRefresh, onEdit, onViewTransactions }: 
   const eventStatus = event.status || "active";
 
   return (
-    <div className="grid grid-cols-7 gap-4 px-6 py-4 hover:bg-muted/30">
+    <div className="grid grid-cols-7 gap-4 px-6 py-4 hover:bg-muted/30 transition">
       <div className="font-medium">{event.eventName}</div>
       <div className="text-muted-foreground">{event.hostedBy}</div>
       <div className="text-muted-foreground">{formatDate(event.date)}</div>
       <div className="text-muted-foreground">{event.city}</div>
+
+      {/* ✅ FIXED ATTENDEES COLUMN */}
       <div className="font-medium">
-        {event.currentBookings}/{event.maxCapacity}
+        {event.currentBookings}/
+        {derivedCapacity !== null ? derivedCapacity : "—"}
       </div>
 
       <div>
-        <span className={`px-3 py-1 rounded-full text-xs ${status[eventStatus]}`}>
+        <span
+          className={`px-3 py-1 rounded-full text-xs ${status[eventStatus]}`}
+        >
           {eventStatus}
         </span>
       </div>
 
       <div className="flex justify-end gap-2">
         <Eye className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer" />
+
         <CreditCard
           className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onViewTransactions?.(event._id, event.eventName)}
         />
+
         <Edit2
           className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onEdit?.(event)}
         />
+
         <Trash2
           className={`w-4 h-4 cursor-pointer ${
-            deleting ? "text-muted-foreground" : "text-destructive hover:text-destructive/80"
+            deleting
+              ? "text-muted-foreground"
+              : "text-destructive hover:text-destructive/80"
           }`}
           onClick={deleting ? undefined : handleDelete}
         />

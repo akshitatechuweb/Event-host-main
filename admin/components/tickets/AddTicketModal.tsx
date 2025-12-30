@@ -65,10 +65,10 @@ export default function AddTicketModal({ open, onClose }: AddTicketModalProps) {
         </div>
 
         <DialogFooter className="gap-3">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose}className="h-10 px-5 rounded-lg bg-background border border-border text-foreground shadow-sm hover:bg-muted ">
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>Add Ticket</Button>
+          <Button onClick={handleSubmit}className="h-10 px-5 rounded-lg bg-background border border-border text-foreground shadow-sm hover:bg-muted bg-primary text-primary-foreground">Add Ticket</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

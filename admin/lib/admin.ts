@@ -103,7 +103,6 @@ export async function getAllTickets() {
 }
 
 
-
 export async function getDashboardStats() {
   const res = await fetch("/api/dashboard/stats", {
     credentials: "include",

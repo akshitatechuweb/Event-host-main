@@ -8,13 +8,16 @@ interface StepPassesProps {
   updateFormData: (data: Partial<EventFormData>) => void;
 }
 
+type Pass = EventFormData["passes"][number];
+type PassField = "type" | "price" | "totalQuantity";
+
 export function StepPasses({ formData, updateFormData }: StepPassesProps) {
   const passes = formData.passes;
 
-  const updatePass = (
+  const updatePass = <K extends PassField>(
     index: number,
-    field: "type" | "price" | "totalQuantity",
-    value: any
+    field: K,
+    value: Pass[K]
   ) => {
     const updated = [...passes];
     updated[index] = { ...updated[index], [field]: value };

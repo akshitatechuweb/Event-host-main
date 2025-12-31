@@ -101,7 +101,13 @@ export function StepRules({ formData, updateFormData }: StepRulesProps) {
   );
 }
 
-function Field({ label, children }: any) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>

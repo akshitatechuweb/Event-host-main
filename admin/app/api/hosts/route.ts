@@ -103,12 +103,12 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(JSON.parse(text), { status: res.status });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HOSTS GET ERROR:", error);
 
     // Detect backend connection refused and return a helpful message
     const backendUrl = BACKEND_URL || "<unset>";
-    const cause = error?.cause;
+    const cause = (error as { cause?: { code?: string } }).cause;
     if (cause && cause.code === "ECONNREFUSED") {
       console.error("Backend unreachable at:", backendUrl, "(ECONNREFUSED)");
       return NextResponse.json(

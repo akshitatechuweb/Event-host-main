@@ -18,7 +18,14 @@ export default function HostsPage() {
       setLoading(true);
       const data = await getHosts();
 
-      const normalized: Host[] = (data.requests ?? data).map((item: any) => ({
+      const normalized: Host[] = (data.requests ?? data).map(
+        (item: {
+          _id: string;
+          userId?: { name?: string; phone?: string };
+          city?: string;
+          preferredPartyDate?: string;
+          status?: Host["status"];
+        }) => ({
         _id: item._id,
         userName: item.userId?.name ?? "Unknown",
         phone: item.userId?.phone ?? "-",
@@ -28,8 +35,9 @@ export default function HostsPage() {
       }));
 
       setHosts(normalized);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to load hosts");
+      setError(error.message);
     } finally {
       setLoading(false);
     }

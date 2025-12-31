@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { X, ChevronDown, Image as ImageIcon } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
 import { EventFormData } from "@/components/events/AddEventModal";
 
 interface StepBasicsProps {

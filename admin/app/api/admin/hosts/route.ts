@@ -28,10 +28,10 @@ export async function GET() {
     }
 
     return NextResponse.json(JSON.parse(text), { status: res.status });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("ADMIN HOSTS GET ERROR:", error);
 
-    const cause = error?.cause;
+    const cause = (error as { cause?: { code?: string } }).cause;
     if (cause && cause.code === "ECONNREFUSED") {
       console.error("Backend unreachable at:", BACKEND_URL, "(ECONNREFUSED)");
       return NextResponse.json({ message: `Backend unreachable at ${BACKEND_URL}` }, { status: 502 });

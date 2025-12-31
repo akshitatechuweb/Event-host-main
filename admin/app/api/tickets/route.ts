@@ -14,6 +14,31 @@ interface Ticket {
   available: number;
 }
 
+interface BookingItem {
+  passType?: string;
+  type?: string;
+  quantity?: number | string;
+}
+
+interface Booking {
+  status?: string;
+  eventId?: string | { _id?: string };
+  items?: BookingItem[];
+}
+
+interface EventPass {
+  type: string;
+  price?: number | string;
+  totalQuantity?: number | string;
+}
+
+interface EventWithPasses {
+  _id: string;
+  eventName?: string;
+  title?: string;
+  passes?: EventPass[];
+}
+
 /**
  * GET /api/tickets
  * Fetches all passes (tickets) across all events for admin
@@ -45,10 +70,10 @@ export async function GET(req: NextRequest) {
     }
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.events || [];
+    const events = (eventsData.events || []) as EventWithPasses[];
 
     // Fetch all bookings (admin endpoint)
-    let allBookings: any[] = [];
+    let allBookings: Booking[] = [];
     try {
       const bookingsResponse = await fetch(
         `${API_BASE_URL}/api/booking/admin`,
@@ -63,7 +88,7 @@ export async function GET(req: NextRequest) {
         const bookingsData = await bookingsResponse.json();
         // Filter only confirmed bookings
         allBookings = (bookingsData.bookings || []).filter(
-          (b: any) => b.status === "confirmed"
+          (b: Booking) => b.status === "confirmed"
         );
       }
     } catch (error) {
@@ -73,20 +98,26 @@ export async function GET(req: NextRequest) {
     // Transform passes from all events into ticket rows
     const allTickets: Ticket[] = [];
     
-    events.forEach((event: any) => {
+    events.forEach((event) => {
       const passes = event.passes || [];
       
-      // Filter bookings for this event
-      const eventBookings = allBookings.filter(
-        (b: any) => b.eventId?.toString() === event._id?.toString()
-      );
+      // Filter bookings for this event.
+      // bookingController.getAllBookings() populates eventId, so it can be either
+      // a plain ObjectId or a populated document. Normalize before comparing.
+      const eventBookings = allBookings.filter((b) => {
+        const bookingEventId =
+          typeof b.eventId === "object" && b.eventId !== null
+            ? b.eventId._id
+            : b.eventId;
+        return bookingEventId?.toString() === event._id?.toString();
+      });
       
       // Calculate sold tickets per pass type from actual bookings
       const soldByPassType: Record<string, number> = {};
       
-      eventBookings.forEach((booking: any) => {
+      eventBookings.forEach((booking) => {
         const items = booking.items || [];
-        items.forEach((item: any) => {
+        items.forEach((item) => {
           // Support both { passType } and legacy { type } shapes
           const passType = item.passType || item.type;
           const quantity = Number(item.quantity) || 0;
@@ -98,7 +129,7 @@ export async function GET(req: NextRequest) {
         });
       });
 
-      passes.forEach((pass: any) => {
+      passes.forEach((pass) => {
         const sold = soldByPassType[pass.type] || 0;
         const total = Number(pass.totalQuantity) || 0;
         const available = Math.max(0, total - sold);

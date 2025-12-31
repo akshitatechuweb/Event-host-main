@@ -200,7 +200,7 @@ export default function EventTransactionsModal({
 }
 
 /* Small helper */
-function StatCard({ label, value }: { label: string; value: any }) {
+function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-2xl bg-gradient-to-br from-background/50 to-muted/30 border border-border/50 p-6 shadow-sm">
       <div className="text-sm text-muted-foreground mb-2">{label}</div>

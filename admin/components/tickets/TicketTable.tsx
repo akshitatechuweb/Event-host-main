@@ -28,8 +28,9 @@ export function TicketTable() {
         const res = await getAllTickets()
         if (!res.success) throw new Error("Failed to load tickets")
         setTickets(res.tickets)
-      } catch (e: any) {
-        setError(e.message)
+      } catch (e: unknown) {
+        const error = e instanceof Error ? e : new Error("Failed to load tickets")
+        setError(error.message)
       } finally {
         setLoading(false)
       }

@@ -3,8 +3,7 @@ import User from "../models/User.js";
 import axios from "axios";
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const DEFAULT_RADIUS = 20000; 
-
+const DEFAULT_RADIUS = 20000;
 
 function computeEventExtras(ev, req) {
   let imageUrl = ev.eventImage || null;
@@ -12,29 +11,40 @@ function computeEventExtras(ev, req) {
     if (imageUrl && imageUrl.startsWith("/")) {
       imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
     }
-  } catch (err) {
-    
-  }
-
+  } catch (err) {}
 
   let bookingPercentage = null;
-  if (ev.maxCapacity && ev.maxCapacity > 0 && typeof ev.currentBookings === "number") {
+  if (
+    ev.maxCapacity &&
+    ev.maxCapacity > 0 &&
+    typeof ev.currentBookings === "number"
+  ) {
     bookingPercentage = Math.round((ev.currentBookings / ev.maxCapacity) * 100);
   }
-
 
   let status = "";
   try {
     const now = new Date();
-    const eventDate = ev.eventDateTime ? new Date(ev.eventDateTime) : (ev.date ? new Date(ev.date) : null);
+    const eventDate = ev.eventDateTime
+      ? new Date(ev.eventDateTime)
+      : ev.date
+      ? new Date(ev.date)
+      : null;
     const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
-    const hoursUntilEvent = eventDate ? (eventDate - now) / (1000 * 60 * 60) : null;
-    const daysUntilEvent = hoursUntilEvent !== null ? hoursUntilEvent / 24 : null;
+    const hoursUntilEvent = eventDate
+      ? (eventDate - now) / (1000 * 60 * 60)
+      : null;
+    const daysUntilEvent =
+      hoursUntilEvent !== null ? hoursUntilEvent / 24 : null;
     const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
 
     if (bookingPercentage !== null && bookingPercentage >= 85) {
       status = "Almost Full";
-    } else if (daysUntilEvent !== null && daysUntilEvent <= 2 && daysUntilEvent > 0) {
+    } else if (
+      daysUntilEvent !== null &&
+      daysUntilEvent <= 2 &&
+      daysUntilEvent > 0
+    ) {
       status = "Filling Fast";
     } else if (bookingPercentage !== null && bookingPercentage >= 50) {
       status = "High Demand";
@@ -82,7 +92,9 @@ export const adminCreateEvent = async (req, res) => {
     // Validate host
     const host = await User.findById(hostId);
     if (!host) {
-      return res.status(404).json({ success: false, message: "Host not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Host not found" });
     }
 
     if (host.role !== "host") {
@@ -95,12 +107,15 @@ export const adminCreateEvent = async (req, res) => {
     if (host.eventCreationCredits <= 0) {
       return res.status(403).json({
         success: false,
-        message: "This host is not approved to create an event. Request approval from admin.",
+        message:
+          "This host is not approved to create an event. Request approval from admin.",
       });
     }
 
     if (!date) {
-      return res.status(400).json({ success: false, message: "Event date is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Event date is required" });
     }
 
     const eventDate = new Date(date);
@@ -125,7 +140,9 @@ export const adminCreateEvent = async (req, res) => {
     );
 
     if (!geoRes.data.results.length) {
-      return res.status(400).json({ success: false, message: "Invalid event address" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid event address" });
     }
 
     const location = geoRes.data.results[0].geometry.location;
@@ -231,7 +248,6 @@ export const adminCreateEvent = async (req, res) => {
         };
       })(),
     });
-
   } catch (err) {
     console.error("Create Event Error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -272,16 +288,22 @@ export const adminUpdateEvent = async (req, res) => {
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     // Update host if changed
     if (hostId && hostId !== event.hostId.toString()) {
       const newHost = await User.findById(hostId);
       if (!newHost || newHost.role !== "host") {
-        return res.status(400).json({ success: false, message: "Invalid host" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid host" });
       }
-      await User.findByIdAndUpdate(event.hostId, { $inc: { eventsHosted: -1 } });
+      await User.findByIdAndUpdate(event.hostId, {
+        $inc: { eventsHosted: -1 },
+      });
       await User.findByIdAndUpdate(hostId, { $inc: { eventsHosted: 1 } });
       event.hostId = hostId;
       event.hostedBy = newHost.name;
@@ -319,11 +341,21 @@ export const adminUpdateEvent = async (req, res) => {
     }
 
     // Update image
+
+    // Case 1: New image uploaded → replace old image
     if (req.file) {
       event.eventImage = `/uploads/${req.file.filename}`;
-    } else if (eventImage) {
-      event.eventImage = eventImage;
     }
+
+    // Case 2: No new file, but frontend explicitly sent existing image
+    else if (
+      typeof req.body.eventImage === "string" &&
+      req.body.eventImage.trim() !== ""
+    ) {
+      event.eventImage = req.body.eventImage;
+    }
+
+    // Case 3: Nothing sent → DO NOTHING (preserve existing image)
 
     // Update passes (supports totalQuantity)
     if (req.body.passes) {
@@ -331,11 +363,15 @@ export const adminUpdateEvent = async (req, res) => {
       try {
         inputPasses = JSON.parse(req.body.passes);
       } catch (err) {
-        return res.status(400).json({ success: false, message: "Invalid JSON format for passes" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid JSON format for passes" });
       }
 
       if (!Array.isArray(inputPasses)) {
-        return res.status(400).json({ success: false, message: "passes must be an array" });
+        return res
+          .status(400)
+          .json({ success: false, message: "passes must be an array" });
       }
 
       const defaultPassTypes = ["Male", "Female", "Couple"];
@@ -356,10 +392,24 @@ export const adminUpdateEvent = async (req, res) => {
 
     // Update other fields
     const fieldsToUpdate = {
-      eventName, subtitle, city, about, partyFlow, partyEtiquette,
-      whatsIncluded, houseRules, howItWorks, cancellationPolicy,
-      ageRestriction, whatsIncludedInTicket, expectedGuestCount,
-      maleToFemaleRatio, category, thingsToKnow, partyTerms, maxCapacity,
+      eventName,
+      subtitle,
+      city,
+      about,
+      partyFlow,
+      partyEtiquette,
+      whatsIncluded,
+      houseRules,
+      howItWorks,
+      cancellationPolicy,
+      ageRestriction,
+      whatsIncludedInTicket,
+      expectedGuestCount,
+      maleToFemaleRatio,
+      category,
+      thingsToKnow,
+      partyTerms,
+      maxCapacity,
     };
 
     Object.keys(fieldsToUpdate).forEach((key) => {
@@ -370,7 +420,9 @@ export const adminUpdateEvent = async (req, res) => {
 
     await event.save();
 
-    const updatedHost = await User.findById(event.hostId).select("eventsHosted");
+    const updatedHost = await User.findById(event.hostId).select(
+      "eventsHosted"
+    );
 
     return res.status(200).json({
       success: true,
@@ -386,7 +438,6 @@ export const adminUpdateEvent = async (req, res) => {
         };
       })(),
     });
-
   } catch (err) {
     console.error("Update Event Error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -418,7 +469,7 @@ export const getEvents = async (req, res) => {
 
         if (
           currentUser?.location?.coordinates &&
-          currentUser.location.coordinates[0] !== 0 &&  // Avoid invalid [0,0]
+          currentUser.location.coordinates[0] !== 0 && // Avoid invalid [0,0]
           currentUser.location.coordinates[1] !== 0
         ) {
           coordinates = currentUser.location.coordinates; // already [lng, lat]
@@ -454,22 +505,42 @@ export const getEvents = async (req, res) => {
       } catch (err) {}
 
       let bookingPercentage = null;
-      if (ev.maxCapacity && ev.maxCapacity > 0 && typeof ev.currentBookings === "number") {
-        bookingPercentage = Math.round((ev.currentBookings / ev.maxCapacity) * 100);
+      if (
+        ev.maxCapacity &&
+        ev.maxCapacity > 0 &&
+        typeof ev.currentBookings === "number"
+      ) {
+        bookingPercentage = Math.round(
+          (ev.currentBookings / ev.maxCapacity) * 100
+        );
       }
 
       let status = "";
       try {
         const now = new Date();
-        const eventDate = ev.eventDateTime ? new Date(ev.eventDateTime) : (ev.date ? new Date(ev.date) : null);
+        const eventDate = ev.eventDateTime
+          ? new Date(ev.eventDateTime)
+          : ev.date
+          ? new Date(ev.date)
+          : null;
         const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
-        const hoursUntilEvent = eventDate ? (eventDate - now) / (1000 * 60 * 60) : null;
-        const daysUntilEvent = hoursUntilEvent !== null ? hoursUntilEvent / 24 : null;
+        const hoursUntilEvent = eventDate
+          ? (eventDate - now) / (1000 * 60 * 60)
+          : null;
+        const daysUntilEvent =
+          hoursUntilEvent !== null ? hoursUntilEvent / 24 : null;
         const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
 
-        if (bookingPercentage !== null && bookingPercentage >= 85) status = "Almost Full";
-        else if (daysUntilEvent !== null && daysUntilEvent <= 2 && daysUntilEvent > 0) status = "Filling Fast";
-        else if (bookingPercentage !== null && bookingPercentage >= 50) status = "High Demand";
+        if (bookingPercentage !== null && bookingPercentage >= 85)
+          status = "Almost Full";
+        else if (
+          daysUntilEvent !== null &&
+          daysUntilEvent <= 2 &&
+          daysUntilEvent > 0
+        )
+          status = "Filling Fast";
+        else if (bookingPercentage !== null && bookingPercentage >= 50)
+          status = "High Demand";
         else if (hoursSinceCreation <= 48) status = "Just Started";
       } catch (err) {}
 
@@ -492,8 +563,6 @@ export const getEvents = async (req, res) => {
   }
 };
 
-
-
 // ========================================================
 // TOGGLE SAVE EVENT (Bookmark)
 // ========================================================
@@ -504,12 +573,16 @@ export const toggleSaveEvent = async (req, res) => {
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // Check if already saved
@@ -562,7 +635,9 @@ export const getSavedEvents = async (req, res) => {
 
     const user = await User.findById(userId).select("savedEvents");
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // Extract event IDs in order of savedAt (newest first)

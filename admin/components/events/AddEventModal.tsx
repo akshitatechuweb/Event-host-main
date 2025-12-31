@@ -35,6 +35,7 @@ export interface EventFormData {
   subtitle: string;
   category: string;
   eventImage: File | null;
+  existingEventImage?: string | null; // current image URL when editing
 
   // Step 2: Schedule
   date: string;
@@ -88,6 +89,7 @@ export default function AddEventModal(...args: [AddEventModalProps]) {
     subtitle: "",
     category: "",
     eventImage: null,
+    existingEventImage: null,
     date: "",
     time: "",
     fullAddress: "",
@@ -126,6 +128,7 @@ export default function AddEventModal(...args: [AddEventModalProps]) {
         subtitle: editingEvent.subtitle || "",
         category: Array.isArray(editingEvent.category) ? editingEvent.category.join(",") : (editingEvent.category || ""),
         eventImage: null, // file must be re-uploaded to change
+        existingEventImage: editingEvent.eventImage || null,
         date: editingEvent.date ? new Date(editingEvent.date).toISOString().split("T")[0] : "",
         time: editingEvent.time || "",
         fullAddress: editingEvent.fullAddress || "",
@@ -163,6 +166,7 @@ export default function AddEventModal(...args: [AddEventModalProps]) {
     subtitle: "",
     category: "",
     eventImage: null,
+    existingEventImage: null,
     date: "",
     time: "",
     fullAddress: "",

@@ -24,7 +24,7 @@ export function TicketBreakdownTable({ passes }: { passes: Pass[] }) {
       </div>
 
       {passes.map((p, i) => {
-        const percent = Math.round((p.sold / p.total) * 100);
+        const percent = p.total > 0 ? Math.round((p.sold / p.total) * 100) : 0;
         const status =
           p.available === 0
             ? "Sold Out"

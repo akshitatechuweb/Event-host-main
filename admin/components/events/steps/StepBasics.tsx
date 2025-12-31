@@ -179,6 +179,16 @@ export function StepBasics({ formData, updateFormData, hosts }: StepBasicsProps)
             hover:file:bg-violet-500/20
           "
         />
+        {/* Minimal preview for existing image when editing; no layout change */}
+        {formData.existingEventImage && !formData.eventImage && (
+          <div className="mt-3 rounded-xl overflow-hidden border border-black/10 dark:border-white/10">
+            <img
+              src={formData.existingEventImage}
+              alt={formData.eventName || "Event image"}
+              className="w-full h-32 object-cover"
+            />
+          </div>
+        )}
       </Field>
     </div>
   );

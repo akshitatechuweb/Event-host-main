@@ -2,8 +2,11 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Use the exact same absolute path as in index.js
-const UPLOADS_FOLDER = "/var/www/unrealvibes/uploads";
+// Use the exact same uploads folder as backend/index.js
+// Prefer env so it works in both local dev and production.
+const ROOT_DIR = process.cwd();
+const UPLOADS_FOLDER =
+  process.env.UPLOADS_FOLDER || path.join(ROOT_DIR, "uploads");
 
 // Ensure folder exists
 fs.mkdirSync(UPLOADS_FOLDER, { recursive: true });

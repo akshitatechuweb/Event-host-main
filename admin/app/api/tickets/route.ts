@@ -8,7 +8,7 @@ interface Ticket {
   eventId: string;
   eventName: string;
   ticketType: string;
-  price: string;
+  price: number; // numeric, UI adds currency symbol
   total: number;
   sold: number;
   available: number;
@@ -87,27 +87,31 @@ export async function GET(req: NextRequest) {
       eventBookings.forEach((booking: any) => {
         const items = booking.items || [];
         items.forEach((item: any) => {
-          if (item.passType && item.quantity) {
-            soldByPassType[item.passType] = 
-              (soldByPassType[item.passType] || 0) + item.quantity;
+          // Support both { passType } and legacy { type } shapes
+          const passType = item.passType || item.type;
+          const quantity = Number(item.quantity) || 0;
+
+          if (passType && quantity > 0) {
+            soldByPassType[passType] =
+              (soldByPassType[passType] || 0) + quantity;
           }
         });
       });
-      
+
       passes.forEach((pass: any) => {
         const sold = soldByPassType[pass.type] || 0;
-        const total = pass.totalQuantity || 0;
+        const total = Number(pass.totalQuantity) || 0;
         const available = Math.max(0, total - sold);
-        
+
         allTickets.push({
           _id: `${event._id}_${pass.type}`,
           eventId: event._id,
           eventName: event.eventName || event.title,
           ticketType: pass.type,
-          price: `₹${pass.price.toLocaleString('en-IN')}`, // Format here with consistent locale
-          total: total,
-          sold: sold,
-          available: available,
+          price: Number(pass.price) || 0, // numeric; UI handles currency symbol
+          total,
+          sold,
+          available,
         });
       });
     });

@@ -14,6 +14,7 @@ interface Event {
   currentBookings: number;
   maxCapacity: number;
   status?: "active" | "completed" | "cancelled";
+  eventImage?: string | null;
 }
 
 interface EventTableProps {

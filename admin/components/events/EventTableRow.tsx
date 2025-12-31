@@ -17,6 +17,7 @@ interface EventType {
   passes?: Array<{
     totalQuantity?: number;
   }>;
+  eventImage?: string | null;
 }
 
 interface EventTableRowProps {
@@ -87,7 +88,19 @@ export function EventTableRow({
 
   return (
     <div className="grid grid-cols-7 gap-4 px-6 py-4 hover:bg-muted/30 transition">
-      <div className="font-medium">{event.eventName}</div>
+      <div className="flex items-center gap-3 min-w-0">
+        {event.eventImage && (
+          <div className="h-10 w-10 rounded-md overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+            {/* Minimal thumbnail, no layout change to other columns */}
+            <img
+              src={event.eventImage}
+              alt={event.eventName}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        )}
+        <div className="font-medium truncate">{event.eventName}</div>
+      </div>
       <div className="text-muted-foreground">{event.hostedBy}</div>
       <div className="text-muted-foreground">{formatDate(event.date)}</div>
       <div className="text-muted-foreground">{event.city}</div>

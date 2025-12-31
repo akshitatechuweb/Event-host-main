@@ -206,10 +206,23 @@ export const getMyPurchasedPasses = async (req, res) => {
       });
     }
 
+    // Normalize eventImage to a fully-qualified URL for ticket pages.
+    const normalizedTickets = tickets.map((doc) => {
+      const ticket = doc.toObject ? doc.toObject() : doc;
+      if (ticket.eventId && ticket.eventId.eventImage) {
+        let imageUrl = ticket.eventId.eventImage;
+        if (typeof imageUrl === "string" && imageUrl.startsWith("/")) {
+          imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
+        }
+        ticket.eventId.eventImage = imageUrl;
+      }
+      return ticket;
+    });
+
     res.status(200).json({
       success: true,
       message: "Purchased passes fetched",
-      passes: tickets
+      passes: normalizedTickets
     });
 
   } catch (error) {

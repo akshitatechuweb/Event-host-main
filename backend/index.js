@@ -5,6 +5,7 @@ import connectDB from "./config/db.js";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import fs from "fs";
+import path from "path";
 
 // === ALL YOUR ROUTES (including the ones you had commented out) ===
 import authRoutes from "./routes/authRoutes.js";
@@ -24,9 +25,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// ────────────────── ABSOLUTE PATH = NO MORE PATH ERRORS ──────────────────
-// This is the only correct folder where images are stored and served
-const UPLOADS_FOLDER = "/var/www/unrealvibes/uploads";
+// ────────────────── UPLOADS FOLDER (SHARED WITH MULTER) ──────────────────
+// Use env so the same code works locally and in production.
+// Must stay in sync with backend/middleware/multer.js
+const ROOT_DIR = process.cwd();
+const UPLOADS_FOLDER =
+  process.env.UPLOADS_FOLDER || path.join(ROOT_DIR, "uploads");
 
 // Create the folder automatically if it doesn't exist
 fs.mkdirSync(UPLOADS_FOLDER, { recursive: true });
@@ -58,6 +62,17 @@ app.use(
 
 // ─────────────── SERVE IMAGES CORRECTLY (THIS FIXES EVERYTHING) ───────────────
 app.use("/uploads", express.static(UPLOADS_FOLDER));
+
+// Backward-compat placeholder used by older frontends when an event has no image.
+// Returns a tiny 1x1 transparent PNG so existing UI logic keeps working.
+app.get("/placeholder.png", (req, res) => {
+  const base64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAA6fptVAAAADUlEQVQI12NgYGBgAAAABQABDQottAAAAABJRU5ErkJggg==";
+  const imgBuffer = Buffer.from(base64, "base64");
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Content-Length", imgBuffer.length);
+  res.send(imgBuffer);
+});
 
 // Database and start server after a successful DB connection
 // This ensures the app doesn't accept requests before DB is ready.

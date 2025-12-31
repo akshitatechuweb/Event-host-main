@@ -20,6 +20,7 @@ export type EventType = {
   status?: "active" | "completed" | "cancelled";
   hostId?: string;
   passes?: Record<string, unknown>[];
+  eventImage?: string | null; // optional thumbnail URL
 };
 
 export default function EventsPage() {

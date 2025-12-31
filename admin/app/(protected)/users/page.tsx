@@ -6,6 +6,7 @@ import { UserSearch } from "@/components/users/UserSearch";
 import { UserTableHeader } from "@/components/users/UserTableHeader";
 import { UserTableRow } from "@/components/users/UserTableRow";
 import { fetchRegularUsers, deactivateUser, User } from "@/lib/users";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -14,6 +15,8 @@ export default function UsersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
   const loadUsers = async (pageNum: number, search = "") => {
     setLoading(true);
@@ -35,8 +38,8 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    loadUsers(1, searchQuery);
-  }, [searchQuery]);
+    loadUsers(1, debouncedSearch);
+  }, [debouncedSearch]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);

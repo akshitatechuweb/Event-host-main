@@ -1,14 +1,21 @@
-"use client"
+"use client";
 
-import { Search } from "lucide-react"
+import { Search } from "lucide-react";
 
-export function EventSearch() {
+interface EventSearchProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+export function EventSearch({ value, onChange }: EventSearchProps) {
   return (
     <div className="px-6 py-4 border-b border-border">
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           placeholder="Search events"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           className="
             h-9 w-full pl-9 pr-3
             rounded-md
@@ -21,6 +28,5 @@ export function EventSearch() {
         />
       </div>
     </div>
-  )
+  );
 }
-

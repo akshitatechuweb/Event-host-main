@@ -15,6 +15,12 @@ export function UserSearch({ onSearch }: UserSearchProps) {
     onSearch(searchValue);
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchValue(value);
+    onSearch(value);
+  };
+
   return (
     <form onSubmit={handleSearch} className="flex gap-2">
       <div className="relative flex-1">
@@ -23,7 +29,7 @@ export function UserSearch({ onSearch }: UserSearchProps) {
           type="text"
           placeholder="Search by name, email, or phone..."
           value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
+          onChange={handleChange}
           className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>

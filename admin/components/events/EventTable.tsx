@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EventTableHeader } from "./EventTableHeader";
 import { EventTableRow } from "./EventTableRow";
 import { toast } from "sonner";
+import { filterBySearchQuery } from "@/lib/utils";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 interface Event {
   _id: string;
@@ -22,15 +24,19 @@ interface EventTableProps {
   refresh?: number;
   onEdit?: (event: Event) => void;
   onViewTransactions?: (eventId: string, eventName?: string) => void;
+  searchQuery?: string;
 }
 
 export function EventTable({
   refresh,
   onEdit,
   onViewTransactions,
+  searchQuery = "",
 }: EventTableProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const debouncedQuery = useDebouncedValue(searchQuery, 250);
 
   const fetchEvents = async () => {
     try {
@@ -58,6 +64,16 @@ export function EventTable({
     fetchEvents();
   }, [refresh]);
 
+  const filteredEvents = useMemo(
+    () =>
+      filterBySearchQuery(events, debouncedQuery, (event) => [
+        event.eventName,
+        event.hostedBy,
+        event.city,
+      ]),
+    [events, debouncedQuery],
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -66,7 +82,7 @@ export function EventTable({
     );
   }
 
-  if (events.length === 0) {
+  if (filteredEvents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-muted-foreground mb-2">No events found</p>
@@ -80,7 +96,7 @@ export function EventTable({
   return (
     <div className="divide-y divide-border">
       <EventTableHeader />
-      {events.map((event) => (
+      {filteredEvents.map((event) => (
         <EventTableRow
           key={event._id}
           event={event}

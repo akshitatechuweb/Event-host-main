@@ -1,15 +1,16 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout"
-import { TicketSearch } from "@/components/tickets/TicketSearch"
-import { TicketTable } from "@/components/tickets/TicketTable"
-import AddTicketModal from "@/components/tickets/AddTicketModal"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { useState } from "react";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { TicketSearch } from "@/components/tickets/TicketSearch";
+import { TicketTable } from "@/components/tickets/TicketTable";
+import AddTicketModal from "@/components/tickets/AddTicketModal";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export default function TicketsPage() {
-  const [openAddTicket, setOpenAddTicket] = useState(false)
+  const [openAddTicket, setOpenAddTicket] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <DashboardLayout>
@@ -27,15 +28,15 @@ export default function TicketsPage() {
         </div>
 
         <div>
-          <TicketSearch />
+          <TicketSearch value={searchQuery} onChange={setSearchQuery} />
         </div>
 
         <div>
-          <TicketTable />
+          <TicketTable searchQuery={searchQuery} />
         </div>
 
         <AddTicketModal open={openAddTicket} onClose={() => setOpenAddTicket(false)} />
       </div>
     </DashboardLayout>
-  )
+  );
 }

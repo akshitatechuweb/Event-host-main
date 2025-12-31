@@ -30,6 +30,7 @@ export default function EventsPage() {
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [transactionsEventId, setTransactionsEventId] = useState<string | null>(null);
   const [transactionsEventName, setTransactionsEventName] = useState<string | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleEventCreated = () => {
     setRefreshKey((prev) => prev + 1);
@@ -73,14 +74,19 @@ export default function EventsPage() {
       </header>
 
       <section className="rounded-xl border border-border bg-card overflow-hidden">
-        <EventSearch />
-        <EventTable refresh={refreshKey} onEdit={handleEdit} onViewTransactions={handleViewTransactions} />
-      <EventTransactionsModal
-        open={transactionsOpen}
-        onClose={() => setTransactionsOpen(false)}
-        eventId={transactionsEventId}
-        eventName={transactionsEventName}
-      />
+        <EventSearch value={searchQuery} onChange={setSearchQuery} />
+        <EventTable
+          refresh={refreshKey}
+          onEdit={handleEdit}
+          onViewTransactions={handleViewTransactions}
+          searchQuery={searchQuery}
+        />
+        <EventTransactionsModal
+          open={transactionsOpen}
+          onClose={() => setTransactionsOpen(false)}
+          eventId={transactionsEventId}
+          eventName={transactionsEventName}
+        />
       </section>
 
       <AddEventModal

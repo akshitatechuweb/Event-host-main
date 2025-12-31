@@ -7,14 +7,20 @@ export function useLogout() {
   const router = useRouter()
 
   const handleLogout = async () => {
-    // Clear backend session / cookie
-    await logout()
+    try {
+      // 1️⃣ Clear backend cookie/session
+      await logout()
+    } catch {
+      // Ignore errors — still force logout on client
+    }
 
-    // Clear any client-side tokens (safe even if unused)
-    localStorage.clear()
-    sessionStorage.clear()
+    // 2️⃣ Clear any client-side storage (safe even if unused)
+    try {
+      localStorage.clear()
+      sessionStorage.clear()
+    } catch {}
 
-    // Redirect to login
+    // 3️⃣ Replace history to prevent back navigation
     router.replace("/login")
   }
 

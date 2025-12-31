@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, Image as ImageIcon } from "lucide-react";
 import { EventFormData } from "@/components/events/AddEventModal";
 
 interface StepBasicsProps {
@@ -11,20 +11,15 @@ interface StepBasicsProps {
   hosts?: Array<{ hostId: string; name: string; email?: string; city?: string }>;
 }
 
-export function StepBasics({ formData, updateFormData, hosts }: StepBasicsProps) {
+export function StepBasics({
+  formData,
+  updateFormData,
+  hosts,
+}: StepBasicsProps) {
   const [categoryInput, setCategoryInput] = useState("");
   const [categories, setCategories] = useState<string[]>(
     formData.category ? formData.category.split(",") : []
   );
-
-  const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addCategories();
-    }
-  };
-
-  const handleCategoryBlur = () => addCategories();
 
   const addCategories = () => {
     if (!categoryInput.trim()) return;
@@ -69,42 +64,27 @@ export function StepBasics({ formData, updateFormData, hosts }: StepBasicsProps)
               updateFormData({ hostId: id });
 
               const selected = (hosts || []).find((h) => h.hostId === id);
-              if (selected) updateFormData({ hostedBy: selected.name });
+              if (selected) {
+                updateFormData({ hostedBy: selected.name });
+              }
             }}
             className="
               h-11 w-full rounded-xl px-4 pr-10 text-sm
               bg-white text-black border border-black/10
               focus:outline-none focus:ring-2 focus:ring-violet-500
-
               dark:bg-[#14101d] dark:text-white dark:border-white/10
-              dark:focus:ring-violet-400
-
               appearance-none
             "
           >
-            <option
-              value=""
-              className="bg-white text-black dark:bg-[#14101d] dark:text-white"
-            >
-              (Select a host – optional)
-            </option>
-
+            <option value="">(Select a host – optional)</option>
             {(hosts || []).map((h) => (
-              <option
-                key={h.hostId}
-                value={h.hostId}
-                className="bg-white text-black dark:bg-[#14101d] dark:text-white"
-              >
+              <option key={h.hostId} value={h.hostId}>
                 {h.name} {h.city ? `— ${h.city}` : ""}
               </option>
             ))}
           </select>
 
-          {/* Custom Arrow */}
-          <ChevronDown
-            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4
-                       text-black/50 dark:text-white/50"
-          />
+          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
         </div>
       </Field>
 
@@ -134,13 +114,12 @@ export function StepBasics({ formData, updateFormData, hosts }: StepBasicsProps)
               {categories.map((cat) => (
                 <Badge
                   key={cat}
-                  variant="secondary"
                   className="px-3 py-1.5 rounded-lg bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20"
                 >
                   {cat}
                   <button
                     onClick={() => removeCategory(cat)}
-                    className="ml-2 hover:text-red-500 transition"
+                    className="ml-2 hover:text-red-500"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -152,26 +131,51 @@ export function StepBasics({ formData, updateFormData, hosts }: StepBasicsProps)
           <Input
             value={categoryInput}
             onChange={(e) => setCategoryInput(e.target.value)}
-            onKeyDown={handleCategoryKeyDown}
-            onBlur={handleCategoryBlur}
+            onBlur={addCategories}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === ",") {
+                e.preventDefault();
+                addCategories();
+              }
+            }}
             placeholder="Type categories (comma or Enter)"
-            className="h-11 bg-white dark:bg-black/20 border-black/10 dark:border-white/10 focus:border-violet-500"
           />
-
-          <p className="text-xs text-black/50 dark:text-white/50">
-            Example: Festival, Music, Party
-          </p>
         </div>
       </Field>
 
-      {/* Event Image */}
+      {/* ============================
+          EXISTING IMAGE PREVIEW
+      ============================ */}
+      {formData.existingEventImage && !formData.eventImage && (
+        <Field label="Current Event Image">
+          <div className="relative">
+            <img
+              src={formData.existingEventImage}
+              alt="Current event"
+              className="h-40 w-full rounded-xl object-cover border border-black/10 dark:border-white/10"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <p className="mt-2 text-xs text-black/50 dark:text-white/50">
+              This image will be kept unless you upload a new one.
+            </p>
+          </div>
+        </Field>
+      )}
+
+      {/* Upload New Image */}
       <Field label="Event Image">
         <Input
           type="file"
           accept="image/*"
-          onChange={(e) =>
-            updateFormData({ eventImage: e.target.files?.[0] || null })
-          }
+          onChange={(e) => {
+            const file = e.target.files?.[0] || null;
+            updateFormData({
+              eventImage: file,
+              existingEventImage: file ? null : formData.existingEventImage,
+            });
+          }}
           className="
             h-11 bg-white dark:bg-black/20 border-black/10 dark:border-white/10
             file:mr-4 file:rounded-lg file:border-0 file:px-4 file:py-2
@@ -194,7 +198,13 @@ export function StepBasics({ formData, updateFormData, hosts }: StepBasicsProps)
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-2">
       <Label className="text-sm font-medium text-black dark:text-white">

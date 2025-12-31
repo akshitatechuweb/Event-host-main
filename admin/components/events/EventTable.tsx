@@ -13,6 +13,7 @@ interface Event {
   city: string;
   currentBookings: number;
   maxCapacity: number;
+  eventImage?: string | null; // ✅ IMPORTANT
   status?: "active" | "completed" | "cancelled";
   eventImage?: string | null;
 }
@@ -23,14 +24,21 @@ interface EventTableProps {
   onViewTransactions?: (eventId: string, eventName?: string) => void;
 }
 
-export function EventTable({ refresh, onEdit, onViewTransactions }: EventTableProps) {
+export function EventTable({
+  refresh,
+  onEdit,
+  onViewTransactions,
+}: EventTableProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/events");
+      const response = await fetch("/api/events", {
+        credentials: "include",
+      });
+
       const data = await response.json();
 
       if (!response.ok || !data.success) {

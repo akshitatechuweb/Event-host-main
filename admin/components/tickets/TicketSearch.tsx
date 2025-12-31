@@ -14,14 +14,7 @@ export function TicketSearch() {
           className="w-full pl-10 pr-4 py-2.5 bg-card border border-border/60 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring/60 transition-all duration-150"
         />
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-2 bg-transparent hover:bg-muted/30 transition-colors duration-150"
-      >
-        <Download className="h-4 w-4" />
-        Export CSV
-      </Button>
+      
     </div>
   )
 }

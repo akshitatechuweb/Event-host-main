@@ -1,5 +1,4 @@
 import Booking from "../models/Booking.js";
-import Ticket from "../models/Ticket.js";
 import Event from "../models/Event.js";
 import Transaction from "../models/Transaction.js";
 import GeneratedTicket from "../models/GeneratedTicket.js";

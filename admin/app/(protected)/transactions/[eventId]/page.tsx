@@ -1,3 +1,4 @@
+// app/transactions/[eventId]/page.tsx
 import type { Metadata } from "next";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { EventTransactionsView } from "@/components/transactions/EventTransactionsView";
@@ -10,9 +11,20 @@ export const metadata: Metadata = {
 export default async function EventTransactionsPage({
   params,
 }: {
-  params: { eventId: string };
+  params: Promise<{ eventId: string }>; // ← params is a Promise!
 }) {
-  const { eventId } = params;
+  const { eventId } = await params; // ← Must await
+
+  // Optional: validate eventId
+  if (!eventId) {
+    return (
+      <DashboardLayout>
+        <div className="p-8 text-center">
+          <p className="text-destructive">Invalid event ID</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

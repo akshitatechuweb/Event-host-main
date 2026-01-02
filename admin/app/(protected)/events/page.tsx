@@ -19,8 +19,30 @@ export type EventType = {
   maxCapacity: number;
   status?: "active" | "completed" | "cancelled";
   hostId?: string;
-  passes?: Record<string, unknown>[];
-  eventImage?: string | null; // optional thumbnail URL
+  passes?: Array<{
+    type: "Male" | "Female" | "Couple";
+    price: number;
+    totalQuantity: number;
+  }>;
+  eventImage?: string | null;
+  // Add these optional fields to match AdminEventForForm
+  subtitle?: string;
+  category?: string | string[];
+  time?: string;
+  fullAddress?: string;
+  about?: string;
+  partyFlow?: string;
+  whatsIncluded?: string;
+  howItWorks?: string;
+  whatsIncludedInTicket?: string;
+  ageRestriction?: string;
+  expectedGuestCount?: string;
+  maleToFemaleRatio?: string;
+  thingsToKnow?: string;
+  partyEtiquette?: string;
+  houseRules?: string;
+  partyTerms?: string;
+  cancellationPolicy?: string;
 };
 
 export default function EventsPage() {

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
 
 interface Ticket {
   _id: string;
   eventId: string;
   eventName: string;
   ticketType: string;
-  price: number; // numeric, UI adds currency symbol
+  price: number;
   total: number;
   sold: number;
   available: number;
@@ -42,10 +41,16 @@ interface EventWithPasses {
 /**
  * GET /api/tickets
  * Fetches all passes (tickets) across all events for admin
- * Calculates sold tickets by counting actual bookings
  */
 export async function GET(req: NextRequest) {
   try {
+    if (!API_BASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "API base URL not configured" },
+        { status: 500 }
+      );
+    }
+
     const cookieHeader = req.headers.get("cookie");
 
     if (!cookieHeader) {
@@ -55,12 +60,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get all events (which includes passes)
-    const eventsResponse = await fetch(`${API_BASE_URL}/api/event/events`, {
-      headers: {
-        Cookie: cookieHeader,
-      },
-    });
+    /* =====================
+       FETCH EVENTS
+    ===================== */
+    const eventsResponse = await fetch(
+      `${API_BASE_URL}/api/event/events`,
+      {
+        headers: { Cookie: cookieHeader },
+        cache: "no-store",
+      }
+    );
 
     if (!eventsResponse.ok) {
       return NextResponse.json(
@@ -69,57 +78,70 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const eventsData = await eventsResponse.json();
-    const events = (eventsData.events || []) as EventWithPasses[];
+    const eventsRaw: unknown = await eventsResponse.json();
 
-    // Fetch all bookings (admin endpoint)
+    const events: EventWithPasses[] =
+      typeof eventsRaw === "object" &&
+      eventsRaw !== null &&
+      "events" in eventsRaw &&
+      Array.isArray((eventsRaw as { events?: unknown }).events)
+        ? ((eventsRaw as { events: unknown[] }).events as EventWithPasses[])
+        : [];
+
+    /* =====================
+       FETCH BOOKINGS
+    ===================== */
     let allBookings: Booking[] = [];
+
     try {
       const bookingsResponse = await fetch(
         `${API_BASE_URL}/api/booking/admin`,
         {
-          headers: {
-            Cookie: cookieHeader,
-          },
+          headers: { Cookie: cookieHeader },
+          cache: "no-store",
         }
       );
 
       if (bookingsResponse.ok) {
-        const bookingsData = await bookingsResponse.json();
-        // Filter only confirmed bookings
-        allBookings = (bookingsData.bookings || []).filter(
-          (b: Booking) => b.status === "confirmed"
-        );
+        const bookingsRaw: unknown = await bookingsResponse.json();
+
+        if (
+          typeof bookingsRaw === "object" &&
+          bookingsRaw !== null &&
+          "bookings" in bookingsRaw &&
+          Array.isArray((bookingsRaw as { bookings?: unknown }).bookings)
+        ) {
+          allBookings = (bookingsRaw as {
+            bookings: Booking[];
+          }).bookings.filter((b) => b.status === "confirmed");
+        }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching bookings:", error);
     }
 
-    // Transform passes from all events into ticket rows
+    /* =====================
+       BUILD TICKETS
+    ===================== */
     const allTickets: Ticket[] = [];
-    
+
     events.forEach((event) => {
-      const passes = event.passes || [];
-      
-      // Filter bookings for this event.
-      // bookingController.getAllBookings() populates eventId, so it can be either
-      // a plain ObjectId or a populated document. Normalize before comparing.
+      const passes = event.passes ?? [];
+
       const eventBookings = allBookings.filter((b) => {
         const bookingEventId =
           typeof b.eventId === "object" && b.eventId !== null
             ? b.eventId._id
             : b.eventId;
-        return bookingEventId?.toString() === event._id?.toString();
+
+        return bookingEventId?.toString() === event._id.toString();
       });
-      
-      // Calculate sold tickets per pass type from actual bookings
+
       const soldByPassType: Record<string, number> = {};
-      
+
       eventBookings.forEach((booking) => {
-        const items = booking.items || [];
-        items.forEach((item) => {
-          // Support both { passType } and legacy { type } shapes
-          const passType = item.passType || item.type;
+        (booking.items ?? []).forEach((item) => {
+          const passType = item.passType ?? item.type;
           const quantity = Number(item.quantity) || 0;
 
           if (passType && quantity > 0) {
@@ -130,16 +152,16 @@ export async function GET(req: NextRequest) {
       });
 
       passes.forEach((pass) => {
-        const sold = soldByPassType[pass.type] || 0;
+        const sold = soldByPassType[pass.type] ?? 0;
         const total = Number(pass.totalQuantity) || 0;
         const available = Math.max(0, total - sold);
 
         allTickets.push({
           _id: `${event._id}_${pass.type}`,
           eventId: event._id,
-          eventName: event.eventName || event.title,
+          eventName: event.eventName ?? event.title ?? "Unknown Event",
           ticketType: pass.type,
-          price: Number(pass.price) || 0, // numeric; UI handles currency symbol
+          price: Number(pass.price) || 0,
           total,
           sold,
           available,
@@ -151,13 +173,11 @@ export async function GET(req: NextRequest) {
       success: true,
       tickets: allTickets,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("TICKETS API ERROR:", error);
+
     return NextResponse.json(
-      {
-        success: false,
-        message: "Internal Server Error",
-      },
+      { success: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }

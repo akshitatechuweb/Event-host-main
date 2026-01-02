@@ -1,12 +1,23 @@
-import { cookies } from "next/headers"
-import { redirect } from "next/navigation"
-import LoginPage from "@/components/pages/LoginPage"
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import LoginPage from "@/components/pages/LoginPage";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+type AuthMeResponse = {
+  user?: {
+    role?: string;
+  };
+};
 
 export default async function LoginPageRoute() {
-  const cookieStore = await cookies()
-  const accessToken = cookieStore.get("accessToken")?.value
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("accessToken")?.value;
+
+  // ❗ Ensure env var exists (type + runtime safety)
+  if (!API_URL) {
+    throw new Error("NEXT_PUBLIC_API_URL is not defined");
+  }
 
   if (accessToken) {
     try {
@@ -16,15 +27,15 @@ export default async function LoginPageRoute() {
           Cookie: `accessToken=${accessToken}`,
         },
         cache: "no-store",
-      })
+      });
 
       if (res.ok) {
-        const data = await res.json()
-        const role = data?.user?.role
+        const data = (await res.json()) as AuthMeResponse;
+        const role = data.user?.role;
 
         // Already logged-in admin → go to dashboard
         if (role === "admin" || role === "superadmin") {
-          redirect("/dashboard")
+          redirect("/dashboard");
         }
       }
     } catch {
@@ -33,5 +44,5 @@ export default async function LoginPageRoute() {
   }
 
   // Not logged in → show login
-  return <LoginPage />
+  return <LoginPage />;
 }

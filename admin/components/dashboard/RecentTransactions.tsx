@@ -1,20 +1,43 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react"
 import { getDashboardStats } from "@/lib/admin"
-import { Loader2 } from "lucide-react"
+
+/* =========================
+   Types
+========================= */
+
+type TransactionStatus = "completed" | "pending" | "failed"
+
+interface RecentTransaction {
+  id: string
+  event: string
+  date: string
+  amount: string
+  status: TransactionStatus
+}
+
+interface DashboardStatsResponse {
+  success: boolean
+  recentTransactions?: RecentTransaction[]
+}
+
+/* =========================
+   Component
+========================= */
 
 export function RecentTransactions() {
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [transactions, setTransactions] = useState<RecentTransaction[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
     async function fetchTransactions() {
       try {
-        const response = await getDashboardStats()
+        const response = (await getDashboardStats()) as DashboardStatsResponse
+
         if (response.success) {
-          setTransactions(response.recentTransactions || [])
+          setTransactions(response.recentTransactions ?? [])
         }
       } catch (error) {
         console.error("Error fetching transactions:", error)
@@ -33,7 +56,9 @@ export function RecentTransactions() {
           <h2 className="text-lg font-semibold tracking-tight">
             Recent Transactions
           </h2>
-          <p className="text-sm text-muted-foreground">Latest payment activity</p>
+          <p className="text-sm text-muted-foreground">
+            Latest payment activity
+          </p>
         </div>
         <div className="flex items-center justify-center p-12">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -49,7 +74,9 @@ export function RecentTransactions() {
         <h2 className="text-lg font-semibold tracking-tight">
           Recent Transactions
         </h2>
-        <p className="text-sm text-muted-foreground">Latest payment activity</p>
+        <p className="text-sm text-muted-foreground">
+          Latest payment activity
+        </p>
       </div>
 
       {/* List */}
@@ -78,7 +105,9 @@ export function RecentTransactions() {
                     <p className="font-medium text-foreground truncate">
                       {t.event}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">{t.date}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t.date}
+                    </p>
                   </div>
 
                   {/* Right */}

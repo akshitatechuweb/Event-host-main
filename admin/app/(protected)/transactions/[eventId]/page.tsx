@@ -1,17 +1,18 @@
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout"
-import { EventTransactionsView } from "@/components/transactions/EventTransactionsView"
+import type { Metadata } from "next";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { EventTransactionsView } from "@/components/transactions/EventTransactionsView";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Event Transactions",
   description: "View and analyze transactions for a specific event",
-}
+};
 
 export default async function EventTransactionsPage({
   params,
 }: {
-  params: Promise<{ eventId: string }>
+  params: { eventId: string };
 }) {
-  const { eventId } = await params
+  const { eventId } = params;
 
   return (
     <DashboardLayout>
@@ -30,5 +31,5 @@ export default async function EventTransactionsPage({
         <EventTransactionsView eventId={eventId} />
       </div>
     </DashboardLayout>
-  )
+  );
 }

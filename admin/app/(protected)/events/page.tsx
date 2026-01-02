@@ -25,7 +25,8 @@ export type EventType = {
     totalQuantity: number;
   }>;
   eventImage?: string | null;
-  // Add these optional fields to match AdminEventForForm
+
+  // Optional fields (AdminEventForForm compatibility)
   subtitle?: string;
   category?: string | string[];
   time?: string;
@@ -49,9 +50,11 @@ export default function EventsPage() {
   const [openAddEvent, setOpenAddEvent] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
+
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [transactionsEventId, setTransactionsEventId] = useState<string | null>(null);
-  const [transactionsEventName, setTransactionsEventName] = useState<string | undefined>(undefined);
+  const [transactionsEventName, setTransactionsEventName] = useState<string | undefined>();
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleEventCreated = () => {
@@ -97,12 +100,14 @@ export default function EventsPage() {
 
       <section className="rounded-xl border border-border bg-card overflow-hidden">
         <EventSearch value={searchQuery} onChange={setSearchQuery} />
+
         <EventTable
           refresh={refreshKey}
           onEdit={handleEdit}
           onViewTransactions={handleViewTransactions}
           searchQuery={searchQuery}
         />
+
         <EventTransactionsModal
           open={transactionsOpen}
           onClose={() => setTransactionsOpen(false)}
@@ -113,7 +118,10 @@ export default function EventsPage() {
 
       <AddEventModal
         open={openAddEvent}
-        onClose={() => { setOpenAddEvent(false); setEditingEvent(null); }}
+        onClose={() => {
+          setOpenAddEvent(false);
+          setEditingEvent(null);
+        }}
         onEventCreated={handleEventCreated}
         onEventUpdated={handleEventCreated}
         editingEvent={editingEvent}

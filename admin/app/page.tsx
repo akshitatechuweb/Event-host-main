@@ -1,20 +1,26 @@
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout"
-import { StatsOverview } from "@/components/dashboard/StatsOverview"
-import { RecentEventsTable } from "@/components/dashboard/RecentEventsTable"
-import { RecentTransactions } from "@/components/dashboard/RecentTransactions"
+import type { Metadata } from "next";
 
-export const metadata = {
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { StatsOverview } from "@/components/dashboard/StatsOverview";
+import { RecentEventsTable } from "@/components/dashboard/RecentEventsTable";
+import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
+
+export const metadata: Metadata = {
   title: "Dashboard - Event Host",
   description: "Event management dashboard",
-}
+};
 
 export default function HomePage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Overview of your event management system</p>
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Overview of your event management system
+          </p>
         </div>
 
         <StatsOverview />
@@ -25,5 +31,5 @@ export default function HomePage() {
         </div>
       </div>
     </DashboardLayout>
-  )
+  );
 }

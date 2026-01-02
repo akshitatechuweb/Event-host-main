@@ -1,5 +1,6 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Calendar,
@@ -13,14 +14,20 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarFooter } from "./SidebarFooter";
 
-const navItems = [
+type NavItem = {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+};
+
+const navItems: readonly NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Calendar, label: "Events", href: "/events" },
   { icon: Users, label: "Hosts", href: "/hosts" },
   { icon: Ticket, label: "Tickets", href: "/tickets" },
   { icon: CreditCard, label: "Transactions", href: "/transactions" },
   { icon: Users, label: "Users", href: "/users" },
-];
+] as const;
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -72,7 +79,6 @@ export function Sidebar() {
                 }
               `}
             >
-              {/* Icon container */}
               <span
                 className={`
                   flex h-9 w-9 items-center justify-center rounded-lg
@@ -89,7 +95,6 @@ export function Sidebar() {
 
               <span>{item.label}</span>
 
-              {/* Active glow */}
               {isActive && (
                 <span className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-pink-500/10 to-violet-500/10" />
               )}

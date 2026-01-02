@@ -10,21 +10,25 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [total, setTotal] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
-  const loadUsers = async (pageNum: number, search = "") => {
+  const loadUsers = async (
+    pageNum: number,
+    search = ""
+  ): Promise<void> => {
     setLoading(true);
     try {
       const data = await fetchRegularUsers({
         page: pageNum,
         search: search || undefined,
       });
+
       setUsers(data.users);
       setPage(data.page);
       setTotalPages(data.totalPages);
@@ -50,7 +54,7 @@ export default function UsersPage() {
     loadUsers(newPage, searchQuery);
   };
 
-  const handleDeactivate = async (userId: string) => {
+  const handleDeactivate = async (userId: string): Promise<void> => {
     if (!confirm("Are you sure you want to deactivate this user?")) return;
 
     try {
@@ -81,6 +85,7 @@ export default function UsersPage() {
 
         <div className="bg-card rounded-lg border border-border overflow-hidden">
           <UserTableHeader />
+
           {loading ? (
             <div className="p-12 text-center text-muted-foreground">
               Loading users...
@@ -118,9 +123,11 @@ export default function UsersPage() {
             >
               Previous
             </button>
+
             <span className="px-4 py-2 text-sm">
               Page {page} of {totalPages}
             </span>
+
             <button
               onClick={() => handlePageChange(page + 1)}
               disabled={page === totalPages || loading}

@@ -6,7 +6,6 @@ import { RecentTransactions } from "@/components/dashboard/RecentTransactions"
 export default function DashboardPage() {
   return (
     <DashboardLayout>
-
       {/* Header */}
       <header className="relative space-y-3 mb-14">
         <div className="absolute -top-28 -left-28 w-96 h-96 bg-pink-300/15 blur-[160px] rounded-full -z-10" />
@@ -33,7 +32,6 @@ export default function DashboardPage() {
           <RecentTransactions />
         </div>
       </section>
-
     </DashboardLayout>
   )
 }

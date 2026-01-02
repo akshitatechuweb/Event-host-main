@@ -1,50 +1,57 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout"
-import { ArrowRight, Calendar, Ticket, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ArrowRight, Calendar, Ticket, Loader2 } from "lucide-react";
 
 interface Event {
-  _id: string
-  eventName: string
-  date: string
-  city: string
-  currentBookings?: number
-  maxCapacity?: number
+  _id: string;
+  eventName: string;
+  date: string;
+  city: string;
+  currentBookings?: number;
+  maxCapacity?: number;
+}
+
+interface EventsApiResponse {
+  events: Event[];
 }
 
 export default function TransactionsPage() {
-  const [events, setEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchEvents() {
+    async function fetchEvents(): Promise<void> {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
         const response = await fetch("/api/events", {
           credentials: "include",
-        })
+        });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || "Failed to fetch events")
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            (errorData as { message?: string }).message ||
+              "Failed to fetch events",
+          );
         }
 
-        const data = await response.json()
-        setEvents(data.events || [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load events")
+        const data = (await response.json()) as EventsApiResponse;
+        setEvents(data.events ?? []);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load events");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    fetchEvents()
-  }, [])
+    fetchEvents();
+  }, []);
 
   return (
     <DashboardLayout>
@@ -99,11 +106,9 @@ export default function TransactionsPage() {
                 href={`/transactions/${event._id}`}
                 className="group relative rounded-xl border border-border/50 bg-card p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-black/8"
               >
-                {/* soft hover wash */}
                 <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
                 <div className="relative flex flex-col gap-5">
-                  {/* Title */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <h3 className="text-base font-medium text-foreground truncate">
@@ -127,18 +132,18 @@ export default function TransactionsPage() {
                     <ArrowRight className="w-4 h-4 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1" />
                   </div>
 
-                  {/* Meta */}
                   {event.currentBookings !== undefined && (
                     <div className="flex items-center gap-2 pt-3 border-t border-border/30 text-sm text-muted-foreground">
                       <Ticket className="w-4 h-4" />
                       <span>
                         {event.currentBookings}{" "}
-                        {event.currentBookings === 1 ? "booking" : "bookings"}
+                        {event.currentBookings === 1
+                          ? "booking"
+                          : "bookings"}
                       </span>
                     </div>
                   )}
 
-                  {/* CTA */}
                   <div className="flex items-center text-sm font-medium text-foreground group-hover:text-foreground/80 transition-colors pt-1">
                     <span>View transactions</span>
                     <ArrowRight className="ml-1.5 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
@@ -150,5 +155,5 @@ export default function TransactionsPage() {
         )}
       </div>
     </DashboardLayout>
-  )
+  );
 }

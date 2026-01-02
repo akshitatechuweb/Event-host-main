@@ -1,14 +1,24 @@
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
-import { X, ChevronDown } from "lucide-react";
-import { EventFormData } from "@/components/events/AddEventModal";
+"use client"
+
+import { useState } from "react"
+import type { ReactNode } from "react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { X, ChevronDown } from "lucide-react"
+import { EventFormData } from "@/components/events/AddEventModal"
+
+interface Host {
+  hostId: string
+  name: string
+  email?: string
+  city?: string
+}
 
 interface StepBasicsProps {
-  formData: EventFormData;
-  updateFormData: (data: Partial<EventFormData>) => void;
-  hosts?: Array<{ hostId: string; name: string; email?: string; city?: string }>;
+  formData: EventFormData
+  updateFormData: (data: Partial<EventFormData>) => void
+  hosts?: Host[]
 }
 
 export function StepBasics({
@@ -16,32 +26,32 @@ export function StepBasics({
   updateFormData,
   hosts,
 }: StepBasicsProps) {
-  const [categoryInput, setCategoryInput] = useState("");
+  const [categoryInput, setCategoryInput] = useState<string>("")
   const [categories, setCategories] = useState<string[]>(
     formData.category ? formData.category.split(",") : []
-  );
+  )
 
   const addCategories = () => {
-    if (!categoryInput.trim()) return;
+    if (!categoryInput.trim()) return
 
     const newCategories = categoryInput
       .split(",")
       .map((c) => c.trim())
-      .filter((c) => c && !categories.includes(c));
+      .filter((c) => c && !categories.includes(c))
 
-    if (newCategories.length) {
-      const updated = [...categories, ...newCategories];
-      setCategories(updated);
-      updateFormData({ category: updated.join(",") });
-      setCategoryInput("");
+    if (newCategories.length > 0) {
+      const updated = [...categories, ...newCategories]
+      setCategories(updated)
+      updateFormData({ category: updated.join(",") })
+      setCategoryInput("")
     }
-  };
+  }
 
   const removeCategory = (category: string) => {
-    const updated = categories.filter((c) => c !== category);
-    setCategories(updated);
-    updateFormData({ category: updated.join(",") });
-  };
+    const updated = categories.filter((c) => c !== category)
+    setCategories(updated)
+    updateFormData({ category: updated.join(",") })
+  }
 
   return (
     <div className="space-y-6">
@@ -50,7 +60,9 @@ export function StepBasics({
         <Input
           placeholder="Summer Music Festival"
           value={formData.eventName}
-          onChange={(e) => updateFormData({ eventName: e.target.value })}
+          onChange={(e) =>
+            updateFormData({ eventName: e.target.value })
+          }
         />
       </Field>
 
@@ -60,12 +72,14 @@ export function StepBasics({
           <select
             value={formData.hostId ?? ""}
             onChange={(e) => {
-              const id = e.target.value || null;
-              updateFormData({ hostId: id });
+              const id = e.target.value || null
+              updateFormData({ hostId: id })
 
-              const selected = (hosts || []).find((h) => h.hostId === id);
-              if (selected) {
-                updateFormData({ hostedBy: selected.name });
+              if (id) {
+                const selected = hosts?.find((h) => h.hostId === id)
+                if (selected) {
+                  updateFormData({ hostedBy: selected.name })
+                }
               }
             }}
             className="
@@ -77,7 +91,7 @@ export function StepBasics({
             "
           >
             <option value="">(Select a host – optional)</option>
-            {(hosts || []).map((h) => (
+            {hosts?.map((h) => (
               <option key={h.hostId} value={h.hostId}>
                 {h.name} {h.city ? `— ${h.city}` : ""}
               </option>
@@ -93,7 +107,9 @@ export function StepBasics({
         <Input
           placeholder="John Doe"
           value={formData.hostedBy}
-          onChange={(e) => updateFormData({ hostedBy: e.target.value })}
+          onChange={(e) =>
+            updateFormData({ hostedBy: e.target.value })
+          }
         />
       </Field>
 
@@ -102,7 +118,9 @@ export function StepBasics({
         <Input
           placeholder="A night of music & vibes"
           value={formData.subtitle}
-          onChange={(e) => updateFormData({ subtitle: e.target.value })}
+          onChange={(e) =>
+            updateFormData({ subtitle: e.target.value })
+          }
         />
       </Field>
 
@@ -118,6 +136,7 @@ export function StepBasics({
                 >
                   {cat}
                   <button
+                    type="button"
                     onClick={() => removeCategory(cat)}
                     className="ml-2 hover:text-red-500"
                   >
@@ -134,8 +153,8 @@ export function StepBasics({
             onBlur={addCategories}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === ",") {
-                e.preventDefault();
-                addCategories();
+                e.preventDefault()
+                addCategories()
               }
             }}
             placeholder="Type categories (comma or Enter)"
@@ -143,9 +162,7 @@ export function StepBasics({
         </div>
       </Field>
 
-      {/* ============================
-          EXISTING IMAGE PREVIEW
-      ============================ */}
+      {/* Existing Image Preview */}
       {formData.existingEventImage && !formData.eventImage && (
         <Field label="Current Event Image">
           <div className="relative">
@@ -154,7 +171,7 @@ export function StepBasics({
               alt="Current event"
               className="h-40 w-full rounded-xl object-cover border border-black/10 dark:border-white/10"
               onError={(e) => {
-                e.currentTarget.style.display = "none";
+                e.currentTarget.style.display = "none"
               }}
             />
             <p className="mt-2 text-xs text-black/50 dark:text-white/50">
@@ -170,40 +187,26 @@ export function StepBasics({
           type="file"
           accept="image/*"
           onChange={(e) => {
-            const file = e.target.files?.[0] || null;
+            const file = e.target.files?.[0] ?? null
             updateFormData({
               eventImage: file,
-              existingEventImage: file ? null : formData.existingEventImage,
-            });
+              existingEventImage: file
+                ? null
+                : formData.existingEventImage,
+            })
           }}
-          className="
-            h-11 bg-white dark:bg-black/20 border-black/10 dark:border-white/10
-            file:mr-4 file:rounded-lg file:border-0 file:px-4 file:py-2
-            file:bg-violet-500/10 file:text-violet-700 dark:file:text-violet-300
-            hover:file:bg-violet-500/20
-          "
         />
-        {/* Minimal preview for existing image when editing; no layout change */}
-        {formData.existingEventImage && !formData.eventImage && (
-          <div className="mt-3 rounded-xl overflow-hidden border border-black/10 dark:border-white/10">
-            <img
-              src={formData.existingEventImage}
-              alt={formData.eventName || "Event image"}
-              className="w-full h-32 object-cover"
-            />
-          </div>
-        )}
       </Field>
     </div>
-  );
+  )
 }
 
 function Field({
   label,
   children,
 }: {
-  label: string;
-  children: React.ReactNode;
+  label: string
+  children: ReactNode
 }) {
   return (
     <div className="space-y-2">
@@ -212,5 +215,5 @@ function Field({
       </Label>
       {children}
     </div>
-  );
+  )
 }

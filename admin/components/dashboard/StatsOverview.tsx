@@ -1,26 +1,51 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { DollarSign, Users, Calendar, TrendingUp, Loader2 } from "lucide-react"
 import { StatsCard } from "./StatsCard"
-import { DollarSign, Users, Calendar, TrendingUp } from "lucide-react"
 import { getDashboardStats } from "@/lib/admin"
-import { Loader2 } from "lucide-react"
+
+/* =========================
+   Types
+========================= */
+
+interface DashboardStats {
+  totalRevenue: number
+  totalEvents: number
+  totalUsers: number
+  totalTransactions: number
+}
+
+interface DashboardStatsResponse {
+  success: boolean
+  stats?: {
+    totalRevenue?: number | string | null
+    totalEvents?: number | string | null
+    totalUsers?: number | string | null
+    totalTransactions?: number | string | null
+  }
+}
+
+/* =========================
+   Component
+========================= */
 
 export function StatsOverview() {
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalEvents: 0,
     totalUsers: 0,
     totalTransactions: 0,
   })
-  const [loading, setLoading] = useState(true)
+
+  const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const response = await getDashboardStats()
+        const response = (await getDashboardStats()) as DashboardStatsResponse
+
         if (response.success && response.stats) {
-          // Ensure all values are numbers with fallback to 0
           setStats({
             totalRevenue: Number(response.stats.totalRevenue) || 0,
             totalEvents: Number(response.stats.totalEvents) || 0,
@@ -59,28 +84,28 @@ export function StatsOverview() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatsCard
         title="Total Revenue"
-        value={`₹${(stats.totalRevenue || 0).toLocaleString("en-IN")}`}
-        change={`${stats.totalTransactions || 0} transactions`}
+        value={`₹${stats.totalRevenue.toLocaleString("en-IN")}`}
+        change={`${stats.totalTransactions.toLocaleString("en-IN")} transactions`}
         isPositive={true}
         icon={DollarSign}
       />
       <StatsCard
         title="Total Users"
-        value={(stats.totalUsers || 0).toLocaleString("en-IN")}
+        value={stats.totalUsers.toLocaleString("en-IN")}
         change="Registered users"
         isPositive={true}
         icon={Users}
       />
       <StatsCard
         title="Total Events"
-        value={(stats.totalEvents || 0).toLocaleString("en-IN")}
+        value={stats.totalEvents.toLocaleString("en-IN")}
         change="Active events"
         isPositive={true}
         icon={Calendar}
       />
       <StatsCard
         title="Total Transactions"
-        value={(stats.totalTransactions || 0).toLocaleString("en-IN")}
+        value={stats.totalTransactions.toLocaleString("en-IN")}
         change="Confirmed bookings"
         isPositive={true}
         icon={TrendingUp}

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
 
 /**
  * GET /api/events/:eventId/transactions
@@ -9,11 +8,17 @@ const API_BASE_URL =
  */
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ eventId: string }> }  // ✅ FIXED: Changed to Promise
+  context: { params: { eventId: string } }
 ) {
   try {
-    // ✅ FIXED: await params
-    const { eventId } = await context.params;
+    if (!API_BASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "API base URL not configured" },
+        { status: 500 }
+      );
+    }
+
+    const { eventId } = context.params;
 
     if (!eventId) {
       return NextResponse.json(
@@ -39,7 +44,7 @@ export async function GET(
         Cookie: cookieHeader,
         Accept: "application/json",
       },
-      cache: "no-store", // always fresh data
+      cache: "no-store",
     });
 
     const text = await response.text();
@@ -60,16 +65,20 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(JSON.parse(text), {
+    const parsed: unknown = JSON.parse(text);
+    return NextResponse.json(parsed, {
       status: response.status,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("TRANSACTIONS ROUTE ERROR:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Internal Server Error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Internal Server Error",
       },
       { status: 500 }
     );

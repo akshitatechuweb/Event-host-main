@@ -1,16 +1,28 @@
 // app/api/events/[eventId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ eventId: string }> }
+  context: { params: { eventId: string } }
 ) {
   try {
-    // ✅ FIX: await params
-    const { eventId } = await context.params;
+    if (!API_BASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "API base URL not configured" },
+        { status: 500 }
+      );
+    }
+
+    const { eventId } = context.params;
+
+    if (!eventId) {
+      return NextResponse.json(
+        { success: false, message: "Event ID is required" },
+        { status: 400 }
+      );
+    }
 
     const cookieHeader = req.headers.get("cookie");
 
@@ -27,8 +39,9 @@ export async function DELETE(
     const response = await fetch(backendUrl, {
       method: "DELETE",
       headers: {
-        Cookie: cookieHeader, // forward auth cookie
+        Cookie: cookieHeader,
       },
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -41,16 +54,28 @@ export async function DELETE(
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
 
     return NextResponse.json({
       success: true,
-      message: data.message || "Event deleted successfully",
+      message:
+        typeof data === "object" &&
+        data !== null &&
+        "message" in data
+          ? (data as { message?: string }).message
+          : "Event deleted successfully",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("DELETE EVENT ERROR:", error);
+
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Internal server error",
+      },
       { status: 500 }
     );
   }
@@ -58,10 +83,24 @@ export async function DELETE(
 
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ eventId: string }> }
+  context: { params: { eventId: string } }
 ) {
   try {
-    const { eventId } = await context.params;
+    if (!API_BASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "API base URL not configured" },
+        { status: 500 }
+      );
+    }
+
+    const { eventId } = context.params;
+
+    if (!eventId) {
+      return NextResponse.json(
+        { success: false, message: "Event ID is required" },
+        { status: 400 }
+      );
+    }
 
     const cookieHeader = req.headers.get("cookie");
 
@@ -72,7 +111,6 @@ export async function PUT(
       );
     }
 
-    // Read incoming FormData and forward it
     const formData = await req.formData();
 
     const backendUrl = `${API_BASE_URL}/api/event/update-event/${eventId}`;
@@ -84,6 +122,7 @@ export async function PUT(
         Cookie: cookieHeader,
       },
       body: formData,
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -96,13 +135,28 @@ export async function PUT(
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
 
-    return NextResponse.json({ success: true, event: data.event });
-  } catch (error) {
+    return NextResponse.json({
+      success: true,
+      event:
+        typeof data === "object" &&
+        data !== null &&
+        "event" in data
+          ? (data as { event?: unknown }).event
+          : data,
+    });
+  } catch (error: unknown) {
     console.error("UPDATE EVENT ERROR:", error);
+
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Internal server error",
+      },
       { status: 500 }
     );
   }

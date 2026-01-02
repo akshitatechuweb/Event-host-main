@@ -1,15 +1,21 @@
 // app/api/events/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
 
 /* ======================================================
    GET EVENTS
 ====================================================== */
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
-    const cookieHeader = req.headers.get("cookie");
+    if (!API_BASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "API base URL not configured" },
+        { status: 500 }
+      );
+    }
+
+    const cookieHeader = _req.headers.get("cookie");
 
     if (!cookieHeader) {
       return NextResponse.json(
@@ -18,7 +24,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 🔑 ADMIN EVENTS ENDPOINT (THIS IS THE FIX)
     const backendUrl = `${API_BASE_URL}/api/event/events`;
     console.log("CALLING BACKEND:", backendUrl);
 
@@ -27,6 +32,7 @@ export async function GET(req: NextRequest) {
       headers: {
         Cookie: cookieHeader,
       },
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -39,27 +45,46 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
 
     return NextResponse.json({
       success: true,
-      events: data.events || [],
+      events:
+        typeof data === "object" &&
+        data !== null &&
+        "events" in data &&
+        Array.isArray((data as { events?: unknown }).events)
+          ? (data as { events: unknown[] }).events
+          : [],
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("API EVENTS ERROR:", error);
+
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Internal server error",
+      },
       { status: 500 }
     );
   }
 }
-
 
 /* ======================================================
    CREATE EVENT
 ====================================================== */
 export async function POST(req: NextRequest) {
   try {
+    if (!API_BASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "API base URL not configured" },
+        { status: 500 }
+      );
+    }
+
     const cookieHeader = req.headers.get("cookie");
 
     if (!cookieHeader) {
@@ -77,9 +102,10 @@ export async function POST(req: NextRequest) {
     const response = await fetch(backendUrl, {
       method: "POST",
       headers: {
-        Cookie: cookieHeader, // 🔑 SAME FIX
+        Cookie: cookieHeader,
       },
       body: formData,
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -92,16 +118,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
 
     return NextResponse.json({
       success: true,
-      event: data.event,
+      event:
+        typeof data === "object" &&
+        data !== null &&
+        "event" in data
+          ? (data as { event?: unknown }).event
+          : data,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("CREATE EVENT ERROR:", error);
+
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Internal server error",
+      },
       { status: 500 }
     );
   }

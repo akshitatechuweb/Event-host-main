@@ -1,5 +1,3 @@
-// admin/types/host.ts
-
 export type HostStatus = "pending" | "approved" | "rejected";
 
 export interface Host {
@@ -7,6 +5,6 @@ export interface Host {
   userName: string;
   phone: string;
   city: string;
-  preferredPartyDate: string;
-  status: HostStatus;
+  preferredPartyDate?: string;
+  status?: HostStatus; // ✅ FIX: optional
 }

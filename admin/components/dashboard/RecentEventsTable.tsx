@@ -1,42 +1,56 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { getDashboardStats } from "@/lib/admin"
-import { Loader2 } from "lucide-react"
+import { useEffect, useState } from "react";
+import { getDashboardStats } from "@/lib/admin";
+import { Loader2 } from "lucide-react";
+
+interface RecentEvent {
+  id: string;
+  name: string;
+  host: string;
+  date: string;
+  attendees: number;
+}
 
 export function RecentEventsTable() {
-  const [events, setEvents] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [events, setEvents] = useState<RecentEvent[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    async function fetchEvents() {
+    async function fetchEvents(): Promise<void> {
       try {
-        const response = await getDashboardStats()
-        if (response.success) {
-          setEvents(response.recentEvents || [])
+        const response = await getDashboardStats();
+
+        if (response.success && Array.isArray(response.recentEvents)) {
+          setEvents(response.recentEvents);
+        } else {
+          setEvents([]);
         }
-      } catch (error) {
-        console.error("Error fetching events:", error)
+      } catch (error: unknown) {
+        console.error("Error fetching events:", error);
+        setEvents([]);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    fetchEvents()
-  }, [])
+    fetchEvents();
+  }, []);
 
   if (loading) {
     return (
       <div className="rounded-2xl border border-border bg-card/80 backdrop-blur-xl overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
           <h2 className="text-lg font-semibold">Recent Events</h2>
-          <p className="text-sm text-muted-foreground">Latest event activity</p>
+          <p className="text-sm text-muted-foreground">
+            Latest event activity
+          </p>
         </div>
         <div className="flex items-center justify-center p-12">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -44,7 +58,9 @@ export function RecentEventsTable() {
       {/* Header */}
       <div className="px-6 py-5 border-b border-border">
         <h2 className="text-lg font-semibold">Recent Events</h2>
-        <p className="text-sm text-muted-foreground">Latest event activity</p>
+        <p className="text-sm text-muted-foreground">
+          Latest event activity
+        </p>
       </div>
 
       {/* Table */}
@@ -82,5 +98,5 @@ export function RecentEventsTable() {
         </table>
       )}
     </div>
-  )
+  );
 }

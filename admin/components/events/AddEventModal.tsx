@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -56,40 +56,28 @@ interface AddEventModalProps {
   onEventUpdated?: () => void;
 }
 
-/* ============================
-   FORM DATA TYPE
-============================ */
 export interface EventFormData {
-  // Step 1
   eventName: string;
   hostId?: string | null;
   hostedBy: string;
   subtitle: string;
   category: string;
   eventImage: File | null;
-  existingEventImage: string | null; // existing image URL when editing
-
-  // Step 2
+  existingEventImage: string | null;
   date: string;
   time: string;
   fullAddress: string;
   city: string;
-
-  // Step 3
   about: string;
   partyFlow: string;
   whatsIncluded: string;
   howItWorks: string;
   whatsIncludedInTicket: string;
-
-  // Step 4
   passes: Array<{
     type: "Male" | "Female" | "Couple";
     price: number;
     totalQuantity: number;
   }>;
-
-  // Step 5
   ageRestriction: string;
   maxCapacity: number;
   expectedGuestCount: string;
@@ -119,32 +107,25 @@ export default function AddEventModal({
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  /* ============================
-     INITIAL STATE
-  ============================ */
-  const initialFormState: EventFormData = {
+  // ✅ FIX: Use useMemo to create a stable reference
+  const initialFormState: EventFormData = useMemo(() => ({
     eventName: "",
     hostId: null,
     hostedBy: "",
     subtitle: "",
     category: "",
-
     eventImage: null,
     existingEventImage: null,
-
     date: "",
     time: "",
     fullAddress: "",
     city: "",
-
     about: "",
     partyFlow: "",
     whatsIncluded: "",
     howItWorks: "",
     whatsIncludedInTicket: "",
-
     passes: [],
-
     ageRestriction: "",
     maxCapacity: 0,
     expectedGuestCount: "",
@@ -154,13 +135,11 @@ export default function AddEventModal({
     houseRules: "",
     partyTerms: "",
     cancellationPolicy: "",
-  };
+  }), []); // Empty deps = only created once
 
   const [formData, setFormData] = useState<EventFormData>(initialFormState);
 
-  /* ============================
-     POPULATE FORM ON EDIT
-  ============================ */
+  // ✅ Now safe to include in dependencies
   useEffect(() => {
     if (editingEvent) {
       setStep(1);
@@ -175,7 +154,7 @@ export default function AddEventModal({
         category: Array.isArray(editingEvent.category)
           ? editingEvent.category.join(",")
           : editingEvent.category || "",
-        eventImage: null, // file must be re-uploaded to change
+        eventImage: null,
         existingEventImage: editingEvent.eventImage || null,
         date: editingEvent.date
           ? new Date(editingEvent.date).toISOString().split("T")[0]
@@ -183,15 +162,12 @@ export default function AddEventModal({
         time: editingEvent.time || "",
         fullAddress: editingEvent.fullAddress || "",
         city: editingEvent.city || "",
-
         about: editingEvent.about || "",
         partyFlow: editingEvent.partyFlow || "",
         whatsIncluded: editingEvent.whatsIncluded || "",
         howItWorks: editingEvent.howItWorks || "",
         whatsIncludedInTicket: editingEvent.whatsIncludedInTicket || "",
-
         passes: editingEvent.passes || [],
-
         ageRestriction: editingEvent.ageRestriction || "",
         maxCapacity: editingEvent.maxCapacity || 0,
         expectedGuestCount: editingEvent.expectedGuestCount || "",
@@ -208,9 +184,6 @@ export default function AddEventModal({
     }
   }, [editingEvent, open, initialFormState]);
 
-  /* ============================
-     HOSTS
-  ============================ */
   const [hosts, setHosts] = useState<
     Array<{ hostId: string; name: string; city?: string }>
   >([]);
@@ -233,9 +206,6 @@ export default function AddEventModal({
   const next = () => setStep((s) => Math.min(s + 1, 5));
   const back = () => setStep((s) => Math.max(s - 1, 1));
 
-  /* ============================
-     SUBMIT
-  ============================ */
   const handleSubmit = async () => {
     setLoading(true);
 
@@ -247,7 +217,6 @@ export default function AddEventModal({
       formPayload.append("subtitle", formData.subtitle);
       formPayload.append("category", formData.category);
 
-      // 🔑 IMAGE CONTRACT
       if (formData.eventImage) {
         formPayload.append("eventImage", formData.eventImage);
       } else if (formData.existingEventImage) {
@@ -315,12 +284,9 @@ export default function AddEventModal({
     }
   };
 
-  /* ============================
-     RENDER
-  ============================ */
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingEvent ? "Edit Event" : "Create Event"}

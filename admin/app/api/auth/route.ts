@@ -1,3 +1,4 @@
+// app/api/auth/action/route.ts
 import { NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -13,8 +14,7 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-
-    const body: unknown = await req.json();
+    const body = await req.json();
 
     if (!action) {
       return NextResponse.json(
@@ -23,45 +23,41 @@ export async function POST(req: Request) {
       );
     }
 
+    let backendRes: Response;
+
     if (action === "request-otp") {
-      const res = await fetch(`${BACKEND_URL}/api/auth/request-otp`, {
+      backendRes = await fetch(`${BACKEND_URL}/api/auth/request-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      const data: unknown = await res.json();
-      return NextResponse.json(data, { status: res.status });
-    }
-
-    if (action === "verify-otp") {
-      const res = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
+    } else if (action === "verify-otp") {
+      backendRes = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(body),
       });
-
-      const data: unknown = await res.json();
-      const response = NextResponse.json(data, {
-        status: res.status,
-      });
-
-      const setCookie = res.headers.get("set-cookie");
-      if (setCookie) {
-        response.headers.set("set-cookie", setCookie);
-      }
-
-      return response;
+    } else {
+      return NextResponse.json(
+        { message: "Invalid action" },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json(
-      { message: "Invalid action" },
-      { status: 400 }
-    );
+    const data = await backendRes.json();
+
+    // Create response with correct status
+    const response = NextResponse.json(data, { status: backendRes.status });
+
+    // Properly forward ALL set-cookie headers (can be multiple!)
+    const setCookieHeaders = backendRes.headers.getSetCookie?.() || [];
+    setCookieHeaders.forEach((cookie) => {
+      response.headers.append("set-cookie", cookie);
+    });
+
+    return response;
   } catch (error: unknown) {
     console.error("AUTH OTP API ERROR:", error);
-
     return NextResponse.json(
       { message: "Authentication failed" },
       { status: 500 }

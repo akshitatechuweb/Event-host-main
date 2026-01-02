@@ -11,11 +11,11 @@ export const metadata: Metadata = {
 export default async function EventTransactionsPage({
   params,
 }: {
-  params: Promise<{ eventId: string }>; // ← params is a Promise!
+  params: Promise<{ eventId: string }>;
 }) {
-  const { eventId } = await params; // ← Must await
+  const { eventId } = await params;
 
-  // Optional: validate eventId
+  // Safety check (though Next.js should never pass empty eventId)
   if (!eventId) {
     return (
       <DashboardLayout>

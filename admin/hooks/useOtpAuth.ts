@@ -1,3 +1,4 @@
+// hooks/useOtpAuth.ts
 import { useState } from "react";
 
 export function useOtpAuth() {
@@ -9,13 +10,19 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch("/api/auth?action=request-otp", {
+      const res = await fetch("/api/auth/action?action=request-otp", {  // ← FIXED
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
 
-      if (!res.ok) throw new Error();
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Failed to send OTP");
+        return false;
+      }
+
       return true;
     } catch {
       setError("Failed to send OTP");
@@ -30,20 +37,23 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch("/api/auth?action=verify-otp", {
+      const res = await fetch("/api/auth/action?action=verify-otp", {  // ← FIXED
         method: "POST",
         headers: { "Content-Type": "application/json" },
-
-        // 🔥 REQUIRED
-        credentials: "include",
-
+        credentials: "include", // ← Correct: needed for cookies on verify
         body: JSON.stringify({ phone, otp }),
       });
 
-      if (!res.ok) throw new Error();
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Invalid OTP");
+        return false;
+      }
+
       return true;
     } catch {
-      setError("Invalid OTP");
+      setError("Invalid OTP or network error");
       return false;
     } finally {
       setLoading(false);

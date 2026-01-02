@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+const API = process.env.NEXT_PUBLIC_API_URL;
+
 export function useOtpAuth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -9,19 +11,23 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
-      // ✅ CORRECT URL
-      const res = await fetch("/api/auth?action=request-otp", {
+      const res = await fetch(`${API}/api/auth/request-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone }),
       });
 
+      if (!res.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("Server returned non-JSON response");
+      }
+
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.message || "Failed to send OTP");
       }
+
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send OTP");
@@ -36,19 +42,23 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
-      // ✅ CORRECT URL
-      const res = await fetch("/api/auth?action=verify-otp", {
+      const res = await fetch(`${API}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone, otp }),
       });
 
+      if (!res.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("Server returned non-JSON response");
+      }
+
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.message || "Invalid OTP");
       }
+
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid OTP");

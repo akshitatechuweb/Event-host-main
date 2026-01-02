@@ -82,14 +82,13 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    /* =====================================================
-       🔐 DUMMY ADMIN / SUPERADMIN LOGIN (DEV SHORTCUT)
-    ===================================================== */
-    const isDummyAdmin =
-      phone === "7777777777" && otp === "1234";
+    const isProd = process.env.NODE_ENV === "production";
 
-    const isDummySuperAdmin =
-      phone === "8888888888" && otp === "5678";
+    // =====================================
+    // 🔐 DUMMY ADMIN / SUPERADMIN LOGIN (DEV SHORTCUT)
+    // =====================================
+    const isDummyAdmin = phone === "7777777777" && otp === "1234";
+    const isDummySuperAdmin = phone === "8888888888" && otp === "5678";
 
     if (isDummyAdmin || isDummySuperAdmin) {
       let user = await User.findOne({ phone });
@@ -111,16 +110,16 @@ export const verifyOtp = async (req, res) => {
         await user.save();
       }
 
-      const token = jwt.sign(
-        { sub: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
+      const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
 
+      // ✅ COOKIE - consistent for all users
       res.cookie("accessToken", token, {
         httpOnly: true,
-        sameSite: "lax",
-        secure: false, // localhost safe
+        sameSite: isProd ? "none" : "lax",
+        secure: isProd,
+        domain: isProd ? ".unrealvibe.com" : undefined,
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
@@ -133,9 +132,9 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    /* =====================================================
-       🔁 NORMAL USER OTP FLOW (UNCHANGED)
-    ===================================================== */
+    // =====================================
+    // 🔁 NORMAL USER OTP FLOW
+    // =====================================
     const otpRecord = await Otp.findOne({ phone, otp });
     if (!otpRecord) {
       return res.status(400).json({
@@ -157,8 +156,7 @@ export const verifyOtp = async (req, res) => {
 
     if (!user) {
       user = await User.create({ phone, isVerified: true });
-      responseMessage =
-        "OTP verified successfully. Please create your profile.";
+      responseMessage = "OTP verified successfully. Please create your profile.";
     } else {
       user.isVerified = true;
       await user.save();
@@ -167,16 +165,16 @@ export const verifyOtp = async (req, res) => {
 
     await Otp.deleteOne({ phone });
 
-    const token = jwt.sign(
-      { sub: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
+    // ✅ COOKIE - consistent for all users
     res.cookie("accessToken", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: false,
+      sameSite: isProd ? "none" : "lax",
+      secure: isProd,
+      domain: isProd ? ".unrealvibe.com" : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 

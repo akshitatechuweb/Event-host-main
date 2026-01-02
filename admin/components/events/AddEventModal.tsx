@@ -97,6 +97,24 @@ const steps = [
   "Limits & policies",
 ];
 
+// ✅ Production-ready backend URL configuration
+const getBackendUrl = () => {
+  // Use your existing environment variable
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // Fallback for development
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:8000';
+  }
+  
+  // Fallback: assume same domain (useful for same-server deployments)
+  return '';
+};
+
+const BACKEND_URL = getBackendUrl();
+
 export default function AddEventModal({
   open,
   onClose,
@@ -107,7 +125,6 @@ export default function AddEventModal({
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // ✅ FIX: Use useMemo to create a stable reference
   const initialFormState: EventFormData = useMemo(() => ({
     eventName: "",
     hostId: null,
@@ -135,11 +152,10 @@ export default function AddEventModal({
     houseRules: "",
     partyTerms: "",
     cancellationPolicy: "",
-  }), []); // Empty deps = only created once
+  }), []);
 
   const [formData, setFormData] = useState<EventFormData>(initialFormState);
 
-  // ✅ Now safe to include in dependencies
   useEffect(() => {
     if (editingEvent) {
       setStep(1);
@@ -217,10 +233,11 @@ export default function AddEventModal({
       formPayload.append("subtitle", formData.subtitle);
       formPayload.append("category", formData.category);
 
+      // Image handling
       if (formData.eventImage) {
         formPayload.append("eventImage", formData.eventImage);
-      } else if (formData.existingEventImage) {
-        formPayload.append("eventImage", formData.existingEventImage);
+      } else if (editingEvent && formData.existingEventImage) {
+        formPayload.append("existingImageUrl", formData.existingEventImage);
       }
 
       formPayload.append("date", formData.date);
@@ -253,24 +270,38 @@ export default function AddEventModal({
       formPayload.append("partyTerms", formData.partyTerms);
       formPayload.append("cancellationPolicy", formData.cancellationPolicy);
 
+      // ✅ Construct endpoint - works for both same-domain and cross-domain
       const endpoint = editingEvent
-        ? `/api/event/update-event/${editingEvent._id}`
-        : `/api/event/create-event`;
+        ? `${BACKEND_URL}/api/event/update-event/${editingEvent._id}`
+        : `${BACKEND_URL}/api/event/create-event`;
 
       const method = editingEvent ? "PUT" : "POST";
+
+      console.log(`Making ${method} request to:`, endpoint);
 
       const res = await fetch(endpoint, {
         method,
         body: formPayload,
+        credentials: 'include', // Important for authentication cookies
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Request failed");
+      // Better error handling for non-JSON responses
+      const contentType = res.headers.get("content-type");
+      let data;
+      
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        // Handle non-JSON responses (like HTML error pages)
+        const text = await res.text();
+        throw new Error(`Server returned non-JSON response: ${res.status} ${res.statusText}`);
       }
 
-      toast.success(editingEvent ? "Event updated" : "Event created");
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || `Request failed: ${res.status}`);
+      }
+
+      toast.success(editingEvent ? "Event updated successfully!" : "Event created successfully!");
 
       editingEvent ? onEventUpdated?.() : onEventCreated?.();
       onClose();
@@ -278,6 +309,7 @@ export default function AddEventModal({
       setStep(1);
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error("Something went wrong");
+      console.error("Submit error:", error);
       toast.error(error.message || "Something went wrong");
     } finally {
       setLoading(false);

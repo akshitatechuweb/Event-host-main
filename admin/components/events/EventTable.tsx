@@ -7,18 +7,8 @@ import { toast } from "sonner";
 import { filterBySearchQuery } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
-interface Event {
-  _id: string;
-  eventName: string;
-  hostedBy: string;
-  date: string;
-  city: string;
-  currentBookings: number;
-  maxCapacity: number;
-  eventImage?: string | null; // ✅ IMPORTANT
-  status?: "active" | "completed" | "cancelled";
-  eventImage?: string | null;
-}
+// Import the shared Event type (create this file next!)
+import { Event } from "@/types/event";
 
 interface EventTableProps {
   refresh?: number;
@@ -45,16 +35,22 @@ export function EventTable({
         credentials: "include",
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to fetch events");
+      }
+
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.message || "Failed to fetch events");
       }
 
       setEvents(data.events || []);
     } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      toast.error(error.message || "Failed to fetch events");
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch events";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -71,7 +67,7 @@ export function EventTable({
         event.hostedBy,
         event.city,
       ]),
-    [events, debouncedQuery],
+    [events, debouncedQuery]
   );
 
   if (loading) {

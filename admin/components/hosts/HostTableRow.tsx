@@ -1,10 +1,11 @@
 "use client";
 
 import { Eye, Check, X } from "lucide-react";
-import { Host } from "@/types/host";
+import { Host, HostStatus } from "@/types/host";  // ← Add HostStatus here
 import { approveHost, rejectHost } from "@/lib/admin";
 
-const STATUS_STYLES: Record<Host["status"], string> = {
+// Now this works perfectly
+const STATUS_STYLES: Record<HostStatus, string> = {
   pending: "bg-yellow-500/15 text-yellow-600",
   approved: "bg-emerald-500/15 text-emerald-600",
   rejected: "bg-red-500/15 text-red-600",
@@ -27,6 +28,10 @@ export function HostTableRow({
     onActionComplete();
   };
 
+  // Safe access with fallback
+  const statusStyle = host.status ? STATUS_STYLES[host.status] : "bg-gray-500/15 text-gray-600";
+  const displayStatus = host.status ?? "unknown";
+
   return (
     <div className="grid grid-cols-6 gap-4 px-6 py-5 border-b border-border">
       <div>
@@ -35,11 +40,16 @@ export function HostTableRow({
       </div>
 
       <div>{host.city}</div>
-      <div>{new Date(host.preferredPartyDate).toLocaleDateString()}</div>
 
       <div>
-        <span className={`text-xs px-3 py-1 rounded-full ${STATUS_STYLES[host.status]}`}>
-          {host.status}
+        {host.preferredPartyDate
+          ? new Date(host.preferredPartyDate).toLocaleDateString()
+          : "-"}
+      </div>
+
+      <div>
+        <span className={`text-xs px-3 py-1 rounded-full ${statusStyle}`}>
+          {displayStatus}
         </span>
       </div>
 

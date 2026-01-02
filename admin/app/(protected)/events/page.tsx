@@ -9,47 +9,13 @@ import EventTransactionsModal from "@/components/events/EventTransactionsModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
-export type EventType = {
-  _id: string;
-  eventName: string;
-  hostedBy: string;
-  date: string;
-  city: string;
-  currentBookings: number;
-  maxCapacity: number;
-  status?: "active" | "completed" | "cancelled";
-  hostId?: string;
-  passes?: Array<{
-    type: "Male" | "Female" | "Couple";
-    price: number;
-    totalQuantity: number;
-  }>;
-  eventImage?: string | null;
-
-  // Optional fields (AdminEventForForm compatibility)
-  subtitle?: string;
-  category?: string | string[];
-  time?: string;
-  fullAddress?: string;
-  about?: string;
-  partyFlow?: string;
-  whatsIncluded?: string;
-  howItWorks?: string;
-  whatsIncludedInTicket?: string;
-  ageRestriction?: string;
-  expectedGuestCount?: string;
-  maleToFemaleRatio?: string;
-  thingsToKnow?: string;
-  partyEtiquette?: string;
-  houseRules?: string;
-  partyTerms?: string;
-  cancellationPolicy?: string;
-};
+// Import the single shared type
+import { Event } from "@/types/event";
 
 export default function EventsPage() {
   const [openAddEvent, setOpenAddEvent] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [transactionsEventId, setTransactionsEventId] = useState<string | null>(null);
@@ -61,7 +27,7 @@ export default function EventsPage() {
     setRefreshKey((prev) => prev + 1);
   };
 
-  const handleEdit = (event: EventType) => {
+  const handleEdit = (event: Event) => {
     setEditingEvent(event);
     setOpenAddEvent(true);
   };

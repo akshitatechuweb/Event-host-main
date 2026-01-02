@@ -3,21 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Pencil, Eye } from "lucide-react";
 
-interface Event {
-  _id: string;
-  eventName: string;
-  hostedBy: string;
-  date: string;
-  city: string;
-  currentBookings: number;
-  maxCapacity?: number;
-  status?: "active" | "completed" | "cancelled";
-  hostId?: string;
-  passes?: Array<{
-    totalQuantity?: number;
-  }>;
-  eventImage?: string | null;
-}
+// Import the SINGLE source of truth for Event
+import { Event } from "@/types/event";
 
 interface EventTableRowProps {
   event: Event;
@@ -31,6 +18,7 @@ export function EventTableRow({
   onEdit,
   onViewTransactions,
 }: EventTableRowProps) {
+  // Safe fallback: if maxCapacity is somehow missing (shouldn't happen with correct type)
   const maxCapacity = event.maxCapacity ?? 0;
   const bookingPercentage =
     maxCapacity > 0

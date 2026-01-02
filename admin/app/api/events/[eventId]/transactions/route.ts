@@ -1,3 +1,4 @@
+// app/api/events/[eventId]/transactions/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
@@ -8,7 +9,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
  */
 export async function GET(
   req: NextRequest,
-  context: { params: { eventId: string } }
+  { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     if (!API_BASE_URL) {
@@ -18,7 +19,8 @@ export async function GET(
       );
     }
 
-    const { eventId } = context.params;
+    // ← Await the params Promise
+    const { eventId } = await params;
 
     if (!eventId) {
       return NextResponse.json(
@@ -65,7 +67,13 @@ export async function GET(
       );
     }
 
-    const parsed: unknown = JSON.parse(text);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = text; // fallback if not JSON
+    }
+
     return NextResponse.json(parsed, {
       status: response.status,
     });

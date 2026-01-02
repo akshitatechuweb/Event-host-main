@@ -1,3 +1,5 @@
+// types/host.ts
+
 export type HostStatus = "pending" | "approved" | "rejected";
 
 export interface Host {
@@ -6,5 +8,5 @@ export interface Host {
   phone: string;
   city: string;
   preferredPartyDate?: string;
-  status?: HostStatus; // ✅ FIX: optional
+  status?: HostStatus; // optional is fine
 }

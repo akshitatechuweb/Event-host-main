@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: { eventId: string } }
+  { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     if (!API_BASE_URL) {
@@ -15,7 +15,7 @@ export async function DELETE(
       );
     }
 
-    const { eventId } = context.params;
+    const { eventId } = await params;  // ← Await here
 
     if (!eventId) {
       return NextResponse.json(
@@ -83,7 +83,7 @@ export async function DELETE(
 
 export async function PUT(
   req: NextRequest,
-  context: { params: { eventId: string } }
+  { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     if (!API_BASE_URL) {
@@ -93,7 +93,7 @@ export async function PUT(
       );
     }
 
-    const { eventId } = context.params;
+    const { eventId } = await params;  // ← Await here
 
     if (!eventId) {
       return NextResponse.json(

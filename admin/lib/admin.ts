@@ -108,15 +108,12 @@ export async function getDashboardStats() {
     credentials: "include",
   });
 
+  if (res.status === 401) {
+    return { __unauthorized: true };
+  }
+
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({
-      message: "Failed to fetch dashboard stats",
-    }));
-
-    if (res.status === 401) {
-      throw new Error("Your session has expired. Please log in again.");
-    }
-
+    const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to fetch dashboard stats");
   }
 

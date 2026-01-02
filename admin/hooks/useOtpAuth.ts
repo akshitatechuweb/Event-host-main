@@ -9,16 +9,22 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
+      // ✅ CORRECT URL
       const res = await fetch("/api/auth?action=request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ phone }),
       });
 
-      if (!res.ok) throw new Error();
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to send OTP");
+      }
       return true;
-    } catch {
-      setError("Failed to send OTP");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send OTP");
       return false;
     } finally {
       setLoading(false);
@@ -30,20 +36,22 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
+      // ✅ CORRECT URL
       const res = await fetch("/api/auth?action=verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-
-        // 🔥 REQUIRED
         credentials: "include",
-
         body: JSON.stringify({ phone, otp }),
       });
 
-      if (!res.ok) throw new Error();
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Invalid OTP");
+      }
       return true;
-    } catch {
-      setError("Invalid OTP");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid OTP");
       return false;
     } finally {
       setLoading(false);

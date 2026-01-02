@@ -18,10 +18,17 @@ export const requestOtp = async (req, res) => {
         .json({ success: false, message: "Phone number is required" });
     }
 
-    if (!process.env.RENFLAIR_API_KEY) {
+    // Check if ServerMSG credentials are present
+    if (
+      !process.env.SERVERMSG_USERID ||
+      !process.env.SERVERMSG_PASSWORD ||
+      !process.env.SERVERMSG_SENDERID ||
+      !process.env.SERVERMSG_ENTITYID ||
+      !process.env.SERVERMSG_TEMPLATEID
+    ) {
       return res.status(500).json({
         success: false,
-        message: "Renflair API Key missing in .env file",
+        message: "ServerMSG SMS credentials missing in .env file",
       });
     }
 
@@ -38,22 +45,22 @@ export const requestOtp = async (req, res) => {
 
     console.log(`🔢 OTP for ${phone}: ${otp}`);
 
-    // Send SMS
+    // Send SMS via ServerMSG
     const smsResponse = await sendSms(phone, otp);
-    console.log("📨 Renflair API Response:", smsResponse);
 
-    if (!smsResponse) {
+    if (!smsResponse || !smsResponse.success) {
       return res.status(500).json({
         success: false,
-        message: "Failed to send OTP. SMS service not responding.",
+        message: "Failed to send OTP via ServerMSG.",
+        details: smsResponse?.data || "No response",
       });
     }
 
     return res.json({
       success: true,
-      message: "OTP sent successfully",
+      message: "OTP sent successfully via ServerMSG",
       otp, // ⚠️ remove in production
-      details: smsResponse,
+      details: smsResponse.data,
     });
   } catch (error) {
     console.error("❌ Error sending OTP:", error);

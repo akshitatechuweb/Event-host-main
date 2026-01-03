@@ -61,6 +61,25 @@ export function useOtpAuth() {
         throw new Error(data.message || "Invalid OTP");
       }
 
+      // After successful login, get token and store in localStorage
+      // This allows Bearer token authentication for API calls
+      try {
+        const tokenRes = await fetch("/api/auth/token", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (tokenRes.ok) {
+          const tokenData = await tokenRes.json();
+          if (tokenData.token) {
+            localStorage.setItem("accessToken", tokenData.token);
+          }
+        }
+      } catch (tokenError) {
+        // Non-fatal - token might not be available yet, cookies will still work
+        console.warn("Could not store token in localStorage:", tokenError);
+      }
+
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid OTP");

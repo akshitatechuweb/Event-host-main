@@ -69,7 +69,7 @@ export async function apiFetch(
   const isNextApiRoute = endpoint.startsWith("/api/");
   const baseUrl = isNextApiRoute
     ? "" // Next.js API routes are relative
-    : process.env.NEXT_PUBLIC_API_URL || "";
+    : process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : "";
 
   const url = `${baseUrl}${endpoint}`;
 

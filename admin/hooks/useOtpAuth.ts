@@ -1,30 +1,43 @@
 import { useState } from "react";
 
-// Always go through the Next.js API route so cookies are set on the
-// frontend domain (first-party) and are visible to SSR.
-const AUTH_API = "/api/auth";
-
 export function useOtpAuth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ===========================
+  // 📩 SEND OTP
+  // ===========================
   const sendOtp = async (phone: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${AUTH_API}?action=request-otp`, {
+      // Use Next.js API route proxy (relative URL - always on same domain as frontend)
+      // This ensures cookies are handled correctly and set on the frontend domain
+      const res = await fetch(`/api/auth?action=request-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone }),
       });
 
-      if (!res.headers.get("content-type")?.includes("application/json")) {
-        throw new Error("Server returned non-JSON response");
+      // Get response as text first to handle non-JSON responses gracefully
+      const responseText = await res.text();
+      
+      // Check if response is HTML (error page)
+      if (responseText.startsWith("<")) {
+        console.error("Server returned HTML instead of JSON:", responseText.substring(0, 200));
+        throw new Error("Server returned an error page. Please check server configuration.");
       }
 
-      const data = await res.json();
+      // Try to parse as JSON
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse response as JSON:", responseText.substring(0, 200));
+        throw new Error(`Server returned invalid response: ${responseText.substring(0, 100)}`);
+      }
 
       if (!res.ok) {
         throw new Error(data.message || "Failed to send OTP");
@@ -39,47 +52,48 @@ export function useOtpAuth() {
     }
   };
 
+  // ===========================
+  // ✅ VERIFY OTP
+  // ===========================
   const confirmOtp = async (phone: string, otp: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${AUTH_API}?action=verify-otp`, {
+      // Use Next.js API route proxy (relative URL - always on same domain as frontend)
+      // This ensures cookies are set on the correct domain
+      // This is critical for production where frontend and backend are on different domains
+      const res = await fetch(`/api/auth?action=verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ phone, otp }),
       });
 
-      if (!res.headers.get("content-type")?.includes("application/json")) {
-        throw new Error("Server returned non-JSON response");
+      // Get response as text first to handle non-JSON responses gracefully
+      const responseText = await res.text();
+      
+      // Check if response is HTML (error page)
+      if (responseText.startsWith("<")) {
+        console.error("Server returned HTML instead of JSON:", responseText.substring(0, 200));
+        throw new Error("Server returned an error page. Please check server configuration.");
       }
 
-      const data = await res.json();
+      // Try to parse as JSON
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse response as JSON:", responseText.substring(0, 200));
+        throw new Error(`Server returned invalid response: ${responseText.substring(0, 100)}`);
+      }
 
       if (!res.ok) {
         throw new Error(data.message || "Invalid OTP");
       }
 
-      // After successful login, get token and store in localStorage
-      // This allows Bearer token authentication for API calls
-      try {
-        const tokenRes = await fetch("/api/auth/token", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (tokenRes.ok) {
-          const tokenData = await tokenRes.json();
-          if (tokenData.token) {
-            localStorage.setItem("accessToken", tokenData.token);
-          }
-        }
-      } catch (tokenError) {
-        // Non-fatal - token might not be available yet, cookies will still work
-        console.warn("Could not store token in localStorage:", tokenError);
-      }
-
+      // Cookie is now set on the Next.js domain via the API route proxy
+      // No need to fetch token separately - the httpOnly cookie is already set
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid OTP");

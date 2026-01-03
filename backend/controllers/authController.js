@@ -160,11 +160,14 @@ export const verifyOtp = async (req, res) => {
     // ✅ SET COOKIE (CORRECT & CONSISTENT)
     res.cookie("accessToken", token, authCookieOptions);
 
+    // Also return token in response body as fallback for Next.js API route
+    // This helps when Set-Cookie header extraction fails (e.g., Nginx issues)
     return res.json({
       success: true,
       message,
       role: user.role,
       isProfileComplete: user.isProfileComplete || false,
+      token: token, // Fallback for cookie extraction
     });
   } catch (error) {
     console.error("❌ OTP verification failed:", error);

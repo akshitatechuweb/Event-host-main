@@ -1,7 +1,7 @@
 // app/api/events/[eventId]/transactions/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : null;
 
 /**
  * GET /api/events/:eventId/transactions

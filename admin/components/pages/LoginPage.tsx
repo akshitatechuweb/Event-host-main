@@ -32,12 +32,12 @@ export default function LoginPage() {
 
     const success = await confirmOtp(phone, otp);
     if (success) {
-      // Small delay to ensure cookie is set before redirect
-      // Then use window.location for a hard redirect to ensure cookie is read
-      // This is more reliable than router.replace in production
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 100);
+      // Use a hard redirect with window.location to ensure:
+      // 1. Cookie is sent with the request (browser handles httpOnly cookies automatically)
+      // 2. Full page reload ensures SSR auth check runs with the new cookie
+      // 3. No race conditions with client-side routing
+      // The cookie is set by the Next.js API route, so it's already available
+      window.location.href = "/dashboard";
     }
   };
 

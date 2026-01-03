@@ -18,12 +18,12 @@ export type AuthCheckResult = {
  */
 export async function checkAuth(): Promise<AuthCheckResult> {
   try {
-    const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
+    const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : null;
     
     if (!BACKEND_URL) {
       return {
         success: false,
-        message: "NEXT_PUBLIC_API_URL is not defined",
+        message: "NEXT_PUBLIC_API_BASE_URL is not defined",
       };
     }
 

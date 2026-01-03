@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? null;
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : null;
 
 export async function POST() {
   try {
     if (!BACKEND_URL) {
       return NextResponse.json(
-        { success: false, message: "NEXT_PUBLIC_API_URL is not defined" },
+        { success: false, message: "NEXT_PUBLIC_API_BASE_URL is not defined" },
         { status: 500 }
       );
     }

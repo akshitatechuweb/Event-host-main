@@ -41,8 +41,20 @@ export async function checkAuth(): Promise<AuthCheckResult> {
     console.log("checkAuth: Found accessToken cookie, verifying with backend");
 
     // Forward the JWT cookie to the backend
-    // BACKEND_URL already includes /api, so use /auth/me directly
-    const res = await fetch(`${BACKEND_URL}/auth/me`, {
+    // Normalize BACKEND_URL - ensure it doesn't have trailing /api
+    let normalizedBackendUrl = BACKEND_URL.trim();
+    if (normalizedBackendUrl.endsWith('/api')) {
+      normalizedBackendUrl = normalizedBackendUrl.slice(0, -4);
+    }
+    // Remove any trailing slashes
+    normalizedBackendUrl = normalizedBackendUrl.replace(/\/+$/, '');
+    
+    // Construct the full endpoint path
+    const authEndpoint = `${normalizedBackendUrl}/api/auth/me`;
+    
+    console.log("checkAuth: Calling backend:", authEndpoint);
+    
+    const res = await fetch(authEndpoint, {
       method: "GET",
       headers: {
         Cookie: `accessToken=${accessToken}`,

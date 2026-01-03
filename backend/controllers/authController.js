@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
 import Otp from "../models/Otp.js";
 import User from "../models/User.js";
 import { sendSms } from "../utils/sendSms.js";
@@ -88,87 +89,66 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // 🔐 Dummy admin shortcuts
-    const isDummyAdmin = phone === "7777777777" && otp === "1234";
-    const isDummySuperAdmin = phone === "8888888888" && otp === "5678";
+    // Normal OTP flow (admin/superadmin now use email/password login)
+    const otpRecord = await Otp.findOne({ phone, otp });
 
-    let user;
-    let message = "Login successful";
-
-    if (isDummyAdmin || isDummySuperAdmin) {
-      // Admin / superadmin fast-path
-      user = await User.findOne({ phone });
-
-      if (!user) {
-        user = await User.create({
-          phone,
-          name: isDummySuperAdmin ? "Super Admin" : "Admin",
-          role: isDummySuperAdmin ? "superadmin" : "admin",
-          isVerified: true,
-          isHostVerified: true,
-          isActive: true,
-        });
-      } else {
-        user.role = isDummySuperAdmin ? "superadmin" : "admin";
-        user.isVerified = true;
-        user.isHostVerified = true;
-        user.isActive = true;
-        await user.save();
-      }
-
-      message = "Admin login successful";
-    } else {
-      // Normal OTP flow
-      const otpRecord = await Otp.findOne({ phone, otp });
-
-      if (!otpRecord) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid OTP",
-        });
-      }
-
-      if (otpRecord.expiresAt < new Date()) {
-        await Otp.deleteOne({ phone });
-        return res.status(400).json({
-          success: false,
-          message: "OTP expired",
-        });
-      }
-
-      user = await User.findOne({ phone });
-
-      if (!user) {
-        user = await User.create({
-          phone,
-          isVerified: true,
-        });
-        message = "OTP verified successfully. Please create your profile.";
-      } else {
-        user.isVerified = true;
-        await user.save();
-        message = "Welcome back! Login successful.";
-      }
-
-      await Otp.deleteOne({ phone });
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
     }
 
-    const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    if (otpRecord.expiresAt < new Date()) {
+      await Otp.deleteOne({ phone });
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
+    }
 
-    // ✅ SET COOKIE (CORRECT & CONSISTENT)
-    res.cookie("accessToken", token, authCookieOptions);
+    const user = await User.findOne({ phone });
 
-    // Also return token in response body as fallback for Next.js API route
-    // This helps when Set-Cookie header extraction fails (e.g., Nginx issues)
-    return res.json({
-      success: true,
-      message,
-      role: user.role,
-      isProfileComplete: user.isProfileComplete || false,
-      token: token, // Fallback for cookie extraction
-    });
+    if (!user) {
+      const newUser = await User.create({
+        phone,
+        isVerified: true,
+      });
+      await Otp.deleteOne({ phone });
+      
+      const token = jwt.sign({ sub: newUser._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
+
+      res.cookie("accessToken", token, authCookieOptions);
+
+      return res.json({
+        success: true,
+        message: "OTP verified successfully. Please create your profile.",
+        role: newUser.role,
+        isProfileComplete: newUser.isProfileComplete || false,
+        token: token,
+      });
+    } else {
+      user.isVerified = true;
+      await user.save();
+      await Otp.deleteOne({ phone });
+
+      const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
+
+      res.cookie("accessToken", token, authCookieOptions);
+
+      return res.json({
+        success: true,
+        message: "Welcome back! Login successful.",
+        role: user.role,
+        isProfileComplete: user.isProfileComplete || false,
+        token: token,
+      });
+    }
+
   } catch (error) {
     console.error("❌ OTP verification failed:", error);
     return res.status(500).json({
@@ -218,4 +198,161 @@ export const logout = async (req, res) => {
     success: true,
     message: "Logged out successfully",
   });
+};
+
+/* =========================
+   🔐 ADMIN LOGIN (Email/Password)
+========================= */
+
+// Hardcoded admin credentials (can be overridden via env vars)
+const ADMIN_CREDENTIALS = {
+  email: process.env.ADMIN_EMAIL || "admin@gmail.com",
+  password: process.env.ADMIN_PASSWORD || "admin@123",
+  role: "admin",
+};
+
+const SUPERADMIN_CREDENTIALS = {
+  email: process.env.SUPERADMIN_EMAIL || "superadmin@gmail.com",
+  password: process.env.SUPERADMIN_PASSWORD || "superadmin@123",
+  role: "superadmin",
+};
+
+// Hash passwords on module load (only once)
+const ADMIN_PASSWORD_HASH = bcrypt.hashSync(ADMIN_CREDENTIALS.password, 10);
+const SUPERADMIN_PASSWORD_HASH = bcrypt.hashSync(SUPERADMIN_CREDENTIALS.password, 10);
+
+export const adminLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if it's admin or superadmin
+    let isAdmin = false;
+    let isSuperAdmin = false;
+    let passwordHash = null;
+    let expectedRole = null;
+
+    if (normalizedEmail === ADMIN_CREDENTIALS.email.toLowerCase()) {
+      isAdmin = true;
+      passwordHash = ADMIN_PASSWORD_HASH;
+      expectedRole = "admin";
+    } else if (normalizedEmail === SUPERADMIN_CREDENTIALS.email.toLowerCase()) {
+      isSuperAdmin = true;
+      passwordHash = SUPERADMIN_PASSWORD_HASH;
+      expectedRole = "superadmin";
+    }
+
+    // Only allow admin/superadmin emails
+    if (!isAdmin && !isSuperAdmin) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = bcrypt.compareSync(password, passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Find or create admin user
+    // First, try to find by email
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      // If not found by email, check if a user with the admin phone number exists
+      // (this handles cases where admin was created via old /create-admin endpoint)
+      const adminPhone = isSuperAdmin ? "9999999999" : "8888888888";
+      user = await User.findOne({ phone: adminPhone });
+
+      if (user) {
+        // Update existing user with admin phone to have correct email and role
+        user.email = normalizedEmail;
+        user.role = expectedRole;
+        user.name = isSuperAdmin ? "Super Admin" : "Admin";
+        user.isVerified = true;
+        user.isHostVerified = true;
+        user.isActive = true;
+        user.isProfileComplete = true;
+        await user.save();
+      } else {
+        // No user found with email or phone - create new admin user
+        try {
+          user = await User.create({
+            email: normalizedEmail,
+            phone: adminPhone, // Dummy phone for admin accounts
+            name: isSuperAdmin ? "Super Admin" : "Admin",
+            role: expectedRole,
+            isVerified: true,
+            isHostVerified: true,
+            isActive: true,
+            isProfileComplete: true,
+          });
+        } catch (createError) {
+          // If creation fails due to duplicate phone (race condition), find and update
+          if (createError.code === 11000 && createError.keyPattern?.phone) {
+            user = await User.findOne({ phone: adminPhone });
+            if (user) {
+              user.email = normalizedEmail;
+              user.role = expectedRole;
+              user.name = isSuperAdmin ? "Super Admin" : "Admin";
+              user.isVerified = true;
+              user.isHostVerified = true;
+              user.isActive = true;
+              user.isProfileComplete = true;
+              await user.save();
+            } else {
+              throw createError; // Re-throw if we still can't find the user
+            }
+          } else {
+            throw createError; // Re-throw other errors
+          }
+        }
+      }
+    } else {
+      // User found by email - update to ensure correct role and status
+      user.role = expectedRole;
+      user.isVerified = true;
+      user.isHostVerified = true;
+      user.isActive = true;
+      if (!user.name) {
+        user.name = isSuperAdmin ? "Super Admin" : "Admin";
+      }
+      await user.save();
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Set cookie
+    res.cookie("accessToken", token, authCookieOptions);
+
+    return res.json({
+      success: true,
+      message: "Admin login successful",
+      role: user.role,
+      token: token, // Fallback for cookie extraction
+    });
+  } catch (error) {
+    console.error("❌ Admin login failed:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Login failed",
+    });
+  }
 };

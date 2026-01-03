@@ -2,8 +2,9 @@
 // Hosts
 // ===========================
 export async function getHosts() {
+  // Call Next.js API route which proxies to backend
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/hosts?action=list`,
+    `/api/hosts?action=list`,
     { credentials: "include" }
   );
 
@@ -22,8 +23,9 @@ export async function getHosts() {
 // Event Transactions
 // ===========================
 export async function getEventTransactions(eventId: string) {
+  // Call Next.js API route which proxies to backend
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/events/${eventId}/transactions`,
+    `/api/events/${eventId}/transactions`,
     { credentials: "include" }
   );
 
@@ -42,8 +44,9 @@ export async function getEventTransactions(eventId: string) {
 // Approved Hosts
 // ===========================
 export async function getApprovedHosts() {
+  // Call Next.js API route which proxies to backend
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/hosts`,
+    `/api/admin/hosts`,
     { credentials: "include" }
   );
 
@@ -55,8 +58,9 @@ export async function getApprovedHosts() {
 }
 
 export async function approveHost(id: string) {
+  // Call Next.js API route which proxies to backend
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/hosts?action=approve&id=${id}`,
+    `/api/hosts?action=approve&id=${id}`,
     {
       method: "POST",
       credentials: "include",
@@ -71,8 +75,9 @@ export async function approveHost(id: string) {
 }
 
 export async function rejectHost(id: string, reason?: string) {
+  // Call Next.js API route which proxies to backend
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/hosts?action=reject&id=${id}`,
+    `/api/hosts?action=reject&id=${id}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -92,8 +97,9 @@ export async function rejectHost(id: string, reason?: string) {
 // Tickets
 // ===========================
 export async function getAllTickets() {
+  // Call Next.js API route which proxies to backend
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/tickets`,
+    `/api/tickets`,
     { credentials: "include" }
   );
 
@@ -112,8 +118,9 @@ export async function getAllTickets() {
 // Dashboard Stats
 // ===========================
 export async function getDashboardStats() {
+  // Call Next.js API route which proxies to backend
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/stats`,
+    `/api/dashboard/stats`,
     { credentials: "include" }
   );
 

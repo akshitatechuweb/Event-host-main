@@ -76,13 +76,15 @@ export async function POST(req: Request) {
 
     try {
       if (action === "request-otp") {
-        backendRes = await fetch(`${BACKEND_URL}/api/auth/request-otp`, {
+        // BACKEND_URL already includes /api, so use /auth/request-otp
+        backendRes = await fetch(`${BACKEND_URL}/auth/request-otp`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
       } else if (action === "verify-otp") {
-        backendRes = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
+        // BACKEND_URL already includes /api, so use /auth/verify-otp
+        backendRes = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),

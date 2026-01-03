@@ -1,19 +1,17 @@
+ 
 import { useState } from "react";
-
+ 
 export function useOtpAuth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // ===========================
-  // 📩 SEND OTP
-  // ===========================
+ 
   const sendOtp = async (phone: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Use Next.js API route proxy (relative URL - always on same domain as frontend)
-      // This ensures cookies are handled correctly and set on the frontend domain
+      // Use Next.js proxy route to handle cookie domain transfer
+      // The proxy extracts cookie from backend and sets it on frontend domain
       const res = await fetch(`/api/auth?action=request-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -21,23 +19,11 @@ export function useOtpAuth() {
         body: JSON.stringify({ phone }),
       });
 
-      // Get response as text first to handle non-JSON responses gracefully
-      const responseText = await res.text();
-      
-      // Check if response is HTML (error page)
-      if (responseText.startsWith("<")) {
-        console.error("Server returned HTML instead of JSON:", responseText.substring(0, 200));
-        throw new Error("Server returned an error page. Please check server configuration.");
+      if (!res.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("Server returned non-JSON response");
       }
 
-      // Try to parse as JSON
-      let data: any;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("Failed to parse response as JSON:", responseText.substring(0, 200));
-        throw new Error(`Server returned invalid response: ${responseText.substring(0, 100)}`);
-      }
+      const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.message || "Failed to send OTP");
@@ -52,17 +38,15 @@ export function useOtpAuth() {
     }
   };
 
-  // ===========================
-  // ✅ VERIFY OTP
-  // ===========================
   const confirmOtp = async (phone: string, otp: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Use Next.js API route proxy (relative URL - always on same domain as frontend)
-      // This ensures cookies are set on the correct domain
-      // This is critical for production where frontend and backend are on different domains
+      // Use Next.js proxy route to handle cookie domain transfer
+      // The proxy extracts cookie from backend response and sets it on frontend domain
+      // This is necessary because backend sets cookie on api.unrealvibe.com
+      // but frontend needs it on the frontend domain
       const res = await fetch(`/api/auth?action=verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,30 +54,18 @@ export function useOtpAuth() {
         body: JSON.stringify({ phone, otp }),
       });
 
-      // Get response as text first to handle non-JSON responses gracefully
-      const responseText = await res.text();
-      
-      // Check if response is HTML (error page)
-      if (responseText.startsWith("<")) {
-        console.error("Server returned HTML instead of JSON:", responseText.substring(0, 200));
-        throw new Error("Server returned an error page. Please check server configuration.");
+      if (!res.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("Server returned non-JSON response");
       }
 
-      // Try to parse as JSON
-      let data: any;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("Failed to parse response as JSON:", responseText.substring(0, 200));
-        throw new Error(`Server returned invalid response: ${responseText.substring(0, 100)}`);
-      }
+      const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.message || "Invalid OTP");
       }
 
-      // Cookie is now set on the Next.js domain via the API route proxy
-      // No need to fetch token separately - the httpOnly cookie is already set
+      // Cookie is now set on frontend domain by the proxy route
+      // The cookie will be sent with subsequent requests via credentials: "include"
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid OTP");
@@ -102,6 +74,6 @@ export function useOtpAuth() {
       setLoading(false);
     }
   };
-
+ 
   return { sendOtp, confirmOtp, loading, error };
 }

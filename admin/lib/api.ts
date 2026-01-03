@@ -1,39 +1,4 @@
 /**
- * Get authentication token from localStorage or cookies
- * Returns null if no token is found
- */
-async function getAuthToken(): Promise<string | null> {
-  // First, try to get from localStorage (if available)
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      return token;
-    }
-
-    // If not in localStorage, try to get from cookies via API
-    try {
-      const res = await fetch("/api/auth/token", {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.token) {
-          // Optionally store in localStorage for future use
-          localStorage.setItem("accessToken", data.token);
-          return data.token;
-        }
-      }
-    } catch (error) {
-      console.error("Failed to get token from API:", error);
-    }
-  }
-
-  return null;
-}
-
-/**
  * Redirect to login page if not authenticated
  */
 function redirectToLogin() {
@@ -43,9 +8,9 @@ function redirectToLogin() {
 }
 
 /**
- * Enhanced API fetch function with Bearer token authentication
+ * API fetch function that uses direct backend URLs with httpOnly cookie authentication
  * 
- * @param endpoint - API endpoint (can be Next.js API route or backend URL)
+ * @param endpoint - Backend API endpoint (relative path, e.g., "/api/user" or "/api/events")
  * @param options - Fetch options
  * @returns Promise with response data
  * @throws Error if request fails or user is unauthorized
@@ -54,36 +19,26 @@ export async function apiFetch(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<any> {
-  // Get authentication token
-  const token = await getAuthToken();
-
-  // If no token, redirect to login or throw error
-  if (!token) {
-    const error = new Error("No token");
-    console.error("Authentication error:", error);
-    redirectToLogin();
-    throw error;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  
+  if (!API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
   }
 
-  // Determine if endpoint is a Next.js API route or backend URL
-  const isNextApiRoute = endpoint.startsWith("/api/");
-  const baseUrl = isNextApiRoute
-    ? "" // Next.js API routes are relative
-    : process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : "";
+  // Ensure endpoint starts with / for proper URL construction
+  const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = `${API_BASE_URL}${normalizedEndpoint}`;
 
-  const url = `${baseUrl}${endpoint}`;
-
-  // Prepare headers with Bearer token
+  // Prepare headers (no Bearer token - backend uses httpOnly cookies)
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
     ...options.headers,
   };
 
   try {
     const res = await fetch(url, {
       ...options,
-      credentials: "include", // Still include cookies for Next.js API routes
+      credentials: "include", // Critical: sends httpOnly cookies
       headers,
     });
 
@@ -99,10 +54,6 @@ export async function apiFetch(
     // Handle unauthorized (401) - redirect to login
     if (res.status === 401) {
       console.error("Unauthorized access - redirecting to login");
-      // Clear localStorage token if exists
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("accessToken");
-      }
       redirectToLogin();
       throw new Error(data.message || "Unauthorized");
     }

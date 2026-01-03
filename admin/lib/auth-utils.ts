@@ -31,14 +31,18 @@ export async function checkAuth(): Promise<AuthCheckResult> {
     const accessToken = cookieStore.get("accessToken")?.value;
 
     if (!accessToken) {
+      console.log("checkAuth: No accessToken cookie found");
       return {
         success: false,
         message: "Not authenticated",
       };
     }
 
+    console.log("checkAuth: Found accessToken cookie, verifying with backend");
+
     // Forward the JWT cookie to the backend
-    const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
+    // BACKEND_URL already includes /api, so use /auth/me directly
+    const res = await fetch(`${BACKEND_URL}/auth/me`, {
       method: "GET",
       headers: {
         Cookie: `accessToken=${accessToken}`,
@@ -47,6 +51,7 @@ export async function checkAuth(): Promise<AuthCheckResult> {
     });
 
     if (!res.ok) {
+      console.log(`checkAuth: Backend returned ${res.status}`);
       return {
         success: false,
         message: "Unauthorized",
@@ -56,12 +61,14 @@ export async function checkAuth(): Promise<AuthCheckResult> {
     const data = await res.json();
     
     if (!data.success || !data.user) {
+      console.log("checkAuth: Invalid auth response from backend", data);
       return {
         success: false,
         message: "Invalid auth response",
       };
     }
 
+    console.log("checkAuth: Auth successful", { userId: data.user.id, role: data.user.role });
     return {
       success: true,
       user: {

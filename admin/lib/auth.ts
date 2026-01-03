@@ -1,17 +1,25 @@
-
 export const logout = async () => {
-  await fetch("/api/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  });
+  await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/logout`,
+    {
+      method: "POST",
+      credentials: "include",
+    }
+  );
 };
 
 export const getMe = async () => {
-  const res = await fetch("/api/auth/me", {
-    method: "GET",
-    credentials: "include",
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`,
+    {
+      method: "GET",
+      credentials: "include",
+    }
+  );
 
-  if (!res.ok) throw new Error("Not authenticated");
+  if (!res.ok) {
+    throw new Error("Not authenticated");
+  }
+
   return res.json();
 };

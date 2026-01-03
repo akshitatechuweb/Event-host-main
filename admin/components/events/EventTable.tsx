@@ -31,7 +31,13 @@ export function EventTable({
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/events", {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+      
+      if (!API_BASE_URL) {
+        throw new Error("API base URL not configured");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/event/events`, {
         credentials: "include",
       });
 
@@ -42,11 +48,10 @@ export function EventTable({
 
       const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.message || "Failed to fetch events");
-      }
+      // Handle different response formats
+      const events = Array.isArray(data) ? data : (data.events || data.data || []);
 
-      setEvents(data.events || []);
+      setEvents(events);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to fetch events";

@@ -16,8 +16,9 @@ export async function POST() {
     const accessToken = cookieStore.get("accessToken")?.value;
 
     // Call backend logout to allow any server-side session cleanup.
+    // BACKEND_URL already includes /api, so use /auth/logout
     if (accessToken) {
-      await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      await fetch(`${BACKEND_URL}/auth/logout`, {
         method: "POST",
         headers: {
           Cookie: `accessToken=${accessToken}`,

@@ -34,9 +34,9 @@ export default function LoginPage() {
     if (success) {
       // Use a hard redirect with window.location to ensure:
       // 1. Cookie is sent with the request (browser handles httpOnly cookies automatically)
-      // 2. Full page reload ensures SSR auth check runs with the new cookie
+      // 2. Full page reload ensures middleware/SSR auth check runs with the new cookie
       // 3. No race conditions with client-side routing
-      // The cookie is set by the Next.js API route, so it's already available
+      // The cookie is set by the backend directly, so it's already available
       window.location.href = "/dashboard";
     }
   };

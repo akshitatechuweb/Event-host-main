@@ -256,10 +256,16 @@ export default function AddEventModal({
       formPayload.append("partyTerms", formData.partyTerms);
       formPayload.append("cancellationPolicy", formData.cancellationPolicy);
 
-      // ✅ Use Next.js API proxy so cookies stay first-party to the admin app
+      // Use direct backend URL with httpOnly cookie authentication
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+      
+      if (!API_BASE_URL) {
+        throw new Error("API base URL not configured");
+      }
+
       const endpoint = editingEvent
-        ? `/api/events/${editingEvent._id}`
-        : "/api/events";
+        ? `${API_BASE_URL}/api/event/update-event/${editingEvent._id}`
+        : `${API_BASE_URL}/api/event/create-event`;
 
       const method = editingEvent ? "PUT" : "POST";
 
@@ -268,7 +274,7 @@ export default function AddEventModal({
       const res = await fetch(endpoint, {
         method,
         body: formPayload,
-        credentials: 'include', // Important for authentication cookies
+        credentials: 'include', // Critical: sends httpOnly cookies
       });
 
       // Better error handling for non-JSON responses

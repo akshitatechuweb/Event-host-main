@@ -50,20 +50,20 @@ export async function fetchRegularUsers(
   if (city) queryParams.append("city", city);
 
   try {
-    // Call Next.js API route which handles Bearer token authentication
-    const data = await apiFetch(`/api/users?${queryParams.toString()}`);
+    // Call backend directly with httpOnly cookie authentication
+    const data = await apiFetch(`/api/user?${queryParams.toString()}`);
     
-    // Ensure response has expected structure
-    if (!data || !data.success) {
-      throw new Error(data?.message || "Failed to fetch users");
-    }
+    // Handle different response formats
+    const users = Array.isArray(data) ? data : (data.users || data.data || []);
+    const total = data.total || users.length;
+    const totalPages = data.totalPages || Math.ceil(total / limit);
 
     return {
-      success: data.success,
-      users: data.users || [],
-      total: data.total || 0,
+      success: true,
+      users: users,
+      total: total,
       page: data.page || page,
-      totalPages: data.totalPages || 1,
+      totalPages: totalPages,
       limit: data.limit || limit,
     };
   } catch (error) {
@@ -78,7 +78,7 @@ export async function fetchRegularUsers(
  */
 export async function deactivateUser(userId: string): Promise<void> {
   try {
-    await apiFetch(`/api/users/deactivate/${userId}`, {
+    await apiFetch(`/api/user/deactivate/${userId}`, {
       method: "PUT",
     });
   } catch (error) {

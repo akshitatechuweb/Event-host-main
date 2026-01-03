@@ -29,7 +29,13 @@ export default function TransactionsPage() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/events", {
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+        
+        if (!API_BASE_URL) {
+          throw new Error("API base URL not configured");
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/event/events`, {
           credentials: "include",
         });
 
@@ -41,8 +47,14 @@ export default function TransactionsPage() {
           );
         }
 
-        const data = (await response.json()) as EventsApiResponse;
-        setEvents(data.events ?? []);
+        const data = (await response.json()) as EventsApiResponse | Event[];
+        
+        // Handle different response formats
+        if (Array.isArray(data)) {
+          setEvents(data);
+        } else {
+          setEvents((data as EventsApiResponse).events ?? []);
+        }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to load events");
       } finally {

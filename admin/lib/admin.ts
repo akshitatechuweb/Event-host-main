@@ -1,52 +1,51 @@
-// admin/lib/admin.ts
-
+// ===========================
+// Hosts
+// ===========================
 export async function getHosts() {
-  const res = await fetch("/api/hosts?action=list", {
-    credentials: "include",
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/hosts?action=list`,
+    { credentials: "include" }
+  );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ message: "Failed to fetch hosts" }));
-    
     if (res.status === 401) {
-      // Redirect to login or show better error
       throw new Error("Your session has expired. Please log in again.");
     }
-    
+    const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to fetch hosts");
   }
 
   return res.json();
 }
 
-// Get transactions for an event (admin)
+// ===========================
+// Event Transactions
+// ===========================
 export async function getEventTransactions(eventId: string) {
   const res = await fetch(
-    `/api/events/${eventId}/transactions`,
-    {
-      credentials: "include",
-    }
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/events/${eventId}/transactions`,
+    { credentials: "include" }
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ message: "Failed to fetch event transactions" }));
-    
     if (res.status === 401) {
       throw new Error("Your session has expired. Please log in again.");
     }
-    
+    const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to fetch event transactions");
   }
 
   return res.json();
 }
 
-
-// Fetch approved hosts (for assigning events)
+// ===========================
+// Approved Hosts
+// ===========================
 export async function getApprovedHosts() {
-  const res = await fetch(`/api/admin/hosts`, {
-    credentials: "include",
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/hosts`,
+    { credentials: "include" }
+  );
 
   if (!res.ok) {
     throw new Error("Failed to fetch approved hosts");
@@ -56,10 +55,13 @@ export async function getApprovedHosts() {
 }
 
 export async function approveHost(id: string) {
-  const res = await fetch(`/api/hosts?action=approve&id=${id}`, {
-    method: "POST",
-    credentials: "include",
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/hosts?action=approve&id=${id}`,
+    {
+      method: "POST",
+      credentials: "include",
+    }
+  );
 
   if (!res.ok) {
     throw new Error("Failed to approve host");
@@ -69,12 +71,15 @@ export async function approveHost(id: string) {
 }
 
 export async function rejectHost(id: string, reason?: string) {
-  const res = await fetch(`/api/hosts?action=reject&id=${id}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ reason }),
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/hosts?action=reject&id=${id}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ reason }),
+    }
+  );
 
   if (!res.ok) {
     throw new Error("Failed to reject host");
@@ -83,39 +88,43 @@ export async function rejectHost(id: string, reason?: string) {
   return res.json();
 }
 
-// Get all tickets (passes) from all events (admin)
+// ===========================
+// Tickets
+// ===========================
 export async function getAllTickets() {
-  const res = await fetch("/api/tickets", {
-    credentials: "include",
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/tickets`,
+    { credentials: "include" }
+  );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ message: "Failed to fetch tickets" }));
-    
     if (res.status === 401) {
       throw new Error("Your session has expired. Please log in again.");
     }
-    
+    const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to fetch tickets");
   }
 
   return res.json();
 }
 
-
+// ===========================
+// Dashboard Stats
+// ===========================
 export async function getDashboardStats() {
-  const res = await fetch("/api/dashboard/stats", {
-    credentials: "include",
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/stats`,
+    { credentials: "include" }
+  );
 
   if (res.status === 401) {
     return { __unauthorized: true };
   }
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch dashboard stats");
+    throw new Error("Failed to fetch dashboard stats");
   }
 
   return res.json();
 }
+

@@ -1,49 +1,21 @@
 import type { ReactNode } from "react";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-type AuthMeResponse = {
-  user?: {
-    role?: string;
-  };
-};
+import { checkAuth } from "@/lib/auth-utils";
 
 export default async function ProtectedLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const allCookies = cookieStore
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
+  const authResult = await checkAuth();
 
-  if (!allCookies) {
+  if (!authResult.success || !authResult.user) {
     redirect("/login");
   }
 
-  if (!API_URL) {
-    throw new Error("NEXT_PUBLIC_API_URL is not defined");
-  }
+  const role = authResult.user.role;
 
-  const res = await fetch(`${API_URL}/api/auth/me`, {
-    headers: {
-      Cookie: allCookies,
-    },
-    credentials: "include", // ✅ REQUIRED
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    redirect("/login");
-  }
-
-  const data = (await res.json()) as AuthMeResponse;
-  const role = data.user?.role;
-
+  // Only allow admin and superadmin roles
   if (role !== "admin" && role !== "superadmin") {
     redirect("/login");
   }

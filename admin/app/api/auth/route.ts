@@ -3,6 +3,20 @@ import { NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
 
+/**
+ * Parse Set-Cookie header to extract cookie value
+ * Handles various formats: "accessToken=value; Path=/; HttpOnly" or "accessToken=value"
+ */
+function parseCookieValue(setCookieHeader: string): string | null {
+  // Format: "accessToken=value; Path=/; HttpOnly; Secure; SameSite=None"
+  // Or: "accessToken=value; Domain=.example.com; Path=/; HttpOnly; Secure; SameSite=None"
+  const match = setCookieHeader.match(/^accessToken=([^;]+)/);
+  if (match && match[1]) {
+    return decodeURIComponent(match[1]);
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   try {
     if (!BACKEND_URL) {
@@ -49,11 +63,28 @@ export async function POST(req: Request) {
     // Create response with correct status
     const response = NextResponse.json(data, { status: backendRes.status });
 
-    // Properly forward ALL set-cookie headers (can be multiple!)
-    const setCookieHeaders = backendRes.headers.getSetCookie?.() || [];
-    setCookieHeaders.forEach((cookie) => {
-      response.headers.append("set-cookie", cookie);
-    });
+    // For verify-otp, we need to set the cookie on the Next.js domain
+    // Extract token from backend's Set-Cookie and set it with correct attributes
+    if (action === "verify-otp" && backendRes.status === 200) {
+      const setCookieHeaders = backendRes.headers.getSetCookie?.() || [];
+      
+      for (const setCookieHeader of setCookieHeaders) {
+        const tokenValue = parseCookieValue(setCookieHeader);
+        
+        if (tokenValue) {
+          // Set cookie on Next.js domain with production-safe attributes
+          const isProd = process.env.NODE_ENV === "production";
+          
+          response.cookies.set("accessToken", tokenValue, {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
+            path: "/",
+            maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+          });
+        }
+      }
+    }
 
     return response;
   } catch (error: unknown) {

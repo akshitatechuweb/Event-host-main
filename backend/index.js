@@ -40,23 +40,50 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
 
+// CORS configuration for cross-domain cookie support
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "http://127.0.0.1:5173",
+  "http://192.168.18.1:3000",
+  "http://192.168.18.1:3001",
+  "http://192.168.18.1:5173",
+  "https://api.unrealvibe.com",
+  "https://unrealvibe.com",
+  "https://www.unrealvibe.com",
+];
+
+// Allow additional origins from environment variable (comma-separated)
+if (process.env.ALLOWED_ORIGINS) {
+  allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()));
+}
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:5173",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:3001",
-      "http://127.0.0.1:5173",
-      "http://192.168.18.1:3000",
-      "http://192.168.18.1:3001",
-      "http://192.168.18.1:5173",
-      "https://api.unrealvibe.com",
-      "https://unrealvibe.com",
-      "https://www.unrealvibe.com",
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        // In development, be more permissive
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(`⚠️  CORS: Allowing unlisted origin in dev: ${origin}`);
+          callback(null, true);
+        } else {
+          console.error(`❌ CORS: Blocked origin: ${origin}`);
+          callback(new Error("Not allowed by CORS"));
+        }
+      }
+    },
     credentials: true,
+    // Required for cookies with sameSite: "none"
+    optionsSuccessStatus: 200,
   })
 );
 

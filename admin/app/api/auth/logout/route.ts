@@ -22,6 +22,7 @@ export async function POST() {
         headers: {
           Cookie: `accessToken=${accessToken}`,
         },
+        cache: "no-store",
       });
     }
 
@@ -43,7 +44,7 @@ export async function POST() {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AUTH LOGOUT API ERROR:", error);
 
     return NextResponse.json(

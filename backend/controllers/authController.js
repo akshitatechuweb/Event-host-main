@@ -115,11 +115,12 @@ export const verifyOtp = async (req, res) => {
       });
 
       // ✅ COOKIE - consistent for all users
+      // NOTE: Do NOT set explicit domain so the cookie becomes first-party
+      // to whichever host issues it (Next.js admin in production).
       res.cookie("accessToken", token, {
         httpOnly: true,
         sameSite: isProd ? "none" : "lax",
         secure: isProd,
-        domain: isProd ? ".unrealvibe.com" : undefined,
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
@@ -170,11 +171,12 @@ export const verifyOtp = async (req, res) => {
     });
 
     // ✅ COOKIE - consistent for all users
+    // NOTE: Do NOT set explicit domain so the cookie becomes first-party
+    // to whichever host issues it (Next.js admin in production).
     res.cookie("accessToken", token, {
       httpOnly: true,
       sameSite: isProd ? "none" : "lax",
       secure: isProd,
-      domain: isProd ? ".unrealvibe.com" : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -216,10 +218,14 @@ export const getMe = async (req, res) => {
 // 🚪 LOGOUT
 // ===========================
 export const logout = async (req, res) => {
+  const isProd = process.env.NODE_ENV === "production";
+
+  // Use the same cookie attributes as login so the browser can reliably
+  // clear the cookie regardless of environment.
   res.clearCookie("accessToken", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
   });
 
   return res.json({

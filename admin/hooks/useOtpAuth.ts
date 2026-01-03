@@ -1,6 +1,8 @@
 import { useState } from "react";
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+// Always go through the Next.js API route so cookies are set on the
+// frontend domain (first-party) and are visible to SSR.
+const AUTH_API = "/api/auth";
 
 export function useOtpAuth() {
   const [loading, setLoading] = useState(false);
@@ -11,7 +13,7 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${API}/api/auth/request-otp`, {
+      const res = await fetch(`${AUTH_API}?action=request-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -42,7 +44,7 @@ export function useOtpAuth() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${API}/api/auth/verify-otp`, {
+      const res = await fetch(`${AUTH_API}?action=verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

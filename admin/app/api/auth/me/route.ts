@@ -24,11 +24,12 @@ export async function GET() {
       );
     }
 
+    // Forward the JWT cookie explicitly to the backend. The JWT itself is
+    // stored as a first-party cookie on the Next.js domain.
     const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
       method: "GET",
       headers: {
-        // Forward all cookies properly
-        Cookie: cookieStore.toString(),
+        Cookie: `accessToken=${accessToken}`,
       },
       cache: "no-store",
     });

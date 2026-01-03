@@ -97,23 +97,9 @@ const steps = [
   "Limits & policies",
 ];
 
-// ✅ Production-ready backend URL configuration
-const getBackendUrl = () => {
-  // Use your existing environment variable
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  
-  // Fallback for development
-  if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:8000';
-  }
-  
-  // Fallback: assume same domain (useful for same-server deployments)
-  return '';
-};
-
-const BACKEND_URL = getBackendUrl();
+// All authenticated mutations go through the Next.js API routes so that
+// the JWT cookie only needs to exist on the admin domain and can still be
+// forwarded securely to the backend.
 
 export default function AddEventModal({
   open,
@@ -270,10 +256,10 @@ export default function AddEventModal({
       formPayload.append("partyTerms", formData.partyTerms);
       formPayload.append("cancellationPolicy", formData.cancellationPolicy);
 
-      // ✅ Construct endpoint - works for both same-domain and cross-domain
+      // ✅ Use Next.js API proxy so cookies stay first-party to the admin app
       const endpoint = editingEvent
-        ? `${BACKEND_URL}/api/event/update-event/${editingEvent._id}`
-        : `${BACKEND_URL}/api/event/create-event`;
+        ? `/api/events/${editingEvent._id}`
+        : "/api/events";
 
       const method = editingEvent ? "PUT" : "POST";
 

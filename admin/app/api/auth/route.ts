@@ -65,24 +65,37 @@ export async function POST(req: Request) {
 
     // For verify-otp, we need to set the cookie on the Next.js domain
     // Extract token from backend's Set-Cookie and set it with correct attributes
-    if (action === "verify-otp" && backendRes.status === 200) {
+    if (action === "verify-otp" && backendRes.status === 200 && data.success) {
       const setCookieHeaders = backendRes.headers.getSetCookie?.() || [];
+      let tokenValue: string | null = null;
       
+      // Try to extract token from Set-Cookie headers
       for (const setCookieHeader of setCookieHeaders) {
-        const tokenValue = parseCookieValue(setCookieHeader);
-        
-        if (tokenValue) {
-          // Set cookie on Next.js domain with production-safe attributes
-          const isProd = process.env.NODE_ENV === "production";
-          
-          response.cookies.set("accessToken", tokenValue, {
-            httpOnly: true,
-            secure: isProd,
-            sameSite: isProd ? "none" : "lax",
-            path: "/",
-            maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-          });
+        const parsed = parseCookieValue(setCookieHeader);
+        if (parsed) {
+          tokenValue = parsed;
+          break;
         }
+      }
+      
+      // If we couldn't extract from Set-Cookie, log a warning
+      // The backend should always set the cookie, so this shouldn't happen
+      if (!tokenValue) {
+        console.warn("⚠️  No accessToken found in Set-Cookie headers from backend");
+        console.warn("Set-Cookie headers:", setCookieHeaders);
+      } else {
+        // Set cookie on Next.js domain with production-safe attributes
+        const isProd = process.env.NODE_ENV === "production";
+        
+        response.cookies.set("accessToken", tokenValue, {
+          httpOnly: true,
+          secure: isProd,
+          sameSite: isProd ? "none" : "lax",
+          path: "/",
+          maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+        });
+        
+        console.log("✅ Cookie set on Next.js domain successfully");
       }
     }
 

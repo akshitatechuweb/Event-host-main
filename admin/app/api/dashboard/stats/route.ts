@@ -55,25 +55,36 @@ export async function GET(_req: NextRequest) {
 
     const cookieHeader = `accessToken=${accessToken}`;
 
+    // Fetch all stats in parallel with error handling
     const [eventsRes, bookingsRes, usersRes] = await Promise.all([
       fetch(`${API_BASE_URL}/api/admin/events`, {
         headers: { Cookie: cookieHeader },
         cache: "no-store",
+      }).catch((err) => {
+        console.error("❌ Events fetch error:", err);
+        return { ok: false, status: 500, statusText: "Internal Error", json: async () => ({}) } as Response;
       }),
       fetch(`${API_BASE_URL}/api/booking/admin`, {
         headers: { Cookie: cookieHeader },
         cache: "no-store",
+      }).catch((err) => {
+        console.error("❌ Bookings fetch error:", err);
+        return { ok: false, status: 500, statusText: "Internal Error", json: async () => ({}) } as Response;
       }),
       fetch(`${API_BASE_URL}/api/user`, {
         headers: { Cookie: cookieHeader },
         cache: "no-store",
+      }).catch((err) => {
+        console.error("❌ Users fetch error:", err);
+        return { ok: false, status: 500, statusText: "Internal Error", json: async () => ({}) } as Response;
       }),
     ]);
 
     // ---------- Events ----------
     let events: Event[] = [];
     if (eventsRes.ok) {
-      const raw: unknown = await eventsRes.json();
+      try {
+        const raw: unknown = await eventsRes.json();
 
       if (Array.isArray(raw)) {
         events = raw as Event[];
@@ -85,12 +96,19 @@ export async function GET(_req: NextRequest) {
       ) {
         events = (raw as { events: Event[] }).events;
       }
+      } catch (err) {
+        console.error("❌ Events JSON parse error:", err);
+      }
+    } else {
+      const errorText = await eventsRes.text().catch(() => "Unknown error");
+      console.error(`❌ Events API returned ${eventsRes.status}: ${eventsRes.statusText}`, errorText);
     }
 
     // ---------- Bookings ----------
     let bookings: Booking[] = [];
     if (bookingsRes.ok) {
-      const raw: unknown = await bookingsRes.json();
+      try {
+        const raw: unknown = await bookingsRes.json();
 
       if (Array.isArray(raw)) {
         bookings = raw as Booking[];
@@ -102,12 +120,19 @@ export async function GET(_req: NextRequest) {
       ) {
         bookings = (raw as { bookings: Booking[] }).bookings;
       }
+      } catch (err) {
+        console.error("❌ Bookings JSON parse error:", err);
+      }
+    } else {
+      const errorText = await bookingsRes.text().catch(() => "Unknown error");
+      console.error(`❌ Bookings API returned ${bookingsRes.status}: ${bookingsRes.statusText}`, errorText);
     }
 
     // ---------- Users ----------
     let users: User[] = [];
     if (usersRes.ok) {
-      const raw: unknown = await usersRes.json();
+      try {
+        const raw: unknown = await usersRes.json();
 
       if (Array.isArray(raw)) {
         users = raw;
@@ -126,6 +151,12 @@ export async function GET(_req: NextRequest) {
       ) {
         users = (raw as { data: User[] }).data;
       }
+      } catch (err) {
+        console.error("❌ Users JSON parse error:", err);
+      }
+    } else {
+      const errorText = await usersRes.text().catch(() => "Unknown error");
+      console.error(`❌ Users API returned ${usersRes.status}: ${usersRes.statusText}`, errorText);
     }
 
     // ---------- Stats ----------

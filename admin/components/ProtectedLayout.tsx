@@ -7,18 +7,25 @@ export default async function ProtectedLayout({
 }: {
   children: ReactNode;
 }) {
-  const authResult = await checkAuth();
+  try {
+    const authResult = await checkAuth();
 
-  if (!authResult.success || !authResult.user) {
+    // If auth check fails or user is not authenticated, redirect to login
+    if (!authResult.success || !authResult.user) {
+      redirect("/login");
+    }
+
+    const role = authResult.user.role;
+
+    // Only allow admin and superadmin roles
+    if (role !== "admin" && role !== "superadmin") {
+      redirect("/login");
+    }
+
+    return <>{children}</>;
+  } catch (error) {
+    // If there's any error during auth check, redirect to login
+    console.error("ProtectedLayout auth error:", error);
     redirect("/login");
   }
-
-  const role = authResult.user.role;
-
-  // Only allow admin and superadmin roles
-  if (role !== "admin" && role !== "superadmin") {
-    redirect("/login");
-  }
-
-  return <>{children}</>;
 }

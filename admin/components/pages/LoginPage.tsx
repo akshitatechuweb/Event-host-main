@@ -32,7 +32,12 @@ export default function LoginPage() {
 
     const success = await confirmOtp(phone, otp);
     if (success) {
-      router.replace("/dashboard"); // ✅ App Router way
+      // Small delay to ensure cookie is set before redirect
+      // Then use window.location for a hard redirect to ensure cookie is read
+      // This is more reliable than router.replace in production
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 100);
     }
   };
 

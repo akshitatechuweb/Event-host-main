@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { DollarSign, Users, Calendar, TrendingUp, Loader2 } from "lucide-react"
 import { StatsCard } from "./StatsCard"
 import { getDashboardStats } from "@/lib/admin"
@@ -17,13 +18,14 @@ interface DashboardStats {
 }
 
 interface DashboardStatsResponse {
-  success: boolean
+  success?: boolean
   stats?: {
     totalRevenue?: number | string | null
     totalEvents?: number | string | null
     totalUsers?: number | string | null
     totalTransactions?: number | string | null
   }
+  __unauthorized?: boolean
 }
 
 /* =========================
@@ -31,6 +33,8 @@ interface DashboardStatsResponse {
 ========================= */
 
 export function StatsOverview() {
+  const router = useRouter()
+
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalEvents: 0,
@@ -38,31 +42,42 @@ export function StatsOverview() {
     totalTransactions: 0,
   })
 
-  const [loading, setLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchStats() {
-      try {
-        const response = (await getDashboardStats()) as DashboardStatsResponse
+    let cancelled = false
 
-        if (response.success && response.stats) {
-          setStats({
-            totalRevenue: Number(response.stats.totalRevenue) || 0,
-            totalEvents: Number(response.stats.totalEvents) || 0,
-            totalUsers: Number(response.stats.totalUsers) || 0,
-            totalTransactions: Number(response.stats.totalTransactions) || 0,
-          })
-        }
-      } catch (error) {
-        console.error("Error fetching stats:", error)
-      } finally {
+    async function fetchStats() {
+      const response = (await getDashboardStats()) as DashboardStatsResponse
+
+      // 🔐 SESSION EXPIRED → HARD REDIRECT
+      if (response?.__unauthorized) {
+        router.replace("/login")
+        return
+      }
+
+      if (response?.success && response.stats && !cancelled) {
+        setStats({
+          totalRevenue: Number(response.stats.totalRevenue) || 0,
+          totalEvents: Number(response.stats.totalEvents) || 0,
+          totalUsers: Number(response.stats.totalUsers) || 0,
+          totalTransactions: Number(response.stats.totalTransactions) || 0,
+        })
+      }
+
+      if (!cancelled) {
         setLoading(false)
       }
     }
 
     fetchStats()
-  }, [])
 
+    return () => {
+      cancelled = true
+    }
+  }, [router])
+
+  // ⛔ Prevent UI flash if redirecting
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -86,28 +101,28 @@ export function StatsOverview() {
         title="Total Revenue"
         value={`₹${stats.totalRevenue.toLocaleString("en-IN")}`}
         change={`${stats.totalTransactions.toLocaleString("en-IN")} transactions`}
-        isPositive={true}
+        isPositive
         icon={DollarSign}
       />
       <StatsCard
         title="Total Users"
         value={stats.totalUsers.toLocaleString("en-IN")}
         change="Registered users"
-        isPositive={true}
+        isPositive
         icon={Users}
       />
       <StatsCard
         title="Total Events"
         value={stats.totalEvents.toLocaleString("en-IN")}
         change="Active events"
-        isPositive={true}
+        isPositive
         icon={Calendar}
       />
       <StatsCard
         title="Total Transactions"
         value={stats.totalTransactions.toLocaleString("en-IN")}
         change="Confirmed bookings"
-        isPositive={true}
+        isPositive
         icon={TrendingUp}
       />
     </div>

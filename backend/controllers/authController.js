@@ -14,12 +14,18 @@ const isProd = process.env.NODE_ENV === "production";
 
 const authCookieOptions = {
   httpOnly: true,
-  secure: isProd,                    // required for HTTPS
-  sameSite: isProd ? "none" : "lax", // required for cross-subdomain
-  domain: isProd ? ".unrealvibe.com" : undefined,
-  path: "/",                         // 🔥 REQUIRED for Next.js SSR
-  maxAge: 7 * 24 * 60 * 60 * 1000,   // 7 days
+  secure: isProd, // HTTPS only in prod
+  sameSite: isProd ? "none" : "lax", // cross-site safe
+  path: "/", // REQUIRED for Next.js SSR
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
+
+// In production, optionally scope cookie to a parent domain (e.g. .unrealvibe.com)
+// so that BOTH api.unrealvibe.com (backend) and unrealvibe.com (Next.js) see it.
+// Set COOKIE_DOMAIN=".unrealvibe.com" in production.
+if (isProd && process.env.COOKIE_DOMAIN) {
+  authCookieOptions.domain = process.env.COOKIE_DOMAIN;
+}
 
 /* =========================
    📩 REQUEST OTP
@@ -140,11 +146,9 @@ export const verifyOtp = async (req, res) => {
       await Otp.deleteOne({ phone });
     }
 
-    const token = jwt.sign(
-      { sub: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     // ✅ SET COOKIE (CORRECT & CONSISTENT)
     res.cookie("accessToken", token, authCookieOptions);
@@ -177,7 +181,10 @@ export const getMe = async (req, res) => {
 
     return res.json({
       success: true,
-      user,
+      user: {
+        id: user._id,
+        role: user.role,
+      },
     });
   } catch {
     return res.status(401).json({ success: false });

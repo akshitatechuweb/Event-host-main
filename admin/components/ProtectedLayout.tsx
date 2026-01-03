@@ -18,7 +18,7 @@ export default async function ProtectedLayout({
   const cookieStore = await cookies();
   const allCookies = cookieStore
     .getAll()
-    .map(c => `${c.name}=${c.value}`)
+    .map((c) => `${c.name}=${c.value}`)
     .join("; ");
 
   if (!allCookies) {
@@ -33,6 +33,7 @@ export default async function ProtectedLayout({
     headers: {
       Cookie: allCookies,
     },
+    credentials: "include", // ✅ REQUIRED
     cache: "no-store",
   });
 

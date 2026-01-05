@@ -18,10 +18,7 @@ export default function UsersPage() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
-  const loadUsers = async (
-    pageNum: number,
-    search = ""
-  ): Promise<void> => {
+  const loadUsers = async (pageNum: number, search = ""): Promise<void> => {
     setLoading(true);
     try {
       const data = await fetchRegularUsers({
@@ -101,13 +98,11 @@ export default function UsersPage() {
                   key={user._id}
                   user={{
                     name: user.name || "Unnamed",
-                    email: user.email,
-                    phone: user.phone,
+                    email: user.email ?? "N/A",
+                    phone: user.phone ?? "N/A",
                     city: user.city || "N/A",
                     status: user.isActive ? "active" : "inactive",
                   }}
-                  onView={() => console.log("View user:", user._id)}
-                  onDeactivate={() => handleDeactivate(user._id)}
                 />
               ))}
             </>

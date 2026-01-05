@@ -22,23 +22,25 @@ export async function getHosts() {
 // ===========================
 // Event Transactions
 // ===========================
+
 export async function getEventTransactions(eventId: string) {
-  // Call Next.js API route which proxies to backend
-  const res = await fetch(
-    `/api/events/${eventId}/transactions`,
-    { credentials: "include" }
-  );
+  const res = await fetch(`/api/transactions/${eventId}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error("Your session has expired. Please log in again.");
-    }
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch event transactions");
+    return {
+      success: false,
+      message: data?.message || "Failed to fetch transactions",
+    };
   }
 
-  return res.json();
+  return data;
 }
+
 
 // ===========================
 // Approved Hosts

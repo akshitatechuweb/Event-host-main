@@ -1,21 +1,28 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : null;
+/**
+ * OPTION B — Admin Hosts API
+ * Works in local + production
+ * No env vars
+ * Same-origin backend proxy
+ */
 
 /* ============================
    GET → HOST REQUESTS
 ============================ */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    if (!BACKEND_URL) {
+    const origin = req.nextUrl.origin;
+    const cookie = req.headers.get("cookie") || "";
+
+    if (!cookie) {
       return NextResponse.json(
-        { success: false, message: "API base URL not configured" },
-        { status: 500 }
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
       );
     }
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const action = searchParams.get("action");
     const id = searchParams.get("id");
 
@@ -26,10 +33,10 @@ export async function GET(req: Request) {
       );
     }
 
-    let endpoint: string;
+    let backendEndpoint: string;
 
     if (action === "list") {
-      endpoint = `${BACKEND_URL}/api/admin/host-requests`;
+      backendEndpoint = `${origin}/api/admin/host-requests`;
     } else if (action === "single") {
       if (!id) {
         return NextResponse.json(
@@ -37,7 +44,7 @@ export async function GET(req: Request) {
           { status: 400 }
         );
       }
-      endpoint = `${BACKEND_URL}/api/admin/host-requests/${id}`;
+      backendEndpoint = `${origin}/api/admin/host-requests/${id}`;
     } else {
       return NextResponse.json(
         { message: "Invalid action" },
@@ -45,88 +52,25 @@ export async function GET(req: Request) {
       );
     }
 
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
-
-    if (!accessToken) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized: Please log in again",
-        },
-        { status: 401 }
-      );
-    }
-
-    const res = await fetch(endpoint, {
-      headers: {
-        Cookie: `accessToken=${accessToken}`,
-        "Content-Type": "application/json",
-      },
+    const backendRes = await fetch(backendEndpoint, {
+      headers: { cookie },
       cache: "no-store",
     });
 
-    const text = await res.text();
+    if (!backendRes.ok) {
+      const text = await backendRes.text().catch(() => "");
+      console.error("❌ Hosts GET error:", backendRes.status, text);
 
-    if (!res.ok) {
-      if (res.status === 401) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Unauthorized: Your session may have expired. Please log in again.",
-          },
-          { status: 401 }
-        );
-      }
-
-      if (text.startsWith("<")) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Unauthorized or invalid backend route",
-          },
-          { status: res.status }
-        );
-      }
-
-      try {
-        const parsed: unknown = JSON.parse(text);
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              typeof parsed === "object" &&
-              parsed !== null &&
-              "message" in parsed
-                ? (parsed as { message?: string }).message
-                : "Failed to fetch hosts",
-          },
-          { status: res.status }
-        );
-      } catch {
-        return NextResponse.json(
-          { success: false, message: "Failed to fetch hosts" },
-          { status: res.status }
-        );
-      }
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    return NextResponse.json(parsed, { status: res.status });
-  } catch (error: unknown) {
-    console.error("HOSTS GET ERROR:", error);
-
-    const cause = (error as { cause?: { code?: string } }).cause;
-    if (cause?.code === "ECONNREFUSED") {
       return NextResponse.json(
-        {
-          success: false,
-          message: `Backend unreachable at ${BACKEND_URL}`,
-        },
-        { status: 502 }
+        { success: false, message: "Failed to fetch hosts" },
+        { status: backendRes.status }
       );
     }
+
+    const data = await backendRes.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("❌ HOSTS GET ERROR:", error);
 
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
@@ -138,16 +82,19 @@ export async function GET(req: Request) {
 /* ============================
    POST → APPROVE / REJECT
 ============================ */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    if (!BACKEND_URL) {
+    const origin = req.nextUrl.origin;
+    const cookie = req.headers.get("cookie") || "";
+
+    if (!cookie) {
       return NextResponse.json(
-        { success: false, message: "API base URL not configured" },
-        { status: 500 }
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
       );
     }
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const action = searchParams.get("action");
     const id = searchParams.get("id");
 
@@ -158,12 +105,15 @@ export async function POST(req: Request) {
       );
     }
 
-    let endpoint: string;
+    let backendEndpoint: string;
+    let method: "POST" | "PUT" = "POST";
 
     if (action === "approve") {
-      endpoint = `${BACKEND_URL}/api/admin/approve-event-request/${id}`;
+      backendEndpoint = `${origin}/api/admin/approve-event-request/${id}`;
+      method = "PUT";
     } else if (action === "reject") {
-      endpoint = `${BACKEND_URL}/api/admin/host-requests/reject/${id}`;
+      backendEndpoint = `${origin}/api/admin/host-requests/reject/${id}`;
+      method = "POST";
     } else {
       return NextResponse.json(
         { success: false, message: "Invalid action" },
@@ -171,80 +121,31 @@ export async function POST(req: Request) {
       );
     }
 
-    const body: unknown = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
 
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
-
-    if (!accessToken) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized: Please log in again",
-        },
-        { status: 401 }
-      );
-    }
-
-    const res = await fetch(endpoint, {
-      method: action === "approve" ? "PUT" : "POST",
+    const backendRes = await fetch(backendEndpoint, {
+      method,
       headers: {
+        cookie,
         "Content-Type": "application/json",
-        Cookie: `accessToken=${accessToken}`,
       },
       body: JSON.stringify(body),
     });
 
-    const text = await res.text();
+    if (!backendRes.ok) {
+      const text = await backendRes.text().catch(() => "");
+      console.error("❌ Hosts POST error:", backendRes.status, text);
 
-    if (!res.ok) {
-      if (res.status === 401) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Unauthorized: Your session may have expired. Please log in again.",
-          },
-          { status: 401 }
-        );
-      }
-
-      if (text.startsWith("<")) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Unauthorized or invalid backend route",
-          },
-          { status: res.status }
-        );
-      }
-
-      try {
-        const parsed: unknown = JSON.parse(text);
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              typeof parsed === "object" &&
-              parsed !== null &&
-              "message" in parsed
-                ? (parsed as { message?: string }).message
-                : "Failed to process request",
-          },
-          { status: res.status }
-        );
-      } catch {
-        return NextResponse.json(
-          { success: false, message: "Failed to process request" },
-          { status: res.status }
-        );
-      }
+      return NextResponse.json(
+        { success: false, message: "Failed to process request" },
+        { status: backendRes.status }
+      );
     }
 
-    const parsed: unknown = JSON.parse(text);
-    return NextResponse.json(parsed, { status: res.status });
-  } catch (error: unknown) {
-    console.error("HOSTS POST ERROR:", error);
+    const data = await backendRes.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("❌ HOSTS POST ERROR:", error);
 
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },

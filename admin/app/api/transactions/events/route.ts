@@ -5,21 +5,22 @@ export async function GET(req: NextRequest) {
     const origin = req.nextUrl.origin;
     const cookie = req.headers.get("cookie") || "";
 
-    const query = req.nextUrl.searchParams.toString();
-    const backendRes = await fetch(
-      `${origin}/api/user${query ? `?${query}` : ""}`,
-      {
-        headers: { cookie },
-        cache: "no-store",
-      }
-    );
+    const backendRes = await fetch(`${origin}/api/event/events`, {
+      method: "GET",
+      headers: { cookie },
+      cache: "no-store",
+    });
 
     if (!backendRes.ok) {
       const text = await backendRes.text().catch(() => "");
-      console.error("❌ Backend users error:", backendRes.status, text);
+      console.error(
+        "❌ Backend events fetch error:",
+        backendRes.status,
+        text
+      );
 
       return NextResponse.json(
-        { message: "Failed to fetch users" },
+        { message: "Failed to fetch events" },
         { status: backendRes.status }
       );
     }
@@ -27,7 +28,8 @@ export async function GET(req: NextRequest) {
     const data = await backendRes.json();
     return NextResponse.json(data);
   } catch (err) {
-    console.error("❌ USERS API ERROR:", err);
+    console.error("❌ TRANSACTIONS EVENTS API ERROR:", err);
+
     return NextResponse.json(
       { message: "Internal Server Error" },
       { status: 500 }

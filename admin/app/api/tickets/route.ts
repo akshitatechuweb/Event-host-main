@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : null;
-
 interface Ticket {
   _id: string;
   eventId: string;
@@ -40,20 +38,18 @@ interface EventWithPasses {
 
 /**
  * GET /api/tickets
- * Fetches all passes (tickets) across all events for admin
+ * Admin: fetch all ticket/pass stats across events
+ * Option B: same-origin backend proxy (local + prod safe)
  */
 export async function GET(req: NextRequest) {
   try {
-    if (!API_BASE_URL) {
-      return NextResponse.json(
-        { success: false, message: "API base URL not configured" },
-        { status: 500 }
-      );
-    }
+    /* --------------------------------------------
+       1. Build origin dynamically
+       -------------------------------------------- */
+    const origin = req.nextUrl.origin;
+    const cookie = req.headers.get("cookie") || "";
 
-    const cookieHeader = req.headers.get("cookie");
-
-    if (!cookieHeader) {
+    if (!cookie) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
@@ -61,12 +57,12 @@ export async function GET(req: NextRequest) {
     }
 
     /* =====================
-       FETCH EVENTS
+       FETCH EVENTS (BACKEND)
     ===================== */
     const eventsResponse = await fetch(
-      `${API_BASE_URL}/api/event/events`,
+      `${origin}/api/event/events`,
       {
-        headers: { Cookie: cookieHeader },
+        headers: { cookie },
         cache: "no-store",
       }
     );
@@ -78,46 +74,45 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const eventsRaw: unknown = await eventsResponse.json();
+    const eventsRaw = await eventsResponse.json();
 
     const events: EventWithPasses[] =
       typeof eventsRaw === "object" &&
       eventsRaw !== null &&
       "events" in eventsRaw &&
-      Array.isArray((eventsRaw as { events?: unknown }).events)
-        ? ((eventsRaw as { events: unknown[] }).events as EventWithPasses[])
+      Array.isArray((eventsRaw as any).events)
+        ? (eventsRaw as any).events
         : [];
 
     /* =====================
-       FETCH BOOKINGS
+       FETCH BOOKINGS (BACKEND)
     ===================== */
-    let allBookings: Booking[] = [];
+    let confirmedBookings: Booking[] = [];
 
     try {
       const bookingsResponse = await fetch(
-        `${API_BASE_URL}/api/booking/admin`,
+        `${origin}/api/booking/admin`,
         {
-          headers: { Cookie: cookieHeader },
+          headers: { cookie },
           cache: "no-store",
         }
       );
 
       if (bookingsResponse.ok) {
-        const bookingsRaw: unknown = await bookingsResponse.json();
+        const bookingsRaw = await bookingsResponse.json();
 
         if (
           typeof bookingsRaw === "object" &&
           bookingsRaw !== null &&
-          "bookings" in bookingsRaw &&
-          Array.isArray((bookingsRaw as { bookings?: unknown }).bookings)
+          Array.isArray((bookingsRaw as any).bookings)
         ) {
-          allBookings = (bookingsRaw as {
-            bookings: Booking[];
-          }).bookings.filter((b) => b.status === "confirmed");
+          confirmedBookings = (bookingsRaw as any).bookings.filter(
+            (b: Booking) => b.status === "confirmed"
+          );
         }
       }
-    } catch (error: unknown) {
-      console.error("Error fetching bookings:", error);
+    } catch (err) {
+      console.error("⚠️ Booking fetch failed (non-fatal):", err);
     }
 
     /* =====================
@@ -128,9 +123,9 @@ export async function GET(req: NextRequest) {
     events.forEach((event) => {
       const passes = event.passes ?? [];
 
-      const eventBookings = allBookings.filter((b) => {
+      const eventBookings = confirmedBookings.filter((b) => {
         const bookingEventId =
-          typeof b.eventId === "object" && b.eventId !== null
+          typeof b.eventId === "object" && b.eventId
             ? b.eventId._id
             : b.eventId;
 
@@ -154,7 +149,6 @@ export async function GET(req: NextRequest) {
       passes.forEach((pass) => {
         const sold = soldByPassType[pass.type] ?? 0;
         const total = Number(pass.totalQuantity) || 0;
-        const available = Math.max(0, total - sold);
 
         allTickets.push({
           _id: `${event._id}_${pass.type}`,
@@ -164,7 +158,7 @@ export async function GET(req: NextRequest) {
           price: Number(pass.price) || 0,
           total,
           sold,
-          available,
+          available: Math.max(0, total - sold),
         });
       });
     });
@@ -173,8 +167,8 @@ export async function GET(req: NextRequest) {
       success: true,
       tickets: allTickets,
     });
-  } catch (error: unknown) {
-    console.error("TICKETS API ERROR:", error);
+  } catch (error) {
+    console.error("❌ TICKETS API ERROR:", error);
 
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },

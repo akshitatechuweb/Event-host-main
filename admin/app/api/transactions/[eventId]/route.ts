@@ -4,50 +4,29 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { eventId: string } }
 ) {
+  const { eventId } = params;
+
   try {
-    const { eventId } = params;
-
-    if (!eventId) {
-      return NextResponse.json(
-        { success: false, message: "Event ID is required" },
-        { status: 400 }
-      );
-    }
-
     const origin = req.nextUrl.origin;
     const cookie = req.headers.get("cookie") || "";
 
-    // 🔁 Backend endpoint (already exists in your backend)
-    const backendRes = await fetch(
-      `${origin}/api/events/${eventId}/transactions`,
-      {
-        method: "GET",
-        headers: { cookie },
-        cache: "no-store",
-      }
-    );
+    const res = await fetch(`${origin}/api/transactions/${eventId}`, {
+      headers: { cookie },
+      cache: "no-store",
+    });
 
-    if (!backendRes.ok) {
-      const text = await backendRes.text().catch(() => "");
-      console.error(
-        "❌ Backend event transactions error:",
-        backendRes.status,
-        text
-      );
-
+    if (!res.ok) {
+      const text = await res.text();
       return NextResponse.json(
-        { success: false, message: "Failed to fetch event transactions" },
-        { status: backendRes.status }
+        { success: false, message: text || "Failed to fetch transactions" },
+        { status: res.status }
       );
     }
 
-    const data = await backendRes.json();
-
-    // ✅ Return backend response AS-IS
+    const data = await res.json();
     return NextResponse.json(data);
-  } catch (err) {
-    console.error("❌ EVENT TRANSACTIONS API ERROR:", err);
-
+  } catch (error) {
+    console.error("TRANSACTIONS API ERROR:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

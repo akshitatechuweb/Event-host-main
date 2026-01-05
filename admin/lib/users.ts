@@ -1,4 +1,3 @@
-// lib/users.ts
 import { apiFetch } from "./api";
 
 export interface User {
@@ -33,7 +32,7 @@ export interface FetchUsersParams {
 
 /**
  * Fetch regular users (non-host users)
- * Uses Bearer token authentication via apiFetch
+ * Auth via httpOnly cookie
  */
 export async function fetchRegularUsers(
   params: FetchUsersParams = {}
@@ -41,48 +40,65 @@ export async function fetchRegularUsers(
   const { page = 1, limit = 20, search, city } = params;
 
   const queryParams = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString(),
-    role: "user", // This filters only regular users (not hosts)
+    page: String(page),
+    limit: String(limit),
+    role: "user",
   });
 
   if (search) queryParams.append("search", search);
   if (city) queryParams.append("city", city);
 
-  try {
-    // Call backend directly with httpOnly cookie authentication
-    const data = await apiFetch(`/api/user?${queryParams.toString()}`);
-    
-    // Handle different response formats
-    const users = Array.isArray(data) ? data : (data.users || data.data || []);
-    const total = data.total || users.length;
-    const totalPages = data.totalPages || Math.ceil(total / limit);
+  const response: unknown = await apiFetch(
+    `/api/user?${queryParams.toString()}`
+  );
 
-    return {
-      success: true,
-      users: users,
-      total: total,
-      page: data.page || page,
-      totalPages: totalPages,
-      limit: data.limit || limit,
-    };
-  } catch (error) {
-    console.error("Failed to fetch users:", error);
-    throw error;
+  let users: User[] = [];
+  let total = 0;
+  let totalPages = 1;
+  let currentPage = page;
+  let currentLimit = limit;
+
+  // ✅ Case 1: backend returns User[]
+  if (Array.isArray(response)) {
+    users = response as User[];
+    total = users.length;
+    totalPages = Math.ceil(total / limit);
   }
+
+  // ✅ Case 2: backend returns object
+  else if (typeof response === "object" && response !== null) {
+    const data = response as {
+      users?: User[];
+      data?: User[];
+      total?: number;
+      totalPages?: number;
+      page?: number;
+      limit?: number;
+    };
+
+    users = data.users ?? data.data ?? [];
+    total = data.total ?? users.length;
+    totalPages = data.totalPages ?? Math.ceil(total / limit);
+    currentPage = data.page ?? page;
+    currentLimit = data.limit ?? limit;
+  }
+
+  return {
+    success: true,
+    users,
+    total,
+    page: currentPage,
+    totalPages,
+    limit: currentLimit,
+  };
 }
 
 /**
  * Deactivate a user
- * Uses Bearer token authentication via apiFetch
+ * Auth via httpOnly cookie
  */
 export async function deactivateUser(userId: string): Promise<void> {
-  try {
-    await apiFetch(`/api/user/deactivate/${userId}`, {
-      method: "PUT",
-    });
-  } catch (error) {
-    console.error("Failed to deactivate user:", error);
-    throw error;
-  }
+  await apiFetch(`/api/user/deactivate/${userId}`, {
+    method: "PUT",
+  });
 }

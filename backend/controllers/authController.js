@@ -19,7 +19,7 @@ const authCookieOptions = {
   sameSite: isProd ? "none" : "lax",
   path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1000,
-  domain: isProd ? "localhost" : ".unrealvibe.com",
+  domain: isProd ? ".unrealvibe.com": undefined,
 };
 
 

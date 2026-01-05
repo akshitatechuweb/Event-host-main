@@ -21,26 +21,33 @@ export function useAdminAuth() {
         `${API_BASE_URL}/api/admin/auth/login`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include", // 🔑 cookie from backend
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // 🔑 receive httpOnly cookie
           body: JSON.stringify({ email, password }),
         }
       );
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Login failed");
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || "Login failed");
       }
 
+      // ✅ Explicit success
       return { success: true };
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Authentication failed");
       return { success: false };
     } finally {
       setLoading(false);
     }
   };
 
-  return { login, loading, error };
+  return {
+    login,
+    loading,
+    error,
+  };
 }

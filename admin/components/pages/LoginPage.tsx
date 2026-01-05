@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 export default function LoginPage() {
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -19,12 +17,15 @@ export default function LoginPage() {
     if (!email || !password) return;
 
     const result = await login(email, password);
+
     if (result.success) {
-      // Use a hard redirect with window.location to ensure:
-      // 1. Cookie is sent with the request (browser handles httpOnly cookies automatically)
-      // 2. Full page reload ensures middleware/SSR auth check runs with the new cookie
-      // 3. No race conditions with client-side routing
-      // The cookie is set by the backend directly, so it's already available
+      /**
+       * ✅ IMPORTANT:
+       * - Hard redirect ensures:
+       *   1. Cookie is written
+       *   2. proxy.ts sees it
+       *   3. No App Router race conditions
+       */
       window.location.href = "/dashboard";
     }
   };

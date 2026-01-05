@@ -55,6 +55,7 @@ const allowedOrigins = [
   "https://unrealvibe.com",
   "https://www.unrealvibe.com",
   "https://admin.unrealvibe.com",
+  "https://event-host-main.vercel.app"
 ];
 
 // Allow additional origins from environment variable (comma-separated)

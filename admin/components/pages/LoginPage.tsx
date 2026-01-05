@@ -16,18 +16,7 @@ export default function LoginPage() {
 
     if (!email || !password) return;
 
-    const result = await login(email, password);
-
-    if (result.success) {
-      /**
-       * ✅ IMPORTANT:
-       * - Hard redirect ensures:
-       *   1. Cookie is written
-       *   2. proxy.ts sees it
-       *   3. No App Router race conditions
-       */
-      window.location.href = "/dashboard";
-    }
+    await login(email, password);
   };
 
   return (
@@ -82,9 +71,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
             <button
               type="submit"

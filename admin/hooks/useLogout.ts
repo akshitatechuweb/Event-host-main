@@ -2,40 +2,22 @@
 
 import { useState } from "react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-function getLogoutUrl() {
-  // ✅ Always prefer explicit backend URL
-  if (API_BASE_URL) {
-    return `${API_BASE_URL}/api/admin/auth/logout`;
-  }
-
-  // Fallback (local dev / proxy)
-  return "/api/admin/auth/logout";
-}
-
 export function useLogout() {
   const [loading, setLoading] = useState(false);
 
   const logout = async () => {
     try {
       setLoading(true);
-
-      await fetch(getLogoutUrl(), {
+      await fetch("/api/admin/auth/logout", {
         method: "POST",
-        credentials: "include", // 🔑 send httpOnly cookie
+        credentials: "include",
       });
     } catch (err) {
-      // Logout must be best-effort
-      console.error("Logout failed:", err);
+      console.error(err);
     } finally {
-      // ✅ Always hard redirect to clear client state
-      window.location.href = "/login";
+      window.location.href = "/admin/login";
     }
   };
 
-  return {
-    logout,
-    loading,
-  };
+  return { logout, loading };
 }

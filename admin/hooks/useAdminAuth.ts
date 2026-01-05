@@ -2,12 +2,6 @@
 
 import { useState } from "react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-if (!API_BASE_URL) {
-  throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-}
-
 export function useAdminAuth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,37 +11,28 @@ export function useAdminAuth() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(
-        `${API_BASE_URL}/api/admin/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include", // 🔑 receive httpOnly cookie
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const res = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
 
-      const data = await res.json().catch(() => null);
+      const data = await res.json();
 
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.message || "Login failed");
+      if (res.ok && data.success) {
+        window.location.replace("/admin/dashboard");
+        return { success: true };
       }
 
-      // ✅ Explicit success
-      return { success: true };
+      throw new Error(data.message || "Invalid credentials");
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
+      setError(err.message);
       return { success: false };
     } finally {
       setLoading(false);
     }
   };
 
-  return {
-    login,
-    loading,
-    error,
-  };
+  return { login, loading, error };
 }

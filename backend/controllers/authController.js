@@ -12,14 +12,21 @@ dotenv.config();
 ================================================= */
 
 const isProd = process.env.NODE_ENV === "production";
+const isLocalhost = process.env.FRONTEND_URL?.includes("localhost");
 
 const authCookieOptions = {
   httpOnly: true,
-  secure: isProd,
-  sameSite: isProd ? "none" : "lax",
+
+  // 🔑 Secure ONLY when frontend is HTTPS
+  secure: isProd && !isLocalhost,
+
+  // 🔑 Cross-site only when actually cross-site
+  sameSite: isProd && !isLocalhost ? "none" : "lax",
+
   path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
+
 
 
 

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { eventId: string } }
-) {
-  const { eventId } = params;
+  request: NextRequest,
+  context: { params: Promise<{ eventId: string }> }
+): Promise<Response> {
+  const { eventId } = await context.params;
 
   try {
-    const origin = req.nextUrl.origin;
-    const cookie = req.headers.get("cookie") || "";
+    const origin = request.nextUrl.origin;
+    const cookie = request.headers.get("cookie") ?? "";
 
     const res = await fetch(`${origin}/api/transactions/${eventId}`, {
       headers: { cookie },

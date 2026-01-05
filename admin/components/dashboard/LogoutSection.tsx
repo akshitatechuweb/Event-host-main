@@ -1,15 +1,14 @@
 "use client"
 
 import { LogOut } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { useLogout } from "@/hooks/useLogout"
 
 export function LogoutSection() {
-  const router = useRouter()
+  const { logout, loading } = useLogout()
 
   const handleLogout = () => {
-    console.log("Logging out...")
-    router.push("/login")
+    void logout()
   }
 
   return (

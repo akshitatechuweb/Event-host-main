@@ -54,6 +54,7 @@ const allowedOrigins = [
   "https://api.unrealvibe.com",
   "https://unrealvibe.com",
   "https://www.unrealvibe.com",
+  "https://admin.unrealvibe.com",
 ];
 
 // Allow additional origins from environment variable (comma-separated)

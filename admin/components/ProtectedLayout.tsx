@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 /**
  * ProtectedLayout
  *
- * Auth is already enforced by middleware.ts.
+ * Auth is already enforced by proxy.ts.
  * This component ONLY provides a stable wrapper.
  */
 export default function ProtectedLayout({

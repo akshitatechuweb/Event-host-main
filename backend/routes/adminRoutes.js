@@ -13,12 +13,16 @@ import {
 import { approveEventHostRequest } from "../controllers/hostController.js";
 import { adminCreateEvent, getEvents } from "../controllers/eventController.js"; 
 import { upload } from "../middleware/multer.js";
-import { adminLogin } from "../controllers/authController.js";
+import { adminLogin, adminLogout, adminMe } from "../controllers/authController.js";
 
 const router = express.Router();
 
 // Admin authentication (no auth middleware needed - this is the login endpoint)
 router.post("/auth/login", adminLogin);
+
+// Admin session + logout
+router.get("/auth/me", authMiddleware, requireRole("admin", "superadmin"), adminMe);
+router.post("/auth/logout", authMiddleware, adminLogout);
 
 // Host Request Routes
 router.get("/host-requests", authMiddleware, requireRole("admin", "superadmin"), getAllHostRequests);

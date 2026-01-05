@@ -216,3 +216,43 @@ export const adminLogin = async (req, res) => {
     });
   }
 };
+
+/* =================================================
+   👤 ADMIN SESSION + LOGOUT (ADMIN-ONLY)
+================================================= */
+
+// Simple "who am I" endpoint for admin panel and middleware
+export const adminMe = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (!["admin", "superadmin"].includes(user.role)) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    return res.json({
+      success: true,
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (err) {
+    console.error("Admin me error:", err);
+    return res.status(500).json({ success: false, message: "Session check failed" });
+  }
+};
+
+// Clear the httpOnly auth cookie while keeping OTP/user flow untouched
+export const adminLogout = (req, res) => {
+  try {
+    res.clearCookie("accessToken", authCookieOptions);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Admin logout error:", err);
+    return res.status(500).json({ success: false, message: "Logout failed" });
+  }
+};

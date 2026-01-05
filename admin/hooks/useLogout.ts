@@ -1,28 +1,30 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { logout } from "@/lib/auth"
+import { useState } from "react";
+
+const isProd = process.env.NODE_ENV === "production";
+
+const getLogoutUrl = () => {
+  if (isProd) {
+    return `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/auth/logout`;
+  }
+  return "/api/admin/auth/logout";
+};
 
 export function useLogout() {
-  const router = useRouter()
+  const [loading, setLoading] = useState(false);
 
-  const handleLogout = async () => {
+  const logout = async () => {
     try {
-      // 1️⃣ Clear backend cookie/session
-      await logout()
-    } catch {
-      // Ignore errors — still force logout on client
+      setLoading(true);
+      await fetch(getLogoutUrl(), {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      window.location.href = "/login";
     }
+  };
 
-    // 2️⃣ Clear any client-side storage (safe even if unused)
-    try {
-      localStorage.clear()
-      sessionStorage.clear()
-    } catch {}
-
-    // 3️⃣ Replace history to prevent back navigation
-    router.replace("/login")
-  }
-
-  return { handleLogout }
+  return { logout, loading };
 }

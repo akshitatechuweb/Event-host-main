@@ -1,4 +1,12 @@
+"use client";
+
 import { useState } from "react";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+if (!API_BASE_URL) {
+  throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+}
 
 export function useAdminAuth() {
   const [loading, setLoading] = useState(false);
@@ -9,55 +17,26 @@ export function useAdminAuth() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch("/api/admin/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.headers.get("content-type")?.includes("application/json")) {
-        throw new Error("Server returned non-JSON response");
-      }
+      const res = await fetch(
+        `${API_BASE_URL}/api/admin/auth/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include", // 🔑 cookie from backend
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !data.success) {
         throw new Error(data.message || "Login failed");
       }
 
-      if (!data.success) {
-        throw new Error(data.message || "Login failed");
-      }
-
-      // Fetch token after login (for localStorage fallback)
-      try {
-        const tokenRes = await fetch("/api/auth/token", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (tokenRes.ok) {
-          const tokenData = await tokenRes.json();
-          if (tokenData.token) {
-            localStorage.setItem("accessToken", tokenData.token);
-          }
-        }
-      } catch (tokenError) {
-        console.warn("Could not store token in localStorage:", tokenError);
-      }
-
-      return {
-        success: true,
-        role: data.role,
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Login failed";
-      setError(errorMessage);
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return { success: true };
+    } catch (err: any) {
+      setError(err.message);
+      return { success: false };
     } finally {
       setLoading(false);
     }
@@ -65,4 +44,3 @@ export function useAdminAuth() {
 
   return { login, loading, error };
 }
-

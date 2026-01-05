@@ -2,16 +2,18 @@ import express from "express";
 import {
   requestOtp,
   verifyOtp,
-  logout,
-  getMe,
 } from "../controllers/authController.js";
-import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+/* =========================
+   📲 USER OTP AUTH ONLY
+========================= */
+
+// Request OTP
 router.post("/request-otp", requestOtp);
+
+// Verify OTP
 router.post("/verify-otp", verifyOtp);
-router.post("/logout", logout);
-router.get("/me", authMiddleware, getMe);
 
 export default router;

@@ -7,38 +7,36 @@ import { sendSms } from "../utils/sendSms.js";
 
 dotenv.config();
 
-/* =========================
-   COOKIE CONFIG (SINGLE SOURCE OF TRUTH)
-========================= */
+/* =================================================
+   🍪 COOKIE CONFIG (SINGLE SOURCE OF TRUTH)
+================================================= */
 
 const isProd = process.env.NODE_ENV === "production";
 
 const authCookieOptions = {
   httpOnly: true,
-  secure: isProd, // HTTPS only in prod
-  sameSite: isProd ? "none" : "lax", // cross-site safe
-  path: "/", // REQUIRED for Next.js SSR
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  secure: isProd,
+  sameSite: isProd ? "none" : "lax",
+  path: "/",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  domain: isProd ? "localhost" : ".unrealvibe.com",
 };
 
-// In production, optionally scope cookie to a parent domain (e.g. .unrealvibe.com)
-// so that BOTH api.unrealvibe.com (backend) and unrealvibe.com (Next.js) see it.
-// Set COOKIE_DOMAIN=".unrealvibe.com" in production.
-if (isProd && process.env.COOKIE_DOMAIN) {
-  authCookieOptions.domain = process.env.COOKIE_DOMAIN;
-}
 
-/* =========================
-   📩 REQUEST OTP
-========================= */
+
+
+/* =================================================
+   📩 REQUEST OTP (USERS)
+================================================= */
 
 export const requestOtp = async (req, res) => {
   try {
     const { phone } = req.body || {};
     if (!phone) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Phone number is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
     }
 
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -50,24 +48,15 @@ export const requestOtp = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log(`🔢 OTP for ${phone}: ${otp}`);
-
-    const smsResponse = await sendSms(phone, otp);
-
-    if (!smsResponse?.success) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send OTP",
-      });
-    }
+    await sendSms(phone, otp);
 
     return res.json({
       success: true,
       message: "OTP sent successfully",
       otp, // ⚠️ REMOVE IN PRODUCTION
     });
-  } catch (error) {
-    console.error("❌ Error sending OTP:", error);
+  } catch (err) {
+    console.error("OTP send error:", err);
     return res.status(500).json({
       success: false,
       message: "Failed to send OTP",
@@ -75,9 +64,9 @@ export const requestOtp = async (req, res) => {
   }
 };
 
-/* =========================
-   💬 VERIFY OTP
-========================= */
+/* =================================================
+   💬 VERIFY OTP (USERS)
+================================================= */
 
 export const verifyOtp = async (req, res) => {
   try {
@@ -89,68 +78,44 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // Normal OTP flow (admin/superadmin now use email/password login)
     const otpRecord = await Otp.findOne({ phone, otp });
-
-    if (!otpRecord) {
+    if (!otpRecord || otpRecord.expiresAt < new Date()) {
       return res.status(400).json({
         success: false,
-        message: "Invalid OTP",
+        message: "Invalid or expired OTP",
       });
     }
 
-    if (otpRecord.expiresAt < new Date()) {
-      await Otp.deleteOne({ phone });
-      return res.status(400).json({
-        success: false,
-        message: "OTP expired",
-      });
-    }
-
-    const user = await User.findOne({ phone });
+    let user = await User.findOne({ phone });
 
     if (!user) {
-      const newUser = await User.create({
+      user = await User.create({
         phone,
         isVerified: true,
-      });
-      await Otp.deleteOne({ phone });
-      
-      const token = jwt.sign({ sub: newUser._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-      });
-
-      res.cookie("accessToken", token, authCookieOptions);
-
-      return res.json({
-        success: true,
-        message: "OTP verified successfully. Please create your profile.",
-        role: newUser.role,
-        isProfileComplete: newUser.isProfileComplete || false,
-        token: token,
       });
     } else {
       user.isVerified = true;
       await user.save();
-      await Otp.deleteOne({ phone });
-
-      const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-      });
-
-      res.cookie("accessToken", token, authCookieOptions);
-
-      return res.json({
-        success: true,
-        message: "Welcome back! Login successful.",
-        role: user.role,
-        isProfileComplete: user.isProfileComplete || false,
-        token: token,
-      });
     }
 
-  } catch (error) {
-    console.error("❌ OTP verification failed:", error);
+    await Otp.deleteOne({ phone });
+
+    const token = jwt.sign(
+      { sub: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // 🔑 SET COOKIE (USER LOGIN)
+    res.cookie("accessToken", token, authCookieOptions);
+
+    return res.json({
+      success: true,
+      role: user.role,
+      isProfileComplete: user.isProfileComplete || false,
+    });
+  } catch (err) {
+    console.error("OTP verify error:", err);
     return res.status(500).json({
       success: false,
       message: "Login failed",
@@ -158,68 +123,24 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
+/* =================================================
+   🔐 ADMIN / SUPERADMIN LOGIN
+================================================= */
 
-/* =========================
-   👤 GET CURRENT USER
-========================= */
-
-export const getMe = async (req, res) => {
-  try {
-    const user = await User.findById(req.userId).select("-__v");
-    if (!user) {
-      return res.status(401).json({ success: false });
-    }
-
-    return res.json({
-      success: true,
-      user: {
-        id: user._id,
-        role: user.role,
-      },
-    });
-  } catch {
-    return res.status(401).json({ success: false });
-  }
-};
-
-/* =========================
-   🚪 LOGOUT
-========================= */
-
-export const logout = async (req, res) => {
-  // Use the same cookie attributes as login so the browser can reliably
-  // clear the cookie regardless of environment.
-  res.clearCookie("accessToken", {
-    ...authCookieOptions,
-    maxAge: 0,
-  });
-
-  return res.json({
-    success: true,
-    message: "Logged out successfully",
-  });
-};
-
-/* =========================
-   🔐 ADMIN LOGIN (Email/Password)
-========================= */
-
-// Hardcoded admin credentials (can be overridden via env vars)
-const ADMIN_CREDENTIALS = {
-  email: process.env.ADMIN_EMAIL || "admin@gmail.com",
-  password: process.env.ADMIN_PASSWORD || "admin@123",
+const ADMIN = {
+  email: process.env.ADMIN_EMAIL,
+  password: process.env.ADMIN_PASSWORD,
   role: "admin",
 };
 
-const SUPERADMIN_CREDENTIALS = {
-  email: process.env.SUPERADMIN_EMAIL || "superadmin@gmail.com",
-  password: process.env.SUPERADMIN_PASSWORD || "superadmin@123",
+const SUPERADMIN = {
+  email: process.env.SUPERADMIN_EMAIL,
+  password: process.env.SUPERADMIN_PASSWORD,
   role: "superadmin",
 };
 
-// Hash passwords on module load (only once)
-const ADMIN_PASSWORD_HASH = bcrypt.hashSync(ADMIN_CREDENTIALS.password, 10);
-const SUPERADMIN_PASSWORD_HASH = bcrypt.hashSync(SUPERADMIN_CREDENTIALS.password, 10);
+const ADMIN_HASH = bcrypt.hashSync(ADMIN.password, 10);
+const SUPERADMIN_HASH = bcrypt.hashSync(SUPERADMIN.password, 10);
 
 export const adminLogin = async (req, res) => {
   try {
@@ -228,128 +149,67 @@ export const adminLogin = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "Missing credentials",
       });
     }
 
-    // Normalize email to lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if it's admin or superadmin
-    let isAdmin = false;
-    let isSuperAdmin = false;
-    let passwordHash = null;
-    let expectedRole = null;
+    let role, hash, name, phone;
 
-    if (normalizedEmail === ADMIN_CREDENTIALS.email.toLowerCase()) {
-      isAdmin = true;
-      passwordHash = ADMIN_PASSWORD_HASH;
-      expectedRole = "admin";
-    } else if (normalizedEmail === SUPERADMIN_CREDENTIALS.email.toLowerCase()) {
-      isSuperAdmin = true;
-      passwordHash = SUPERADMIN_PASSWORD_HASH;
-      expectedRole = "superadmin";
-    }
-
-    // Only allow admin/superadmin emails
-    if (!isAdmin && !isSuperAdmin) {
+    if (normalizedEmail === ADMIN.email) {
+      role = "admin";
+      hash = ADMIN_HASH;
+      name = "Admin";
+      phone = "8888888888";
+    } else if (normalizedEmail === SUPERADMIN.email) {
+      role = "superadmin";
+      hash = SUPERADMIN_HASH;
+      name = "Super Admin";
+      phone = "9999999999";
+    } else {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
     }
 
-    // Verify password
-    const isPasswordValid = bcrypt.compareSync(password, passwordHash);
-    if (!isPasswordValid) {
+    if (!bcrypt.compareSync(password, hash)) {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
     }
 
-    // Find or create admin user
-    // First, try to find by email
     let user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
-      // If not found by email, check if a user with the admin phone number exists
-      // (this handles cases where admin was created via old /create-admin endpoint)
-      const adminPhone = isSuperAdmin ? "9999999999" : "8888888888";
-      user = await User.findOne({ phone: adminPhone });
-
-      if (user) {
-        // Update existing user with admin phone to have correct email and role
-        user.email = normalizedEmail;
-        user.role = expectedRole;
-        user.name = isSuperAdmin ? "Super Admin" : "Admin";
-        user.isVerified = true;
-        user.isHostVerified = true;
-        user.isActive = true;
-        user.isProfileComplete = true;
-        await user.save();
-      } else {
-        // No user found with email or phone - create new admin user
-        try {
-          user = await User.create({
-            email: normalizedEmail,
-            phone: adminPhone, // Dummy phone for admin accounts
-            name: isSuperAdmin ? "Super Admin" : "Admin",
-            role: expectedRole,
-            isVerified: true,
-            isHostVerified: true,
-            isActive: true,
-            isProfileComplete: true,
-          });
-        } catch (createError) {
-          // If creation fails due to duplicate phone (race condition), find and update
-          if (createError.code === 11000 && createError.keyPattern?.phone) {
-            user = await User.findOne({ phone: adminPhone });
-            if (user) {
-              user.email = normalizedEmail;
-              user.role = expectedRole;
-              user.name = isSuperAdmin ? "Super Admin" : "Admin";
-              user.isVerified = true;
-              user.isHostVerified = true;
-              user.isActive = true;
-              user.isProfileComplete = true;
-              await user.save();
-            } else {
-              throw createError; // Re-throw if we still can't find the user
-            }
-          } else {
-            throw createError; // Re-throw other errors
-          }
-        }
-      }
-    } else {
-      // User found by email - update to ensure correct role and status
-      user.role = expectedRole;
-      user.isVerified = true;
-      user.isHostVerified = true;
-      user.isActive = true;
-      if (!user.name) {
-        user.name = isSuperAdmin ? "Super Admin" : "Admin";
-      }
-      await user.save();
+      user = await User.create({
+        email: normalizedEmail,
+        phone,
+        name,
+        role,
+        isVerified: true,
+        isActive: true,
+        isProfileComplete: true,
+      });
     }
 
-    // Generate JWT token
-    const token = jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign(
+      { sub: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    // Set cookie
+    // ✅ COOKIE IS SET HERE (ONLY HERE)
     res.cookie("accessToken", token, authCookieOptions);
 
     return res.json({
       success: true,
-      message: "Admin login successful",
       role: user.role,
-      token: token, // Fallback for cookie extraction
     });
-  } catch (error) {
-    console.error("❌ Admin login failed:", error);
+  } catch (err) {
+    console.error("Admin login error:", err);
     return res.status(500).json({
       success: false,
       message: "Login failed",

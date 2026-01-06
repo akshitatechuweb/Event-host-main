@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     );
   } catch (error) {
     console.error("API TRANSACTIONS ERROR:", error);
-
+    
     return NextResponse.json(
       {
         success: false,

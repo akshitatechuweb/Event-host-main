@@ -1,77 +1,77 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { TransactionStats } from "./TransactionStats"
-import { TransactionList } from "./TransactionList"
-import { TransactionSearch } from "./TransactionSearch"
-import { getEventTransactions } from "@/lib/admin"
-import { EventTransactionsResponse } from "@/types/transaction"
-import { toast } from "sonner"
+import { useEffect, useState } from "react";
+import { TransactionStats } from "./TransactionStats";
+import { TransactionList } from "./TransactionList";
+import { TransactionSearch } from "./TransactionSearch";
+import { getEventTransactions } from "@/lib/admin";
+import { EventTransactionsResponse } from "@/types/transaction";
+import { toast } from "sonner";
 
 interface EventTransactionsViewProps {
-  eventId: string
+  eventId: string;
 }
 
 export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<EventTransactionsResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<EventTransactionsResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!eventId) {
-      setError("Event ID is required")
-      setLoading(false)
-      return
+      setError("Event ID is required");
+      setLoading(false);
+      return;
     }
 
-    let mounted = true
+    let mounted = true;
 
     async function fetchTransactions() {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
-        const response = await getEventTransactions(eventId)
+        const response = await getEventTransactions(eventId);
 
-        if (!mounted) return
+        console.log("RAW EVENT TRANSACTIONS RESPONSE:", response);
+
+        if (!mounted) return;
 
         if (!response.success) {
-          throw new Error(response.message || "Failed to fetch transactions")
+          throw new Error(response.message || "Failed to fetch transactions");
         }
 
-        setData(response)
+        setData(response);
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to load transactions"
-        setError(message)
-        toast.error(message)
+          err instanceof Error ? err.message : "Failed to load transactions";
+        setError(message);
+        toast.error(message);
       } finally {
         if (mounted) {
-          setLoading(false)
+          setLoading(false);
         }
       }
     }
 
-    fetchTransactions()
+    fetchTransactions();
 
     return () => {
-      mounted = false
-    }
-  }, [eventId])
+      mounted = false;
+    };
+  }, [eventId]);
 
-  
+  console.log("EVENT TRANSACTIONS VIEW MOUNTED:", eventId);
   /* -------------------- Loading -------------------- */
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-28">
         <div className="space-y-3 text-center">
           <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">
-            Loading transactions…
-          </p>
+          <p className="text-sm text-muted-foreground">Loading transactions…</p>
         </div>
       </div>
-    )
+    );
   }
 
   /* -------------------- Error -------------------- */
@@ -87,7 +87,7 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
           </p>
         </div>
       </div>
-    )
+    );
   }
 
   /* -------------------- Content -------------------- */
@@ -102,5 +102,5 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
         <TransactionList transactions={data.transactions} />
       </div>
     </div>
-  )
+  );
 }

@@ -1,3 +1,6 @@
+import type { EventTransactionsResponse } from "@/types/transaction";
+import type { Transaction } from "@/types/transaction";
+
 // ===========================
 // Hosts
 // ===========================
@@ -20,25 +23,50 @@ export async function getHosts() {
 // ===========================
 // Event Transactions (SINGLE SOURCE OF TRUTH)
 // ===========================
-export async function getEventTransactions(eventId: string) {
-  const res = await fetch(
-    `/api/transactions?eventId=${eventId}`,
-    {
-      credentials: "include",
-      cache: "no-store",
-    }
-  )
+export async function getEventTransactions(
+  eventId: string
+): Promise<EventTransactionsResponse> {
+  const res = await fetch(`/api/transactions?eventId=${eventId}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
 
-  const text = await res.text()
+  const raw: EventTransactionsResponse = await res.json();
 
-  try {
-    return JSON.parse(text)
-  } catch {
-    throw new Error("Invalid server response")
+  console.log("API /transactions raw response:", raw);
+
+  if (!res.ok || !raw?.success) {
+    throw new Error(raw?.message || "Failed to fetch transactions");
   }
+
+  const transactions: Transaction[] = raw.transactions.map((t) => ({
+    _id: t._id,
+    amount: t.amount,
+    platformFee: t.platformFee,
+    payoutToHost: t.payoutToHost,
+    providerTxnId: t.providerTxnId,
+    status: t.status,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    booking: t.booking ?? null,
+  }));
+
+  // 🔥 IMPORTANT: recompute totals SAFELY on frontend
+  const totals = {
+    totalRevenue: transactions.reduce((sum, t) => sum + Number(t.amount), 0),
+    totalTransactions: transactions.length,
+    totalTickets: transactions.reduce(
+      (sum, t) => sum + (t.booking?.ticketCount ?? 0),
+      0
+    ),
+  };
+
+  return {
+    success: true,
+    transactions,
+    totals,
+  };
 }
-
-
 
 // ===========================
 // Approved Hosts
@@ -126,7 +154,6 @@ export async function getDashboardStats() {
   }
 }
 
-
 // ===========================
 // Events (for Transactions page)
 // ===========================
@@ -147,4 +174,3 @@ export async function getAllEvents() {
 
   return data;
 }
-

@@ -1,11 +1,22 @@
-"use client"
+"use client";
 
-import { TransactionCard } from "./TransactionCard"
-import { Transaction } from "@/types/transaction"
+import { TransactionCard } from "./TransactionCard";
+import { Transaction } from "@/types/transaction";
 
 interface TransactionListProps {
-  transactions: Transaction[]
+  transactions: Transaction[];
 }
+
+type CardTransactionStatus = "completed" | "pending" | "failed";
+
+type CardTransaction = {
+  id: string;
+  event: string;
+  user: string;
+  amount: string;
+  date: string;
+  status: CardTransactionStatus;
+};
 
 export function TransactionList({ transactions }: TransactionListProps) {
   if (transactions.length === 0) {
@@ -18,21 +29,20 @@ export function TransactionList({ transactions }: TransactionListProps) {
           Transactions will appear here once bookings are processed.
         </p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {transactions.map((transaction) => {
         // 🔒 KEEPING YOUR TRANSFORMATION LOGIC EXACTLY AS-IS
-        const formattedTransaction = {
+        const formattedTransaction: CardTransaction = {
           id: transaction._id,
-          event:
-            transaction.booking?.items
-              ?.map(
-                (item) => `${item.passType} × ${item.quantity}`
-              )
-              .join(", ") || "N/A",
+          event: transaction.booking?.items?.length
+            ? transaction.booking.items
+                .map((item) => `${item.passType} × ${item.quantity}`)
+                .join(", ")
+            : "N/A",
           user: transaction.booking?.buyer?.name || "Guest",
           amount: `₹${transaction.amount.toLocaleString()}`,
           date: new Date(transaction.createdAt).toLocaleDateString("en-US", {
@@ -40,16 +50,21 @@ export function TransactionList({ transactions }: TransactionListProps) {
             month: "short",
             day: "numeric",
           }),
-          status: transaction.status as "completed" | "pending" | "failed",
-        }
+          status:
+            transaction.status === "completed"
+              ? "completed"
+              : transaction.status === "pending"
+              ? "pending"
+              : "failed",
+        };
 
         return (
           <TransactionCard
             key={transaction._id}
             transaction={formattedTransaction}
           />
-        )
+        );
       })}
     </div>
-  )
+  );
 }

@@ -22,8 +22,9 @@ export async function getHosts() {
 // ===========================
 // Event Transactions
 // ===========================
+
 export async function getEventTransactions(eventId: string) {
-  const res = await fetch(`/api/admin/transactions/${eventId}`, {
+  const res = await fetch(`/api/transactions/${eventId}`, {
     credentials: "include",
     cache: "no-store",
   });
@@ -39,7 +40,6 @@ export async function getEventTransactions(eventId: string) {
 
   return data;
 }
-
 
 
 // ===========================

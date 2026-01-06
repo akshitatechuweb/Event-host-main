@@ -111,7 +111,7 @@ export default function TransactionsPage() {
             {events.map((event) => (
               <Link
                 key={event._id}
-                href={`/transactions/${event._id}`}
+                href={`/admin/transactions/${event._id}`}
                 className="group relative rounded-xl border border-border/50 bg-card p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-black/8"
               >
                 <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

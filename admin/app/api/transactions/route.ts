@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ✅ SAME-ORIGIN ONLY (rewrite handles backend)
+    // ✅ SAME-ORIGIN → REWRITE → BACKEND
     const response = await fetch(
       `${req.nextUrl.origin}/api/booking/admin?eventId=${eventId}`,
       {
@@ -43,9 +43,19 @@ export async function GET(req: NextRequest) {
 
     const data = await response.json();
 
-    return NextResponse.json(data, {
-      status: response.status,
-    });
+    // 🔑 normalize response for frontend
+    return NextResponse.json(
+      {
+        success: true,
+        transactions: data.transactions || [],
+        totals: data.totals || {
+          totalRevenue: 0,
+          totalTransactions: 0,
+          totalTickets: 0,
+        },
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("API TRANSACTIONS ERROR:", error);
 

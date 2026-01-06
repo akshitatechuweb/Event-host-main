@@ -59,6 +59,7 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
     }
   }, [eventId])
 
+  
   /* -------------------- Loading -------------------- */
   if (loading) {
     return (

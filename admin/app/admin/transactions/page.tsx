@@ -30,7 +30,7 @@ export default function TransactionsPage() {
         setError(null);
 
         // ✅ SAME-ORIGIN FETCH (NO ENV, NO BACKEND URL)
-        const response = await fetch("/api/transactions/events", {
+        const response = await fetch("/api/events", {
           credentials: "include",
           cache: "no-store",
         });
@@ -145,9 +145,7 @@ export default function TransactionsPage() {
                       <Ticket className="w-4 h-4" />
                       <span>
                         {event.currentBookings}{" "}
-                        {event.currentBookings === 1
-                          ? "booking"
-                          : "bookings"}
+                        {event.currentBookings === 1 ? "booking" : "bookings"}
                       </span>
                     </div>
                   )}

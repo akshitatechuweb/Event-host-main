@@ -1,51 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
+/* ============================
+   GET TRANSACTIONS (ADMIN)
+===============================*/
 export async function GET(req: NextRequest) {
-  const eventId = req.nextUrl.searchParams.get("eventId");
-
-  if (!eventId) {
-    return NextResponse.json(
-      { message: "eventId is required" },
-      { status: 400 }
-    );
-  }
-
-  // 🔒 SAME ORIGIN — no env vars, no hardcoding
-  const origin = req.nextUrl.origin;
-
-  // 🍪 Forward HTTP-only cookies
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
-
-  const backendRes = await fetch(
-    `${origin}/api/booking/admin?eventId=${eventId}`,
-    {
-      method: "GET",
-      headers: {
-        cookie: cookieHeader,
-        accept: "application/json",
-      },
-      cache: "no-store",
-    }
-  );
-
-  const rawText = await backendRes.text();
-
   try {
-    return NextResponse.json(JSON.parse(rawText), {
-      status: backendRes.status,
+    const eventId = req.nextUrl.searchParams.get("eventId");
+
+    if (!eventId) {
+      return NextResponse.json(
+        { success: false, message: "eventId is required" },
+        { status: 400 }
+      );
+    }
+
+    // ✅ SAME-ORIGIN ONLY (rewrite handles backend)
+    const response = await fetch(
+      `${req.nextUrl.origin}/api/booking/admin?eventId=${eventId}`,
+      {
+        method: "GET",
+        headers: {
+          cookie: req.headers.get("cookie") || "",
+          accept: "application/json",
+        },
+        cache: "no-store",
+      }
+    );
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+      const text = await response.text();
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid backend response",
+          details: text,
+        },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+
+    return NextResponse.json(data, {
+      status: response.status,
     });
-  } catch {
+  } catch (error) {
+    console.error("API TRANSACTIONS ERROR:", error);
+
     return NextResponse.json(
       {
-        message: "Backend returned non-JSON",
-        raw: rawText,
+        success: false,
+        message: "Internal server error",
       },
-      { status: 502 }
+      { status: 500 }
     );
   }
 }

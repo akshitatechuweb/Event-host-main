@@ -209,104 +209,101 @@ export default function AddEventModal({
   const back = () => setStep((s) => Math.max(s - 1, 1));
 
   const handleSubmit = async () => {
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const formPayload = new FormData();
+  try {
+    const formPayload = new FormData();
 
-      formPayload.append("eventName", formData.eventName);
-      formPayload.append("hostedBy", formData.hostedBy);
-      formPayload.append("subtitle", formData.subtitle);
-      formPayload.append("category", formData.category);
+    formPayload.append("eventName", formData.eventName);
+    formPayload.append("hostedBy", formData.hostedBy);
+    formPayload.append("subtitle", formData.subtitle);
+    formPayload.append("category", formData.category);
 
-      // Image handling
-      if (formData.eventImage) {
-        formPayload.append("eventImage", formData.eventImage);
-      } else if (editingEvent && formData.existingEventImage) {
-        formPayload.append("existingImageUrl", formData.existingEventImage);
-      }
-
-      formPayload.append("date", formData.date);
-      formPayload.append("time", formData.time);
-      formPayload.append("fullAddress", formData.fullAddress);
-      formPayload.append("city", formData.city);
-
-      formPayload.append("about", formData.about);
-      formPayload.append("partyFlow", formData.partyFlow);
-      formPayload.append("whatsIncluded", formData.whatsIncluded);
-      formPayload.append("howItWorks", formData.howItWorks);
-      formPayload.append(
-        "whatsIncludedInTicket",
-        formData.whatsIncludedInTicket
-      );
-
-      formPayload.append("passes", JSON.stringify(formData.passes));
-
-      if (formData.hostId) {
-        formPayload.append("hostId", formData.hostId);
-      }
-
-      formPayload.append("ageRestriction", formData.ageRestriction);
-      formPayload.append("maxCapacity", String(formData.maxCapacity));
-      formPayload.append("expectedGuestCount", formData.expectedGuestCount);
-      formPayload.append("maleToFemaleRatio", formData.maleToFemaleRatio);
-      formPayload.append("thingsToKnow", formData.thingsToKnow);
-      formPayload.append("partyEtiquette", formData.partyEtiquette);
-      formPayload.append("houseRules", formData.houseRules);
-      formPayload.append("partyTerms", formData.partyTerms);
-      formPayload.append("cancellationPolicy", formData.cancellationPolicy);
-
-      // Use direct backend URL with httpOnly cookie authentication
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-      
-      if (!API_BASE_URL) {
-        throw new Error("API base URL not configured");
-      }
-
-      const endpoint = editingEvent
-        ? `${API_BASE_URL}/api/event/update-event/${editingEvent._id}`
-        : `${API_BASE_URL}/api/event/create-event`;
-
-      const method = editingEvent ? "PUT" : "POST";
-
-      console.log(`Making ${method} request to:`, endpoint);
-
-      const res = await fetch(endpoint, {
-        method,
-        body: formPayload,
-        credentials: 'include', // Critical: sends httpOnly cookies
-      });
-
-      // Better error handling for non-JSON responses
-      const contentType = res.headers.get("content-type");
-      let data;
-      
-      if (contentType && contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        // Handle non-JSON responses (like HTML error pages)
-        const text = await res.text();
-        throw new Error(`Server returned non-JSON response: ${res.status} ${res.statusText}`);
-      }
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || `Request failed: ${res.status}`);
-      }
-
-      toast.success(editingEvent ? "Event updated successfully!" : "Event created successfully!");
-
-      editingEvent ? onEventUpdated?.() : onEventCreated?.();
-      onClose();
-      setFormData(initialFormState);
-      setStep(1);
-    } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error("Something went wrong");
-      console.error("Submit error:", error);
-      toast.error(error.message || "Something went wrong");
-    } finally {
-      setLoading(false);
+    if (formData.eventImage) {
+      formPayload.append("eventImage", formData.eventImage);
+    } else if (editingEvent && formData.existingEventImage) {
+      formPayload.append("existingImageUrl", formData.existingEventImage);
     }
-  };
+
+    formPayload.append("date", formData.date);
+    formPayload.append("time", formData.time);
+    formPayload.append("fullAddress", formData.fullAddress);
+    formPayload.append("city", formData.city);
+
+    formPayload.append("about", formData.about);
+    formPayload.append("partyFlow", formData.partyFlow);
+    formPayload.append("whatsIncluded", formData.whatsIncluded);
+    formPayload.append("howItWorks", formData.howItWorks);
+    formPayload.append(
+      "whatsIncludedInTicket",
+      formData.whatsIncludedInTicket
+    );
+
+    formPayload.append("passes", JSON.stringify(formData.passes));
+
+    if (formData.hostId) {
+      formPayload.append("hostId", formData.hostId);
+    }
+
+    formPayload.append("ageRestriction", formData.ageRestriction);
+    formPayload.append("maxCapacity", String(formData.maxCapacity));
+    formPayload.append("expectedGuestCount", formData.expectedGuestCount);
+    formPayload.append("maleToFemaleRatio", formData.maleToFemaleRatio);
+    formPayload.append("thingsToKnow", formData.thingsToKnow);
+    formPayload.append("partyEtiquette", formData.partyEtiquette);
+    formPayload.append("houseRules", formData.houseRules);
+    formPayload.append("partyTerms", formData.partyTerms);
+    formPayload.append("cancellationPolicy", formData.cancellationPolicy);
+
+    // ✅ INTERNAL NEXT.JS API ROUTES ONLY
+    const endpoint = editingEvent
+      ? `/api/events/${editingEvent._id}`
+      : `/api/events`;
+
+    const method = editingEvent ? "PUT" : "POST";
+
+    const res = await fetch(endpoint, {
+      method,
+      body: formPayload,
+      credentials: "include", // still required
+    });
+
+    const contentType = res.headers.get("content-type");
+    let data;
+
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      throw new Error(
+        `Server returned non-JSON response: ${res.status} ${res.statusText}`
+      );
+    }
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || `Request failed: ${res.status}`);
+    }
+
+    toast.success(
+      editingEvent
+        ? "Event updated successfully!"
+        : "Event created successfully!"
+    );
+
+    editingEvent ? onEventUpdated?.() : onEventCreated?.();
+    onClose();
+    setFormData(initialFormState);
+    setStep(1);
+  } catch (err: unknown) {
+    const error =
+      err instanceof Error ? err : new Error("Something went wrong");
+    console.error("Submit error:", error);
+    toast.error(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>

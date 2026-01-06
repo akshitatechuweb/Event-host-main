@@ -1,25 +1,12 @@
 // app/api/events/[eventId]/transactions/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : null;
 
-/**
- * GET /api/events/:eventId/transactions
- * Proxies admin-authenticated request to backend
- */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    if (!API_BASE_URL) {
-      return NextResponse.json(
-        { success: false, message: "API base URL not configured" },
-        { status: 500 }
-      );
-    }
-
-    // ← Await the params Promise
     const { eventId } = await params;
 
     if (!eventId) {
@@ -38,16 +25,20 @@ export async function GET(
       );
     }
 
-    const backendUrl = `${API_BASE_URL}/api/admin/events/${eventId}/transactions`;
-
-    const response = await fetch(backendUrl, {
-      method: "GET",
-      headers: {
-        Cookie: cookieHeader,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
+    // 👇 IMPORTANT: Internal API path ONLY
+    // Rewrite will proxy this to:
+    // https://api.unrealvibe.com/api/admin/events/:eventId/transactions
+    const response = await fetch(
+      `/api/admin/events/${eventId}/transactions`,
+      {
+        method: "GET",
+        headers: {
+          Cookie: cookieHeader,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      }
+    );
 
     const text = await response.text();
 

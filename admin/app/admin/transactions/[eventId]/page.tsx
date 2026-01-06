@@ -1,4 +1,3 @@
-// app/transactions/[eventId]/page.tsx
 import type { Metadata } from "next";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { EventTransactionsView } from "@/components/transactions/EventTransactionsView";
@@ -15,7 +14,6 @@ export default async function EventTransactionsPage({
 }) {
   const { eventId } = await params;
 
-  // Safety check (though Next.js should never pass empty eventId)
   if (!eventId) {
     return (
       <DashboardLayout>
@@ -29,7 +27,7 @@ export default async function EventTransactionsPage({
   return (
     <DashboardLayout>
       <div className="space-y-10">
-        {/* Page Header */}
+        {/* Header */}
         <header className="space-y-1.5 max-w-2xl">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             Transactions
@@ -39,7 +37,7 @@ export default async function EventTransactionsPage({
           </p>
         </header>
 
-        {/* Main Content */}
+        {/* Client Component */}
         <EventTransactionsView eventId={eventId} />
       </div>
     </DashboardLayout>

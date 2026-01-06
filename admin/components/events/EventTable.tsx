@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { filterBySearchQuery } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
-// Import the shared Event type (create this file next!)
+// Shared Event type
 import { Event } from "@/types/event";
 
 interface EventTableProps {
@@ -31,14 +31,11 @@ export function EventTable({
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-      
-      if (!API_BASE_URL) {
-        throw new Error("API base URL not configured");
-      }
 
-      const response = await fetch(`${API_BASE_URL}/api/event/events`, {
+      // ✅ Internal Next.js API route (rewrite handles backend)
+      const response = await fetch("/api/events", {
         credentials: "include",
+        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -48,8 +45,10 @@ export function EventTable({
 
       const data = await response.json();
 
-      // Handle different response formats
-      const events = Array.isArray(data) ? data : (data.events || data.data || []);
+      // Handle different response formats safely
+      const events = Array.isArray(data)
+        ? data
+        : data.events || data.data || [];
 
       setEvents(events);
     } catch (err: unknown) {

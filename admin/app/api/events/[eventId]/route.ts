@@ -1,21 +1,12 @@
 // app/api/events/[eventId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : null;
-
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    if (!API_BASE_URL) {
-      return NextResponse.json(
-        { success: false, message: "API base URL not configured" },
-        { status: 500 }
-      );
-    }
-
-    const { eventId } = await params;  // ← Await here
+    const { eventId } = await params;
 
     if (!eventId) {
       return NextResponse.json(
@@ -33,16 +24,17 @@ export async function DELETE(
       );
     }
 
-    const backendUrl = `${API_BASE_URL}/api/event/delete-event/${eventId}`;
-    console.log("CALLING BACKEND:", backendUrl);
-
-    const response = await fetch(backendUrl, {
-      method: "DELETE",
-      headers: {
-        Cookie: cookieHeader,
-      },
-      cache: "no-store",
-    });
+    // 👇 Internal API path only (rewrite handles backend)
+    const response = await fetch(
+      `/api/event/delete-event/${eventId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Cookie: cookieHeader,
+        },
+        cache: "no-store",
+      }
+    );
 
     if (!response.ok) {
       const text = await response.text();
@@ -86,14 +78,7 @@ export async function PUT(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    if (!API_BASE_URL) {
-      return NextResponse.json(
-        { success: false, message: "API base URL not configured" },
-        { status: 500 }
-      );
-    }
-
-    const { eventId } = await params;  // ← Await here
+    const { eventId } = await params;
 
     if (!eventId) {
       return NextResponse.json(
@@ -113,17 +98,18 @@ export async function PUT(
 
     const formData = await req.formData();
 
-    const backendUrl = `${API_BASE_URL}/api/event/update-event/${eventId}`;
-    console.log("CALLING BACKEND (update):", backendUrl);
-
-    const response = await fetch(backendUrl, {
-      method: "PUT",
-      headers: {
-        Cookie: cookieHeader,
-      },
-      body: formData,
-      cache: "no-store",
-    });
+    // 👇 Internal API path only (rewrite handles backend)
+    const response = await fetch(
+      `/api/event/update-event/${eventId}`,
+      {
+        method: "PUT",
+        headers: {
+          Cookie: cookieHeader,
+        },
+        body: formData,
+        cache: "no-store",
+      }
+    );
 
     if (!response.ok) {
       const text = await response.text();

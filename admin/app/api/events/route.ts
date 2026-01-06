@@ -1,21 +1,12 @@
 // app/api/events/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}` : null;
-
 /* ======================================================
    GET EVENTS
 ====================================================== */
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    if (!API_BASE_URL) {
-      return NextResponse.json(
-        { success: false, message: "API base URL not configured" },
-        { status: 500 }
-      );
-    }
-
-    const cookieHeader = _req.headers.get("cookie");
+    const cookieHeader = req.headers.get("cookie");
 
     if (!cookieHeader) {
       return NextResponse.json(
@@ -24,10 +15,8 @@ export async function GET(_req: NextRequest) {
       );
     }
 
-    const backendUrl = `${API_BASE_URL}/api/event/events`;
-    console.log("CALLING BACKEND:", backendUrl);
-
-    const response = await fetch(backendUrl, {
+    // 👇 Internal API path only (handled by Next.js rewrite)
+    const response = await fetch("/api/event/events", {
       method: "GET",
       headers: {
         Cookie: cookieHeader,
@@ -78,13 +67,6 @@ export async function GET(_req: NextRequest) {
 ====================================================== */
 export async function POST(req: NextRequest) {
   try {
-    if (!API_BASE_URL) {
-      return NextResponse.json(
-        { success: false, message: "API base URL not configured" },
-        { status: 500 }
-      );
-    }
-
     const cookieHeader = req.headers.get("cookie");
 
     if (!cookieHeader) {
@@ -96,10 +78,8 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
 
-    const backendUrl = `${API_BASE_URL}/api/event/create-event`;
-    console.log("CALLING BACKEND:", backendUrl);
-
-    const response = await fetch(backendUrl, {
+    // 👇 Internal API path only (handled by Next.js rewrite)
+    const response = await fetch("/api/event/create-event", {
       method: "POST",
       headers: {
         Cookie: cookieHeader,

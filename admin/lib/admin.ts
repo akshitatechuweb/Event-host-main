@@ -2,11 +2,9 @@
 // Hosts
 // ===========================
 export async function getHosts() {
-  // Call Next.js API route which proxies to backend
-  const res = await fetch(
-    `/api/hosts?action=list`,
-    { credentials: "include" }
-  );
+  const res = await fetch(`/api/hosts?action=list`, {
+    credentials: "include",
+  });
 
   if (!res.ok) {
     if (res.status === 401) {
@@ -20,37 +18,35 @@ export async function getHosts() {
 }
 
 // ===========================
-// Event Transactions
+// Event Transactions (SINGLE SOURCE OF TRUTH)
 // ===========================
-
 export async function getEventTransactions(eventId: string) {
-  const res = await fetch(`/api/transactions/${eventId}`, {
-    credentials: "include",
-    cache: "no-store",
-  });
+  const res = await fetch(
+    `/api/transactions?eventId=${eventId}`,
+    {
+      credentials: "include",
+      cache: "no-store",
+    }
+  )
 
-  const data = await res.json().catch(() => null);
+  const text = await res.text()
 
-  if (!res.ok) {
-    return {
-      success: false,
-      message: data?.message || "Failed to fetch transactions",
-    };
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new Error("Invalid server response")
   }
-
-  return data;
 }
+
 
 
 // ===========================
 // Approved Hosts
 // ===========================
 export async function getApprovedHosts() {
-  // Call Next.js API route which proxies to backend
-  const res = await fetch(
-    `/api/admin/hosts`,
-    { credentials: "include" }
-  );
+  const res = await fetch(`/api/admin/hosts`, {
+    credentials: "include",
+  });
 
   if (!res.ok) {
     throw new Error("Failed to fetch approved hosts");
@@ -60,14 +56,10 @@ export async function getApprovedHosts() {
 }
 
 export async function approveHost(id: string) {
-  // Call Next.js API route which proxies to backend
-  const res = await fetch(
-    `/api/hosts?action=approve&id=${id}`,
-    {
-      method: "POST",
-      credentials: "include",
-    }
-  );
+  const res = await fetch(`/api/hosts?action=approve&id=${id}`, {
+    method: "POST",
+    credentials: "include",
+  });
 
   if (!res.ok) {
     throw new Error("Failed to approve host");
@@ -77,16 +69,12 @@ export async function approveHost(id: string) {
 }
 
 export async function rejectHost(id: string, reason?: string) {
-  // Call Next.js API route which proxies to backend
-  const res = await fetch(
-    `/api/hosts?action=reject&id=${id}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ reason }),
-    }
-  );
+  const res = await fetch(`/api/hosts?action=reject&id=${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ reason }),
+  });
 
   if (!res.ok) {
     throw new Error("Failed to reject host");
@@ -99,11 +87,9 @@ export async function rejectHost(id: string, reason?: string) {
 // Tickets
 // ===========================
 export async function getAllTickets() {
-  // Call Next.js API route which proxies to backend
-  const res = await fetch(
-    `/api/tickets`,
-    { credentials: "include" }
-  );
+  const res = await fetch(`/api/tickets`, {
+    credentials: "include",
+  });
 
   if (!res.ok) {
     if (res.status === 401) {
@@ -126,12 +112,8 @@ export async function getDashboardStats() {
       cache: "no-store",
     });
 
-    const data = await res.json();
-
-    // 🔑 Even if partial, return data
-    return data;
-  } catch (err) {
-    // 🔒 Never throw — return safe defaults
+    return await res.json();
+  } catch {
     return {
       success: true,
       stats: {
@@ -142,5 +124,27 @@ export async function getDashboardStats() {
       },
     };
   }
+}
+
+
+// ===========================
+// Events (for Transactions page)
+// ===========================
+export async function getAllEvents() {
+  const res = await fetch("/api/events", {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    return {
+      success: false,
+      events: [],
+    };
+  }
+
+  return data;
 }
 

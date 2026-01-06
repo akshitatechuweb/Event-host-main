@@ -1,125 +1,67 @@
-// app/api/events/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-/* ======================================================
-   GET EVENTS
-====================================================== */
+/* ============================
+      GET EVENTS (ADMIN)
+===============================*/
 export async function GET(req: NextRequest) {
   try {
-    const cookieHeader = req.headers.get("cookie");
+    const cookie = req.headers.get("cookie") || "";
 
-    if (!cookieHeader) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const baseUrl =
+      process.env.NEXT_PUBLIC_API_URL || req.nextUrl.origin;
 
-    // 👇 Internal API path only (handled by Next.js rewrite)
-    const response = await fetch("/api/event/events", {
-      method: "GET",
-      headers: {
-        Cookie: cookieHeader,
-      },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("BACKEND ERROR:", text);
-
-      return NextResponse.json(
-        { success: false, message: "Failed to fetch events" },
-        { status: response.status }
-      );
-    }
-
-    const data: unknown = await response.json();
-
-    return NextResponse.json({
-      success: true,
-      events:
-        typeof data === "object" &&
-        data !== null &&
-        "events" in data &&
-        Array.isArray((data as { events?: unknown }).events)
-          ? (data as { events: unknown[] }).events
-          : [],
-    });
-  } catch (error: unknown) {
-    console.error("API EVENTS ERROR:", error);
-
-    return NextResponse.json(
+    const response = await fetch(
+      `${baseUrl}/api/admin/events`,
       {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Internal server error",
-      },
+        method: "GET",
+        headers: { Cookie: cookie },
+        credentials: "include",
+        cache: "no-store",
+      }
+    );
+
+    const data = await response.json();
+
+    return NextResponse.json(data, { status: response.status });
+  } catch (err) {
+    console.error("API EVENTS ERROR:", err);
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }
 }
 
-/* ======================================================
-   CREATE EVENT
-====================================================== */
+/* ============================
+     CREATE EVENT (ADMIN)
+===============================*/
 export async function POST(req: NextRequest) {
   try {
-    const cookieHeader = req.headers.get("cookie");
+    const cookie = req.headers.get("cookie") || "";
 
-    if (!cookieHeader) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const baseUrl =
+      process.env.NEXT_PUBLIC_API_URL || req.nextUrl.origin;
 
     const formData = await req.formData();
 
-    // 👇 Internal API path only (handled by Next.js rewrite)
-    const response = await fetch("/api/event/create-event", {
-      method: "POST",
-      headers: {
-        Cookie: cookieHeader,
-      },
-      body: formData,
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("BACKEND ERROR:", text);
-
-      return NextResponse.json(
-        { success: false, message: "Failed to create event" },
-        { status: response.status }
-      );
-    }
-
-    const data: unknown = await response.json();
-
-    return NextResponse.json({
-      success: true,
-      event:
-        typeof data === "object" &&
-        data !== null &&
-        "event" in data
-          ? (data as { event?: unknown }).event
-          : data,
-    });
-  } catch (error: unknown) {
-    console.error("CREATE EVENT ERROR:", error);
-
-    return NextResponse.json(
+    const response = await fetch(
+      `${baseUrl}/api/admin/create-event`,
       {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Internal server error",
-      },
+        method: "POST",
+        headers: { Cookie: cookie },
+        body: formData,
+        credentials: "include",
+        cache: "no-store",
+      }
+    );
+
+    const data = await response.json();
+
+    return NextResponse.json(data, { status: response.status });
+  } catch (err) {
+    console.error("CREATE EVENT ERROR:", err);
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }

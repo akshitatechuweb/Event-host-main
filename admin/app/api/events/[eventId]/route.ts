@@ -1,148 +1,46 @@
-// app/api/events/[eventId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
-) {
-  try {
-    const { eventId } = await params;
-
-    if (!eventId) {
-      return NextResponse.json(
-        { success: false, message: "Event ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const cookieHeader = req.headers.get("cookie");
-
-    if (!cookieHeader) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // 👇 Internal API path only (rewrite handles backend)
-    const response = await fetch(
-      `/api/event/delete-event/${eventId}`,
-      {
-        method: "DELETE",
-        headers: {
-          Cookie: cookieHeader,
-        },
-        cache: "no-store",
-      }
-    );
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("BACKEND ERROR:", text);
-
-      return NextResponse.json(
-        { success: false, message: "Failed to delete event" },
-        { status: response.status }
-      );
-    }
-
-    const data: unknown = await response.json();
-
-    return NextResponse.json({
-      success: true,
-      message:
-        typeof data === "object" &&
-        data !== null &&
-        "message" in data
-          ? (data as { message?: string }).message
-          : "Event deleted successfully",
-    });
-  } catch (error: unknown) {
-    console.error("DELETE EVENT ERROR:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Internal server error",
-      },
-      { status: 500 }
-    );
+async function safeJson(res: Response) {
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    const text = await res.text();
+    return {
+      ok: false,
+      status: res.status,
+      body: { success: false, message: text || "Non-JSON response" },
+    };
   }
+  return {
+    ok: res.ok,
+    status: res.status,
+    body: await res.json(),
+  };
 }
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  const { eventId } = await params;
+
   try {
-    const { eventId } = await params;
+    const cookie = req.headers.get("cookie") ?? "";
 
-    if (!eventId) {
-      return NextResponse.json(
-        { success: false, message: "Event ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const cookieHeader = req.headers.get("cookie");
-
-    if (!cookieHeader) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const formData = await req.formData();
-
-    // 👇 Internal API path only (rewrite handles backend)
-    const response = await fetch(
-      `/api/event/update-event/${eventId}`,
+    const res = await fetch(
+      `https://api.unrealvibe.com/api/event/update-event/${eventId}`,
       {
         method: "PUT",
-        headers: {
-          Cookie: cookieHeader,
-        },
-        body: formData,
+        headers: { cookie },
+        body: req.body,
         cache: "no-store",
       }
     );
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("BACKEND ERROR:", text);
-
-      return NextResponse.json(
-        { success: false, message: "Failed to update event" },
-        { status: response.status }
-      );
-    }
-
-    const data: unknown = await response.json();
-
-    return NextResponse.json({
-      success: true,
-      event:
-        typeof data === "object" &&
-        data !== null &&
-        "event" in data
-          ? (data as { event?: unknown }).event
-          : data,
-    });
-  } catch (error: unknown) {
-    console.error("UPDATE EVENT ERROR:", error);
-
+    const out = await safeJson(res);
+    return NextResponse.json(out.body, { status: out.status });
+  } catch {
     return NextResponse.json(
-      {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Internal server error",
-      },
+      { success: false, message: "Update event failed" },
       { status: 500 }
     );
   }

@@ -1,53 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function GET(req: NextRequest) {
-  try {
-    // 🔑 Always derive origin dynamically (works in local + prod)
-    const origin = req.nextUrl.origin;
+  const eventId = req.nextUrl.searchParams.get("eventId");
 
-    // 🔐 Forward cookies for auth (admin accessToken)
-    const cookie = req.headers.get("cookie") || "";
+  if (!eventId) {
+    return NextResponse.json(
+      { message: "eventId is required" },
+      { status: 400 }
+    );
+  }
 
-    /**
-     * 🔁 Backend endpoint
-     * Make sure this matches your Express route
-     * Example backend route:
-     *   GET /api/booking/admin
-     */
-    const backendRes = await fetch(`${origin}/api/booking/admin`, {
+  // 🔒 SAME ORIGIN — no env vars, no hardcoding
+  const origin = req.nextUrl.origin;
+
+  // 🍪 Forward HTTP-only cookies
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+
+  const backendRes = await fetch(
+    `${origin}/api/booking/admin?eventId=${eventId}`,
+    {
       method: "GET",
       headers: {
-        cookie,
+        cookie: cookieHeader,
+        accept: "application/json",
       },
       cache: "no-store",
-    });
-
-    if (!backendRes.ok) {
-      const text = await backendRes.text().catch(() => "");
-      console.error("❌ Backend transactions error:", backendRes.status, text);
-
-      return NextResponse.json(
-        { success: false, message: "Failed to fetch transactions" },
-        { status: backendRes.status }
-      );
     }
+  );
 
-    const data = await backendRes.json();
+  const rawText = await backendRes.text();
 
-    /**
-     * ✅ Normalize response shape
-     * Frontend should never care how backend responds
-     */
-    return NextResponse.json({
-      success: true,
-      transactions: data.bookings || data.transactions || data || [],
+  try {
+    return NextResponse.json(JSON.parse(rawText), {
+      status: backendRes.status,
     });
-  } catch (error) {
-    console.error("❌ TRANSACTIONS API ERROR:", error);
-
+  } catch {
     return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
-      { status: 500 }
+      {
+        message: "Backend returned non-JSON",
+        raw: rawText,
+      },
+      { status: 502 }
     );
   }
 }

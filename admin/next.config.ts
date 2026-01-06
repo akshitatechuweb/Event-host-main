@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "https://event-host-main-1.onrender.com/api/:path*",
+        destination: "https://api.unrealvibe.com/api/:path*",
       },
     ];
   },

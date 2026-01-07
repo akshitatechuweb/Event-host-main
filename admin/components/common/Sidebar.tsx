@@ -27,7 +27,6 @@ const navItems: readonly NavItem[] = [
   { icon: Users, label: "Hosts", href: "/admin/hosts" },
   { icon: Ticket, label: "Tickets", href: "/admin/tickets" },
   { icon: CreditCard, label: "Transactions", href: "/admin/transactions" },
-  { icon: Users, label: "Users", href: "/admin/users" },
 ] as const;
 
 export function Sidebar() {

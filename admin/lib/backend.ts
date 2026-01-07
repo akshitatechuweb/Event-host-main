@@ -1,43 +1,48 @@
 import { NextRequest } from "next/server";
+import "server-only";
+
+// This file is safe to use in Server Components / API Routes
+// It directly talks to the external backend
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com";
 
 /**
- * Resolve the base URL for the Express backend.
- * In production set NEXT_PUBLIC_API_URL, e.g. https://api.unrealvibe.com
+ * Server-side helper to fetch from backend.
+ * Uses hardcoded API URL but forwards cookies from the incoming request.
  */
-export function getBackendBaseUrl(req?: NextRequest): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_ORIGIN;
-
-  if (envUrl) {
-    return envUrl.replace(/\/+$/, "");
-  }
-
-  if (req) {
-    return req.nextUrl.origin.replace(/\/+$/, "");
-  }
-
-  const fallback = process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : "http://localhost:3000";
-
-  return fallback.replace(/\/+$/, "");
-}
-
-function buildAdminUrl(baseUrl: string, path: string): string {
-  const normalizedBase = baseUrl.replace(/\/+$/, "");
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  // Always mount under /api/admin on the backend
-  return `${normalizedBase}/api/admin${normalizedPath}`;
-}
-
 export async function adminBackendFetch(
   path: string,
   req: NextRequest,
   init: RequestInit = {}
 ): Promise<Response> {
-  const baseUrl = getBackendBaseUrl(req);
-  const url = buildAdminUrl(baseUrl, path);
+  const url = `${API_BASE_URL}/api/admin${path.startsWith("/") ? path : `/${path}`}`;
 
-  const headers = new Headers(init.headers || undefined);
+  const headers = new Headers(init.headers || {});
+  const cookie = req.headers.get("cookie");
+
+  if (cookie && !headers.has("cookie")) {
+    headers.set("cookie", cookie);
+  }
+
+  return fetch(url, {
+    ...init,
+    headers,
+    credentials: "include",
+    cache: "no-store",
+  });
+}
+
+/**
+ * Generic backend fetch (no /api/admin prefix)
+ */
+export async function backendFetch(
+  path: string,
+  req: NextRequest,
+  init: RequestInit = {}
+): Promise<Response> {
+  const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const headers = new Headers(init.headers || {});
   const cookie = req.headers.get("cookie");
 
   if (cookie && !headers.has("cookie")) {

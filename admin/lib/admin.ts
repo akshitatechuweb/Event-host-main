@@ -1,5 +1,6 @@
 import type { EventTransactionsResponse } from "@/types/transaction";
 import type { Transaction } from "@/types/transaction";
+import { clientFetch } from "./client";
 
 // ===========================
 // Hosts
@@ -130,16 +131,9 @@ export async function getAllTickets() {
   return res.json();
 }
 
-// ===========================
-// Dashboard Stats
-// ===========================
 export async function getDashboardStats() {
   try {
-    const res = await fetch("/api/dashboard/stats", {
-      credentials: "include",
-      cache: "no-store",
-    });
-
+    const res = await clientFetch("/dashboard/stats");
     return await res.json();
   } catch {
     return {

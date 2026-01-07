@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react"
-import { getDashboardStats } from "@/lib/admin"
+import { clientFetch } from "@/lib/client"
 
 /* =========================
    Types
@@ -18,11 +18,6 @@ interface RecentTransaction {
   status: TransactionStatus
 }
 
-interface DashboardStatsResponse {
-  success: boolean
-  recentTransactions?: RecentTransaction[]
-}
-
 /* =========================
    Component
 ========================= */
@@ -34,10 +29,11 @@ export function RecentTransactions() {
   useEffect(() => {
     async function fetchTransactions() {
       try {
-        const response = (await getDashboardStats()) as DashboardStatsResponse
+        const response = await clientFetch("/dashboard/stats");
+        const data = await response.json();
 
-        if (response.success) {
-          setTransactions(response.recentTransactions ?? [])
+        if (response.ok && data.success) {
+          setTransactions(data.recentTransactions ?? [])
         }
       } catch (error) {
         console.error("Error fetching transactions:", error)

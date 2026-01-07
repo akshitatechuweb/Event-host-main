@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { DollarSign, Users, Calendar, TrendingUp, Loader2 } from "lucide-react"
 import { StatsCard } from "./StatsCard"
-import { getDashboardStats } from "@/lib/admin"
+import { clientFetch } from "@/lib/client"
 
 /* =========================
    Types
@@ -48,25 +48,24 @@ export function StatsOverview() {
     let cancelled = false
 
     async function fetchStats() {
-      const response = (await getDashboardStats()) as DashboardStatsResponse
+      try {
+        const response = await clientFetch("/dashboard/stats");
+        const data = await response.json();
 
-      // 🔐 SESSION EXPIRED → HARD REDIRECT
-      if (response?.__unauthorized) {
-        router.replace("/login")
-        return
-      }
-
-      if (response?.success && response.stats && !cancelled) {
-        setStats({
-          totalRevenue: Number(response.stats.totalRevenue) || 0,
-          totalEvents: Number(response.stats.totalEvents) || 0,
-          totalUsers: Number(response.stats.totalUsers) || 0,
-          totalTransactions: Number(response.stats.totalTransactions) || 0,
-        })
-      }
-
-      if (!cancelled) {
-        setLoading(false)
+        if (response.ok && data.success && data.stats && !cancelled) {
+          setStats({
+            totalRevenue: Number(data.stats.totalRevenue) || 0,
+            totalEvents: Number(data.stats.totalEvents) || 0,
+            totalUsers: Number(data.stats.totalUsers) || 0,
+            totalTransactions: Number(data.stats.totalTransactions) || 0,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 

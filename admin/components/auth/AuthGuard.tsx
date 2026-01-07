@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { clientFetch } from "@/lib/client";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const [ok, setOk] = useState(false);
@@ -14,10 +15,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    fetch("/api/admin/auth/me", { credentials: "include" })
+    clientFetch("/admin/auth/me")
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(() => setOk(true))
-      .catch(() => router.replace("/admin/login"));
+      .catch(() => {
+        // clientFetch handles 401 redirect, but we double down here
+        router.replace("/admin/login");
+      });
   }, [pathname, router]);
 
   if (!ok) return null;

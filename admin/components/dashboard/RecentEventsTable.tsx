@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getDashboardStats } from "@/lib/admin";
+import { clientFetch } from "@/lib/client";
 import { Loader2 } from "lucide-react";
 
 interface RecentEvent {
@@ -19,10 +19,11 @@ export function RecentEventsTable() {
   useEffect(() => {
     async function fetchEvents(): Promise<void> {
       try {
-        const response = await getDashboardStats();
+        const response = await clientFetch("/dashboard/stats");
+        const data = await response.json();
 
-        if (response.success && Array.isArray(response.recentEvents)) {
-          setEvents(response.recentEvents);
+        if (response.ok && data.success && Array.isArray(data.recentEvents)) {
+          setEvents(data.recentEvents);
         } else {
           setEvents([]);
         }

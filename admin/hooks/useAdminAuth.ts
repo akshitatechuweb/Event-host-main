@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { clientFetch } from "@/lib/client";
 
 export function useAdminAuth() {
   const [loading, setLoading] = useState(false);
@@ -11,10 +12,9 @@ export function useAdminAuth() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch("/api/admin/auth/login", {
+      // Use clientFetch to ensure we go through our proxy
+      const res = await clientFetch("/admin/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 

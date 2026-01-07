@@ -271,8 +271,9 @@ export const getHostBookings = async (req, res) => {
 
 export const getAllBookings = async (req, res) => {
   try {
+    // Admin dashboard + tickets view need status, amounts, eventId, items and ticketCount
     const bookings = await Booking.find({})
-      .select("_id status totalAmount createdAt")
+      .select("_id status totalAmount createdAt eventId items ticketCount")
       .lean();
 
     return res.status(200).json({

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminBackendFetch, safeJson } from "@/lib/backend";
 
 /* ============================
    GET TRANSACTIONS (ADMIN)
@@ -14,36 +15,35 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ✅ SAME-ORIGIN → REWRITE → BACKEND
-    const response = await fetch(
-      `${req.nextUrl.origin}/api/booking/admin?eventId=${eventId}`,
+    // Backend route: GET /api/admin/events/:eventId/transactions
+    const response = await adminBackendFetch(
+      `/events/${eventId}/transactions`,
+      req,
       {
         method: "GET",
-        headers: {
-          cookie: req.headers.get("cookie") || "",
-          accept: "application/json",
-        },
-        cache: "no-store",
       }
     );
 
-    const contentType = response.headers.get("content-type") || "";
+    const { ok, status, data, text } = await safeJson<{
+      transactions?: unknown[];
+      totals?: {
+        totalRevenue?: number;
+        totalTransactions?: number;
+        totalTickets?: number;
+      };
+    }>(response);
 
-    if (!contentType.includes("application/json")) {
-      const text = await response.text();
+    if (!ok || !data) {
       return NextResponse.json(
         {
           success: false,
           message: "Invalid backend response",
           details: text,
         },
-        { status: response.status }
+        { status }
       );
     }
 
-    const data = await response.json();
-
-    // 🔑 normalize response for frontend
     return NextResponse.json(
       {
         success: true,
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     );
   } catch (error) {
     console.error("API TRANSACTIONS ERROR:", error);
-    
+
     return NextResponse.json(
       {
         success: false,

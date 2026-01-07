@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminBackendFetch, backendFetch } from "@/lib/backend";
 
 interface Ticket {
   _id: string;
@@ -39,14 +40,10 @@ interface EventWithPasses {
 /**
  * GET /api/tickets
  * Admin: fetch all ticket/pass stats across events
- * Option B: same-origin backend proxy (local + prod safe)
+ * Uses centralized backend helper to talk to /api/admin.
  */
 export async function GET(req: NextRequest) {
   try {
-    /* --------------------------------------------
-       1. Build origin dynamically
-       -------------------------------------------- */
-    const origin = req.nextUrl.origin;
     const cookie = req.headers.get("cookie") || "";
 
     if (!cookie) {
@@ -58,14 +55,11 @@ export async function GET(req: NextRequest) {
 
     /* =====================
        FETCH EVENTS (BACKEND)
+       Uses admin route: GET /api/admin/events
     ===================== */
-    const eventsResponse = await fetch(
-      `${origin}/api/event/events`,
-      {
-        headers: { cookie },
-        cache: "no-store",
-      }
-    );
+    const eventsResponse = await adminBackendFetch("/events", req, {
+      method: "GET",
+    });
 
     if (!eventsResponse.ok) {
       return NextResponse.json(
@@ -90,13 +84,10 @@ export async function GET(req: NextRequest) {
     let confirmedBookings: Booking[] = [];
 
     try {
-      const bookingsResponse = await fetch(
-        `${origin}/api/booking/admin`,
-        {
-          headers: { cookie },
-          cache: "no-store",
-        }
-      );
+      // Backend route: GET /api/booking/admin (all bookings)
+      const bookingsResponse = await backendFetch("/api/booking/admin", req, {
+        method: "GET",
+      });
 
       if (bookingsResponse.ok) {
         const bookingsRaw = await bookingsResponse.json();

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminBackendFetch } from "@/lib/backend";
 
 /**
  * OPTION B — Admin Hosts API
  * Works in local + production
  * No env vars
- * Same-origin backend proxy
+ * Same-origin backend proxy via /api/admin.
  */
 
 /* ============================
@@ -12,7 +13,6 @@ import { NextRequest, NextResponse } from "next/server";
 ============================ */
 export async function GET(req: NextRequest) {
   try {
-    const origin = req.nextUrl.origin;
     const cookie = req.headers.get("cookie") || "";
 
     if (!cookie) {
@@ -33,10 +33,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let backendEndpoint: string;
+    let path: string;
 
     if (action === "list") {
-      backendEndpoint = `${origin}/api/admin/host-requests`;
+      path = "/host-requests";
     } else if (action === "single") {
       if (!id) {
         return NextResponse.json(
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      backendEndpoint = `${origin}/api/admin/host-requests/${id}`;
+      path = `/host-requests/${id}`;
     } else {
       return NextResponse.json(
         { message: "Invalid action" },
@@ -52,10 +52,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const backendRes = await fetch(backendEndpoint, {
-      headers: { cookie },
-      cache: "no-store",
-    });
+    const backendRes = await adminBackendFetch(path, req, { method: "GET" });
 
     if (!backendRes.ok) {
       const text = await backendRes.text().catch(() => "");
@@ -84,7 +81,6 @@ export async function GET(req: NextRequest) {
 ============================ */
 export async function POST(req: NextRequest) {
   try {
-    const origin = req.nextUrl.origin;
     const cookie = req.headers.get("cookie") || "";
 
     if (!cookie) {
@@ -105,15 +101,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let backendEndpoint: string;
+    let path: string;
     let method: "POST" | "PUT" = "POST";
 
     if (action === "approve") {
-      backendEndpoint = `${origin}/api/admin/approve-event-request/${id}`;
+      path = `/approve-event-request/${id}`;
       method = "PUT";
     } else if (action === "reject") {
-      backendEndpoint = `${origin}/api/admin/host-requests/reject/${id}`;
-      method = "POST";
+      path = `/host-requests/reject/${id}`;
     } else {
       return NextResponse.json(
         { success: false, message: "Invalid action" },
@@ -123,10 +118,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
 
-    const backendRes = await fetch(backendEndpoint, {
+    const backendRes = await adminBackendFetch(path, req, {
       method,
       headers: {
-        cookie,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),

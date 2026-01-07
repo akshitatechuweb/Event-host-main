@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Local helper modeled after your working version, but more robust
 async function safeJson(res: Response) {
   const ct = res.headers.get("content-type") || "";
   if (!ct.includes("application/json")) {
@@ -7,9 +8,13 @@ async function safeJson(res: Response) {
     return {
       ok: false,
       status: res.status,
-      body: { success: false, message: text || "Non-JSON response" },
+      body: {
+        success: false,
+        message: text || "Non-JSON response",
+      },
     };
   }
+
   return {
     ok: res.ok,
     status: res.status,
@@ -26,8 +31,15 @@ export async function PUT(
   try {
     const cookie = req.headers.get("cookie") ?? "";
 
+    // Prefer env-driven backend base URL, with hardcoded fallback for safety
+    const baseUrl =
+      (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(
+        /\/+$/,
+        ""
+      );
+
     const res = await fetch(
-      `https://api.unrealvibe.com/api/event/update-event/${eventId}`,
+      `${baseUrl}/api/event/update-event/${eventId}`,
       {
         method: "PUT",
         headers: { cookie },
@@ -38,7 +50,8 @@ export async function PUT(
 
     const out = await safeJson(res);
     return NextResponse.json(out.body, { status: out.status });
-  } catch {
+  } catch (error) {
+    console.error("Update event proxy failed:", error);
     return NextResponse.json(
       { success: false, message: "Update event failed" },
       { status: 500 }

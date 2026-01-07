@@ -1,24 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminBackendFetch } from "@/lib/backend";
 
 /* ============================
       GET EVENTS (ADMIN)
 ===============================*/
 export async function GET(req: NextRequest) {
   try {
-    const cookie = req.headers.get("cookie") || "";
-
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL || req.nextUrl.origin;
-
-    const response = await fetch(
-      `${baseUrl}/api/admin/events`,
-      {
-        method: "GET",
-        headers: { Cookie: cookie },
-        credentials: "include",
-        cache: "no-store",
-      }
-    );
+    // Backend route: GET /api/admin/events
+    const response = await adminBackendFetch("/events", req, {
+      method: "GET",
+    });
 
     const data = await response.json();
 
@@ -37,23 +28,13 @@ export async function GET(req: NextRequest) {
 ===============================*/
 export async function POST(req: NextRequest) {
   try {
-    const cookie = req.headers.get("cookie") || "";
-
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL || req.nextUrl.origin;
-
     const formData = await req.formData();
 
-    const response = await fetch(
-      `${baseUrl}/api/admin/create-event`,
-      {
-        method: "POST",
-        headers: { Cookie: cookie },
-        body: formData,
-        credentials: "include",
-        cache: "no-store",
-      }
-    );
+    // Backend route: POST /api/admin/create-event
+    const response = await adminBackendFetch("/create-event", req, {
+      method: "POST",
+      body: formData,
+    });
 
     const data = await response.json();
 

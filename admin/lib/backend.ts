@@ -4,7 +4,36 @@ import "server-only";
 // This file is safe to use in Server Components / API Routes
 // It directly talks to the external backend
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com";
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(/\/+$/, "");
+
+/**
+ * Robust proxy fetch for API routes.
+ * Forwards all headers and handles streaming bodies.
+ */
+export async function proxyFetch(
+  url: string,
+  req: NextRequest,
+  init: RequestInit = {}
+): Promise<Response> {
+  const headers = new Headers(req.headers);
+  
+  // Clean up restricted headers
+  headers.delete("host");
+  headers.delete("connection");
+  headers.delete("content-length"); // Fetch will recalculate this
+
+  // Non-GET/HEAD requests need a body (if present)
+  const hasBody = !["GET", "HEAD"].includes(init.method || req.method);
+
+  return fetch(url, {
+    ...init,
+    headers,
+    body: hasBody ? req.body : undefined,
+    // @ts-ignore
+    duplex: "half", 
+    cache: "no-store",
+  });
+}
 
 /**
  * Server-side helper to fetch from backend.

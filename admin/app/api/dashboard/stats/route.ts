@@ -46,6 +46,24 @@ export async function GET(req: NextRequest) {
     0
   );
 
+  // 📝 Map Recent Events
+  const recentEvents = events.slice(0, 5).map((e: any) => ({
+    id: e._id || Math.random().toString(),
+    name: e.eventName || e.title || "Unnamed Event",
+    host: e.hostName || e.host?.name || "Unknown Host",
+    date: e.date ? new Date(e.date).toLocaleDateString() : "TBA",
+    attendees: Number(e.attendeesCount) || 0,
+  }));
+
+  // 📝 Map Recent Transactions
+  const recentTransactions = confirmedBookings.slice(0, 10).map((b: any) => ({
+    id: b._id || Math.random().toString(),
+    event: b.eventId?.eventName || b.eventTitle || "Event Payment",
+    date: b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "Recent",
+    amount: `₹${Number(b.totalAmount || 0).toLocaleString()}`,
+    status: "completed", // Filtered by 'confirmed' above
+  }));
+
   // 🔒 ALWAYS 200 — NEVER throw
   return NextResponse.json({
     success: true,
@@ -55,6 +73,8 @@ export async function GET(req: NextRequest) {
       totalUsers: users.length,
       totalTransactions: confirmedBookings.length,
     },
+    recentEvents,
+    recentTransactions,
     meta: {
       eventsOk: !!eventsData,
       bookingsOk: !!bookingsData,

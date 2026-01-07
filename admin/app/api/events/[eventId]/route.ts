@@ -1,26 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Local helper modeled after your working version, but more robust
-async function safeJson(res: Response) {
-  const ct = res.headers.get("content-type") || "";
-  if (!ct.includes("application/json")) {
-    const text = await res.text();
-    return {
-      ok: false,
-      status: res.status,
-      body: {
-        success: false,
-        message: text || "Non-JSON response",
-      },
-    };
-  }
-
-  return {
-    ok: res.ok,
-    status: res.status,
-    body: await res.json(),
-  };
-}
+import { proxyFetch, API_BASE_URL, safeJson } from "@/lib/backend";
 
 export async function PUT(
   req: NextRequest,
@@ -29,27 +8,13 @@ export async function PUT(
   const { eventId } = await params;
 
   try {
-    const cookie = req.headers.get("cookie") ?? "";
+    const url = `${API_BASE_URL}/api/event/update-event/${eventId}`;
 
-    // Prefer env-driven backend base URL, with hardcoded fallback for safety
-    const baseUrl =
-      (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(
-        /\/+$/,
-        ""
-      );
+    const res = await proxyFetch(url, req, { method: "PUT" });
 
-    const res = await fetch(
-      `${baseUrl}/api/event/update-event/${eventId}`,
-      {
-        method: "PUT",
-        headers: { cookie },
-        body: req.body,
-        cache: "no-store",
-      }
-    );
+    const { ok, status, data, text } = await safeJson(res);
 
-    const out = await safeJson(res);
-    return NextResponse.json(out.body, { status: out.status });
+    return NextResponse.json(data || { success: false, message: text }, { status });
   } catch (error) {
     console.error("Update event proxy failed:", error);
     return NextResponse.json(

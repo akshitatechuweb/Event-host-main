@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminBackendFetch } from "@/lib/backend";
+import { adminBackendFetch, proxyFetch, API_BASE_URL } from "@/lib/backend";
 
 /* ============================
       GET EVENTS (ADMIN)
@@ -28,14 +28,9 @@ export async function GET(req: NextRequest) {
 ===============================*/
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-
-    // Backend route: POST /api/admin/create-event
-    const response = await adminBackendFetch("/create-event", req, {
-      method: "POST",
-      body: formData,
-    });
-
+    const url = `${API_BASE_URL}/api/admin/create-event`;
+    
+    const response = await proxyFetch(url, req, { method: "POST" });
     const data = await response.json();
 
     return NextResponse.json(data, { status: response.status });

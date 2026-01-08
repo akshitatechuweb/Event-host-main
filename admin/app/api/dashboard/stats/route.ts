@@ -1,16 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
+import { adminBackendFetch } from "@/lib/backend";
 
 /**
  * Dashboard stats MUST NEVER fail.
  * It returns best-effort data only.
  */
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
-  const headers = { cookie: req.headers.get("cookie") || "" };
-
-  const safeFetch = async (url: string) => {
+  const safeFetch = async (path: string) => {
     try {
-      const res = await fetch(url, { headers, cache: "no-store" });
+      const res = await adminBackendFetch(path, req);
       if (!res.ok) return null;
       return await res.json();
     } catch {
@@ -19,9 +17,10 @@ export async function GET(req: NextRequest) {
   };
 
   // 🔑 Fetch independently — no Promise.all fail cascade
-  const eventsData = await safeFetch(`${origin}/api/admin/events`);
-  const bookingsData = await safeFetch(`${origin}/api/booking/admin`);
-  const usersData = await safeFetch(`${origin}/api/user?summary=true`);
+  // Note: Paths are now clean (the library handles the prefix)
+  const eventsData = await safeFetch("/events");
+  const bookingsData = await safeFetch("/booking");
+  const usersData = await safeFetch("/user?summary=true");
 
   const events = Array.isArray(eventsData?.events)
     ? eventsData.events
@@ -61,7 +60,7 @@ export async function GET(req: NextRequest) {
     event: b.eventId?.eventName || b.eventTitle || "Event Payment",
     date: b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "Recent",
     amount: `₹${Number(b.totalAmount || 0).toLocaleString()}`,
-    status: "completed", // Filtered by 'confirmed' above
+    status: "completed",
   }));
 
   // 🔒 ALWAYS 200 — NEVER throw

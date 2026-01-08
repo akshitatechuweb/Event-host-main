@@ -151,6 +151,7 @@ const SUPERADMIN_HASH = bcrypt.hashSync(SUPERADMIN.password, 10);
 export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body || {};
+    console.log("BACKEND ADMIN LOGIN ATTEMPT:", { email });
 
     if (!email || !password) {
       return res.status(400).json({

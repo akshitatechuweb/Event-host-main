@@ -1,8 +1,9 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import connectDB from "./config/db.js";
 import dotenv from "dotenv";
+dotenv.config();
+import connectDB from "./config/db.js";
 import morgan from "morgan";
 import fs from "fs";
 import path from "path";

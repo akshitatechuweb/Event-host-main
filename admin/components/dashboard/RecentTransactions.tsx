@@ -29,7 +29,7 @@ export function RecentTransactions() {
   useEffect(() => {
     async function fetchTransactions() {
       try {
-        const response = await clientFetch("/dashboard/stats");
+        const response = await clientFetch("/admin/dashboard/stats");
         const data = await response.json();
 
         if (response.ok && data.success) {

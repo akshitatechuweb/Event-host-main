@@ -33,7 +33,7 @@ export function EventTable({
       setLoading(true);
 
       // ✅ Internal Next.js API route (rewrite handles backend)
-      const response = await fetch("/api/events", {
+      const response = await fetch("/api/admin/events", {
         credentials: "include",
         cache: "no-store",
       });

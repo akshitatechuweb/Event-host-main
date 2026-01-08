@@ -257,8 +257,8 @@ export default function AddEventModal({
 
     // ✅ INTERNAL NEXT.JS API ROUTES ONLY
     const endpoint = editingEvent
-      ? `/api/events/${editingEvent._id}`
-      : `/api/events`;
+      ? `/api/admin/events/${editingEvent._id}`
+      : `/api/admin/events`;
 
     const method = editingEvent ? "PUT" : "POST";
 

@@ -30,7 +30,7 @@ export default function TransactionsPage() {
         setError(null);
 
         // ✅ SAME-ORIGIN FETCH (NO ENV, NO BACKEND URL)
-        const response = await fetch("/api/events", {
+        const response = await fetch("/api/admin/events", {
           credentials: "include",
           cache: "no-store",
         });

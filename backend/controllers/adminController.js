@@ -3,6 +3,7 @@ import EventHostRequest from "../models/HostRequest.js";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import Transaction from "../models/Transaction.js";
+import Event from "../models/Event.js";
 
 // Approve Event Host Request
 export const approveEventHost = async (req, res) => {
@@ -426,5 +427,63 @@ export const getDashboardStats = async (req, res) => {
         error: error.message,
       },
     });
+  }
+};
+
+
+
+
+export const getAllTickets = async (req, res) => {
+  try {
+    const events = await Event.find({}).lean();
+    const confirmedBookings = await Booking.find({ status: "confirmed" }).lean();
+
+    const allTickets = [];
+
+    events.forEach((event) => {
+      const passes = event.passes ?? [];
+
+      const eventBookings = confirmedBookings.filter((b) => {
+        const bookingEventId = b.eventId?.toString();
+        return bookingEventId === event._id.toString();
+      });
+
+      const soldByPassType = {};
+
+      eventBookings.forEach((booking) => {
+        (booking.items ?? []).forEach((item) => {
+          const passType = item.passType;
+          const quantity = Number(item.quantity) || 0;
+
+          if (passType && quantity > 0) {
+            soldByPassType[passType] = (soldByPassType[passType] || 0) + quantity;
+          }
+        });
+      });
+
+      passes.forEach((pass) => {
+        const sold = soldByPassType[pass.type] ?? 0;
+        const total = Number(pass.totalQuantity) || 0;
+
+        allTickets.push({
+          _id: `${event._id}_${pass.type}`,
+          eventId: event._id,
+          eventName: event.eventName || event.title || "Unknown Event",
+          ticketType: pass.type,
+          price: Number(pass.price) || 0,
+          total,
+          sold,
+          available: Math.max(0, total - sold),
+        });
+      });
+    });
+
+    res.json({
+      success: true,
+      tickets: allTickets,
+    });
+  } catch (error) {
+    console.error("Get All Tickets Error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -9,9 +9,11 @@ import {
   approveEventHost,
   rejectEventHost,
   getEventTransactions,
-  getDashboardStats
+  getDashboardStats,
+  getAllTickets
 } from "../controllers/adminController.js";
 import { adminCreateEvent, getEvents } from "../controllers/eventController.js";
+import { getPasses } from "../controllers/passController.js";
 
 const router = express.Router();
 
@@ -84,5 +86,14 @@ router.get(
   requireRole("admin", "superadmin"),
   getEvents
 );
+
+// GET: All tickets or tickets by Event ID
+router.get("/tickets", authMiddleware, requireRole("admin", "superadmin"), (req, res, next) => {
+  if (req.query.eventId) {
+    return getPasses(req, res, next);
+  }
+  return getAllTickets(req, res, next);
+});
+
 
 export default router;

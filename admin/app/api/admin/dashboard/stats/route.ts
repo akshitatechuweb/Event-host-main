@@ -8,7 +8,7 @@ import { adminBackendFetch } from "@/lib/backend";
 export async function GET(req: NextRequest) {
   try {
     // Simply proxy to the backend controller which handles everything
-    const res = await adminBackendFetch("/admin/dashboard/stats", req);
+    const res = await adminBackendFetch("/dashboard/stats", req);
     const data = await res.json();
 
     // Return the data from backend as-is

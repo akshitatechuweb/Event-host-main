@@ -1,135 +1,161 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendFetch, safeJson } from "@/lib/backend";
-
-interface Ticket {
-  _id: string;
-  eventId: string;
-  eventName: string;
-  ticketType: string;
-  price: number;
-  total: number;
-  sold: number;
-  available: number;
-}
-
-interface BookingItem {
-  passType?: string;
-  type?: string;
-  quantity?: number | string;
-}
-
-interface Booking {
-  status?: string;
-  eventId?: string | { _id?: string };
-  items?: BookingItem[];
-}
-
-interface EventPass {
-  type: string;
-  price?: number | string;
-  totalQuantity?: number | string;
-}
-
-interface EventWithPasses {
-  _id: string;
-  eventName?: string;
-  title?: string;
-  passes?: EventPass[];
-}
+import { adminBackendFetch, backendFetch, safeJson } from "@/lib/backend";
 
 /**
  * GET /api/admin/tickets
- * Admin: fetch all ticket/pass stats across events
- * Aggregates data from /api/event/events and /api/booking/admin
+ * Smart Proxy with fallback to legacy frontend aggregation.
  */
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const eventId = searchParams.get("eventId");
+
+  // 1. Try new backend route first
   try {
-    /* =====================
-       FETCH EVENTS (BACKEND)
-       Uses: GET /api/event/events
-    ===================== */
-    const eventsResponse = await backendFetch("/api/event/events", req, {
-      method: "GET",
-    });
-
-    const { ok: eventsOk, data: eventsData, text: eventsError } = await safeJson<{
-      events: EventWithPasses[];
-    }>(eventsResponse);
-
-    if (!eventsOk || !eventsData) {
-      return NextResponse.json(
-        { success: false, message: eventsError || "Failed to fetch events" },
-        { status: eventsResponse.status }
-      );
+    const path = eventId ? `/tickets?eventId=${eventId}` : "/tickets";
+    const response = await adminBackendFetch(path, req, { method: "GET" });
+    
+    // If backend returns 404, we fallback to legacy logic
+    if (response.status === 404) {
+      console.warn("⚠️ Backend /api/admin/tickets not found. Falling back to frontend aggregation.");
+      return await handleFallbackAggregation(req, eventId);
     }
+
+    const { ok, status, data, text } = await safeJson(response);
+    if (!ok) {
+      return NextResponse.json({ success: false, message: text || "Backend error" }, { status });
+    }
+    return NextResponse.json(data, { status });
+
+  } catch (error) {
+    console.error("❌ TICKETS PROXY ERROR:", error);
+    // On connection error, try fallback too
+    return await handleFallbackAggregation(req, eventId);
+  }
+}
+
+/**
+ * POST /api/admin/tickets
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const response = await adminBackendFetch("/tickets", req, { method: "POST" });
+    
+    // Fallback if backend route is missing
+    if (response.status === 404) {
+      // Try legacy path: POST /api/passes/:eventId
+      const body = await req.clone().json().catch(() => ({}));
+      const eventId = body.eventId;
+      if (eventId) {
+        const legacyResponse = await backendFetch(`/api/passes/${eventId}`, req, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        return new NextResponse(legacyResponse.body, { 
+            status: legacyResponse.status, 
+            headers: legacyResponse.headers 
+        });
+      }
+    }
+
+    return new NextResponse(response.body, { status: response.status, headers: response.headers });
+  } catch (error) {
+    return NextResponse.json({ success: false, message: "Internal Error" }, { status: 500 });
+  }
+}
+
+/**
+ * PUT /api/admin/tickets
+ */
+export async function PUT(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const passId = searchParams.get("passId");
+  const eventId = searchParams.get("eventId");
+
+  try {
+    const response = await adminBackendFetch(`/tickets/${passId}`, req, { method: "PUT" });
+    
+    if (response.status === 404 && eventId) {
+      // Legacy path: PUT /api/passes/:eventId/:passId
+      const legacyResponse = await backendFetch(`/api/passes/${eventId}/${passId}`, req, {
+        method: "PUT",
+        body: req.body,
+        // @ts-ignore
+        duplex: "half",
+      });
+      return new NextResponse(legacyResponse.body, { status: legacyResponse.status });
+    }
+
+    return new NextResponse(response.body, { status: response.status });
+  } catch (error) {
+      return NextResponse.json({ success: false, message: "Internal Error" }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/admin/tickets
+ */
+export async function DELETE(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const passId = searchParams.get("passId");
+  const eventId = searchParams.get("eventId");
+
+  try {
+    const response = await adminBackendFetch(`/tickets/${passId}`, req, { method: "DELETE" });
+    
+    if (response.status === 404 && eventId) {
+      // Legacy path: DELETE /api/passes/:eventId/:passId
+      const legacyResponse = await backendFetch(`/api/passes/${eventId}/${passId}`, req, {
+        method: "DELETE",
+      });
+      return new NextResponse(legacyResponse.body, { status: legacyResponse.status });
+    }
+
+    return new NextResponse(response.body, { status: response.status });
+  } catch (error) {
+      return NextResponse.json({ success: false, message: "Internal Error" }, { status: 500 });
+  }
+}
+
+/**
+ * Legacy Fallback Aggregation Logic
+ */
+async function handleFallbackAggregation(req: NextRequest, filterEventId?: string | null) {
+  try {
+    const [eventsRes, bookingsRes] = await Promise.all([
+      adminBackendFetch("/events", req),
+      backendFetch("/api/booking/admin", req)
+    ]);
+
+    const eventsData = await eventsRes.json().catch(() => ({ events: [] }));
+    const bookingsData = await bookingsRes.json().catch(() => ({ bookings: [] }));
 
     const events = eventsData.events || [];
+    const bookings = (bookingsData.bookings || []).filter((b: any) => b.status === "confirmed");
 
-    /* =====================
-       FETCH BOOKINGS (BACKEND)
-       Uses: GET /api/booking/admin
-    ===================== */
-    let confirmedBookings: Booking[] = [];
+    const allTickets: any[] = [];
+    
+    events.forEach((event: any) => {
+      if (filterEventId && event._id !== filterEventId) return;
 
-    try {
-      const bookingsResponse = await backendFetch("/api/booking/admin", req, {
-        method: "GET",
-      });
-
-      const { ok: bookingsOk, data: bookingsData } = await safeJson<{
-        bookings: Booking[];
-      }>(bookingsResponse);
-
-      if (bookingsOk && bookingsData?.bookings) {
-        confirmedBookings = bookingsData.bookings.filter(
-          (b) => b.status === "confirmed"
-        );
-      }
-    } catch (err) {
-      console.error("⚠️ Booking fetch failed (non-fatal):", err);
-    }
-
-    /* =====================
-       BUILD TICKETS
-    ===================== */
-    const allTickets: Ticket[] = [];
-
-    events.forEach((event) => {
-      const passes = event.passes ?? [];
-
-      const eventBookings = confirmedBookings.filter((b) => {
-        const bookingEventId =
-          typeof b.eventId === "object" && b.eventId
-            ? b.eventId._id
-            : b.eventId;
-
-        return bookingEventId?.toString() === event._id.toString();
-      });
+      const passes = event.passes || [];
+      const eventBookings = bookings.filter((b: any) => (b.eventId?._id || b.eventId) === event._id);
 
       const soldByPassType: Record<string, number> = {};
-
-      eventBookings.forEach((booking) => {
-        (booking.items ?? []).forEach((item) => {
-          const passType = item.passType ?? item.type;
-          const quantity = Number(item.quantity) || 0;
-
-          if (passType && quantity > 0) {
-            soldByPassType[passType] =
-              (soldByPassType[passType] || 0) + quantity;
-          }
+      eventBookings.forEach((b: any) => {
+        (b.items || []).forEach((item: any) => {
+          soldByPassType[item.passType] = (soldByPassType[item.passType] || 0) + (item.quantity || 0);
         });
       });
 
-      passes.forEach((pass) => {
-        const sold = soldByPassType[pass.type] ?? 0;
-        const total = Number(pass.totalQuantity) || 0;
-
+      passes.forEach((pass: any) => {
+        const sold = soldByPassType[pass.type] || 0;
+        const total = pass.totalQuantity || 0;
         allTickets.push({
           _id: `${event._id}_${pass.type}`,
           eventId: event._id,
-          eventName: event.eventName ?? event.title ?? "Unknown Event",
+          eventName: event.eventName || event.title || "Unknown",
           ticketType: pass.type,
-          price: Number(pass.price) || 0,
+          price: pass.price || 0,
           total,
           sold,
           available: Math.max(0, total - sold),
@@ -137,16 +163,9 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    return NextResponse.json({
-      success: true,
-      tickets: allTickets,
-    });
-  } catch (error) {
-    console.error("❌ TICKETS API ERROR:", error);
-
-    return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, tickets: allTickets });
+  } catch (err) {
+    console.error("Fallback failed:", err);
+    return NextResponse.json({ success: false, message: "Aggregation Fallback Failed" }, { status: 500 });
   }
 }

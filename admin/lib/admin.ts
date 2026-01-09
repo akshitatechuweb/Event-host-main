@@ -225,7 +225,7 @@ export async function getApprovedHosts() {
 
 
 export async function getEventTickets(eventId: string) {
-  const res = await fetch(`/api/admin/events/${eventId}/tickets`, {
+  const res = await fetch(`/api/admin/tickets?eventId=${eventId}`, {
     credentials: "include",
     cache: "no-store",
   });

@@ -2,12 +2,15 @@ import type { EventTransactionsResponse } from "@/types/transaction";
 import type { Transaction } from "@/types/transaction";
 import { clientFetch } from "./client";
 
-// ===========================
-// Hosts
-// ===========================
+/* ===========================
+   HOST REQUESTS
+=========================== */
+
+// 🔹 Get all host requests
 export async function getHosts() {
-  const res = await fetch(`/api/admin/host-proxies?action=list`, {
+  const res = await fetch(`/api/admin/host-requests`, {
     credentials: "include",
+    cache: "no-store",
   });
 
   if (!res.ok) {
@@ -15,22 +18,70 @@ export async function getHosts() {
       throw new Error("Your session has expired. Please log in again.");
     }
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch hosts");
+    throw new Error(errorData.message || "Failed to fetch host requests");
   }
 
   return res.json();
 }
 
-// ===========================
-// Event Transactions (SINGLE SOURCE OF TRUTH)
-// ===========================
+// 🔹 Get single host request
+export async function getHostById(id: string) {
+  const res = await fetch(`/api/admin/host-requests?id=${id}`, {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch host request");
+  }
+
+  return res.json();
+}
+
+// 🔹 Approve host
+export async function approveHost(id: string) {
+  const res = await fetch(`/api/admin/approve-event-request/${id}`, {
+    method: "PUT",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to approve host");
+  }
+
+  return res.json();
+}
+
+// 🔹 Reject host
+export async function rejectHost(id: string, reason?: string) {
+  const res = await fetch(`/api/admin/host-requests`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, reason }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to reject host");
+  }
+
+  return res.json();
+}
+
+/* ===========================
+   EVENT TRANSACTIONS
+   (Single source of truth)
+=========================== */
+
 export async function getEventTransactions(
   eventId: string
 ): Promise<EventTransactionsResponse> {
-  const res = await fetch(`/api/admin/transactions?eventId=${eventId}`, {
-    credentials: "include",
-    cache: "no-store",
-  });
+  const res = await fetch(
+    `/api/admin/events/${eventId}/transactions`,
+    {
+      credentials: "include",
+      cache: "no-store",
+    }
+  );
 
   const raw: EventTransactionsResponse = await res.json();
 
@@ -52,7 +103,7 @@ export async function getEventTransactions(
     booking: t.booking ?? null,
   }));
 
-  // 🔥 IMPORTANT: recompute totals SAFELY on frontend
+  // 🔥 recompute totals safely
   const totals = {
     totalRevenue: transactions.reduce((sum, t) => sum + Number(t.amount), 0),
     totalTransactions: transactions.length,
@@ -67,49 +118,6 @@ export async function getEventTransactions(
     transactions,
     totals,
   };
-}
-
-// ===========================
-// Approved Hosts
-// ===========================
-export async function getApprovedHosts() {
-  const res = await fetch(`/api/admin/host-proxies`, {
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch approved hosts");
-  }
-
-  return res.json();
-}
-
-export async function approveHost(id: string) {
-  const res = await fetch(`/api/admin/host-proxies?action=approve&id=${id}`, {
-    method: "POST",
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to approve host");
-  }
-
-  return res.json();
-}
-
-export async function rejectHost(id: string, reason?: string) {
-  const res = await fetch(`/api/admin/host-proxies?action=reject&id=${id}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ reason }),
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to reject host");
-  }
-
-  return res.json();
 }
 
 // ===========================
@@ -191,3 +199,5 @@ export async function createPass(eventId: string, data: any) {
 
   return res.json();
 }
+
+

@@ -256,9 +256,9 @@ export default function AddEventModal({
     formPayload.append("cancellationPolicy", formData.cancellationPolicy);
 
     // ✅ INTERNAL NEXT.JS API ROUTES ONLY
-    const endpoint = editingEvent
-      ? `/api/admin/events/${editingEvent._id}`
-      : `/api/admin/events`;
+const endpoint = editingEvent
+      ? `/api/admin/event/update-event/${editingEvent._id}`
+      : `/api/admin/event/create-event`;
 
     const method = editingEvent ? "PUT" : "POST";
 

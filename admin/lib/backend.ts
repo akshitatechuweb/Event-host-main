@@ -4,7 +4,7 @@ import "server-only";
 // This file is safe to use in Server Components / API Routes
 // It directly talks to the external backend
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(/\/+$/, "");
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "https://unrealvibe.com").replace(/\/+$/, "");
 
 /**
  * Robust proxy fetch for API routes.
@@ -15,12 +15,21 @@ export async function proxyFetch(
   req: NextRequest,
   init: RequestInit = {}
 ): Promise<Response> {
-  const headers = new Headers(req.headers);
+  const headers = new Headers();
   
-  // Clean up restricted headers
-  headers.delete("host");
-  headers.delete("connection");
-  headers.delete("content-length"); // Fetch will recalculate this
+  // Forward all headers except restricted ones
+  req.headers.forEach((value, key) => {
+    const k = key.toLowerCase();
+    if (k !== "host" && k !== "connection" && k !== "content-length") {
+      headers.set(key, value);
+    }
+  });
+
+  // Explicitly ensure cookie is forwarded if not already in headers
+  const cookie = req.headers.get("cookie");
+  if (cookie && !headers.has("cookie")) {
+    headers.set("cookie", cookie);
+  }
 
   // Non-GET/HEAD requests need a body (if present)
   const hasBody = !["GET", "HEAD"].includes(init.method || req.method);
@@ -31,6 +40,7 @@ export async function proxyFetch(
     body: hasBody ? req.body : undefined,
     // @ts-ignore
     duplex: "half", 
+    credentials: "include",
     cache: "no-store",
   });
 }
@@ -44,7 +54,9 @@ export async function adminBackendFetch(
   req: NextRequest,
   init: RequestInit = {}
 ): Promise<Response> {
-  const url = `${API_BASE_URL}/api/admin${path.startsWith("/") ? path : `/${path}`}`;
+  // Fix: prevent double /admin prefix using regex
+  const cleanPath = path.replace(/^\/admin/, "");
+  const url = `${API_BASE_URL}/api/admin${cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`}`;
 
   const headers = new Headers(init.headers || {});
   const cookie = req.headers.get("cookie");
@@ -53,11 +65,19 @@ export async function adminBackendFetch(
     headers.set("cookie", cookie);
   }
 
+  // Also forward other common headers if they exist
+  const contentType = req.headers.get("content-type");
+  if (contentType && !headers.has("content-type")) {
+    headers.set("content-type", contentType);
+  }
+
   return fetch(url, {
     ...init,
     headers,
     credentials: "include",
     cache: "no-store",
+    // @ts-ignore
+    duplex: init.body ? "half" : undefined,
   });
 }
 
@@ -78,11 +98,18 @@ export async function backendFetch(
     headers.set("cookie", cookie);
   }
 
+  const contentType = req.headers.get("content-type");
+  if (contentType && !headers.has("content-type")) {
+    headers.set("content-type", contentType);
+  }
+
   return fetch(url, {
     ...init,
     headers,
     credentials: "include",
     cache: "no-store",
+    // @ts-ignore
+    duplex: init.body ? "half" : undefined,
   });
 }
 

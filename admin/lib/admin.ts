@@ -107,10 +107,14 @@ export async function getEventTransactions(
 
   // 🔥 recompute totals safely
   const totals = {
-    totalRevenue: transactions.reduce((sum, t) => sum + Number(t.amount), 0),
+    totalRevenue: transactions.reduce(
+      (sum, t) => sum + (t.status === "completed" ? Number(t.amount) : 0),
+      0
+    ),
     totalTransactions: transactions.length,
     totalTickets: transactions.reduce(
-      (sum, t) => sum + (t.booking?.ticketCount ?? 0),
+      (sum, t) =>
+        sum + (t.status === "completed" ? t.booking?.ticketCount ?? 0 : 0),
       0
     ),
   };
@@ -164,7 +168,7 @@ export async function getDashboardStats() {
 // Events (for Transactions page)
 // ===========================
 export async function getAllEvents() {
-  const res = await fetch("/api/event/events", {
+  const res = await fetch("/api/admin/events", {
     credentials: "include",
     cache: "no-store",
   });

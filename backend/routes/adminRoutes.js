@@ -12,9 +12,9 @@ import {
   getDashboardStats,
   getAllTickets
 } from "../controllers/adminController.js";
-import { adminCreateEvent, getEvents } from "../controllers/eventController.js";
+import { getEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
-
+import { createEvent, updateEvent } from "../controllers/adminController.js";
 const router = express.Router();
 
 // Admin authentication
@@ -72,13 +72,6 @@ router.get(
 );
 
 
-router.post(
-  "/create-event",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  upload.single("eventImage"),
-  adminCreateEvent
-);
 
 router.get(
   "/events",
@@ -95,5 +88,22 @@ router.get("/tickets", authMiddleware, requireRole("admin", "superadmin"), (req,
   return getAllTickets(req, res, next);
 });
 
+
+
+router.post(
+  "/event/create-event",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  upload.single("eventImage"),
+  createEvent
+);
+
+router.put(
+  "/event/update-event/:eventId",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  upload.single("eventImage"),
+  updateEvent
+);
 
 export default router;

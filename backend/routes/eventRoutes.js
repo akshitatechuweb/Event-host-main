@@ -9,8 +9,7 @@ import { getEventDirections } from "../controllers/eventDirectionController.js";
 import { addOrUpdateReview, getReviews } from "../controllers/eventReviewController.js";
 
 import { 
-  adminCreateEvent, 
-  adminUpdateEvent ,
+
   getEvents,
   toggleSaveEvent,        
   getSavedEvents,
@@ -23,22 +22,7 @@ const router = express.Router();
 // === PUBLIC / USER SEARCH API (Main Feed) ===
 router.get("/search", authMiddleware, searchEvents); 
 
-// === ADMIN ROUTES ===
-router.post(
-  "/create-event",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  upload.single("eventImage"),
-  adminCreateEvent
-);
 
-router.put(
-  "/update-event/:eventId",
-  authMiddleware,
-  requireRole("admin", "superadmin"),
-  upload.single("eventImage"),
-  adminUpdateEvent
-);
 
 
 // === SAVE / UNSAVE EVENT ===

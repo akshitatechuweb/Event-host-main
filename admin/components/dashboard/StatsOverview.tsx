@@ -49,7 +49,7 @@ export function StatsOverview() {
 
     async function fetchStats() {
       try {
-        const response = await clientFetch("/dashboard/stats");
+        const response = await clientFetch("/admin/dashboard/stats");
         const data = await response.json();
 
         if (response.ok && data.success && data.stats && !cancelled) {

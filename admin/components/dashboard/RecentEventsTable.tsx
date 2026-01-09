@@ -19,7 +19,7 @@ export function RecentEventsTable() {
   useEffect(() => {
     async function fetchEvents(): Promise<void> {
       try {
-        const response = await clientFetch("/dashboard/stats");
+        const response = await clientFetch("/admin/dashboard/stats");
         const data = await response.json();
 
         if (response.ok && data.success && Array.isArray(data.recentEvents)) {

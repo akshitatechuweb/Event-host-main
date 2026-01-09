@@ -6,7 +6,7 @@ import { clientFetch } from "./client";
 // Hosts
 // ===========================
 export async function getHosts() {
-  const res = await fetch(`/api/hosts?action=list`, {
+  const res = await fetch(`/api/admin/hosts?action=list`, {
     credentials: "include",
   });
 
@@ -27,7 +27,7 @@ export async function getHosts() {
 export async function getEventTransactions(
   eventId: string
 ): Promise<EventTransactionsResponse> {
-  const res = await fetch(`/api/transactions?eventId=${eventId}`, {
+  const res = await fetch(`/api/admin/transactions?eventId=${eventId}`, {
     credentials: "include",
     cache: "no-store",
   });
@@ -85,7 +85,7 @@ export async function getApprovedHosts() {
 }
 
 export async function approveHost(id: string) {
-  const res = await fetch(`/api/hosts?action=approve&id=${id}`, {
+  const res = await fetch(`/api/admin/hosts?action=approve&id=${id}`, {
     method: "POST",
     credentials: "include",
   });
@@ -98,7 +98,7 @@ export async function approveHost(id: string) {
 }
 
 export async function rejectHost(id: string, reason?: string) {
-  const res = await fetch(`/api/hosts?action=reject&id=${id}`, {
+  const res = await fetch(`/api/admin/hosts?action=reject&id=${id}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -116,7 +116,7 @@ export async function rejectHost(id: string, reason?: string) {
 // Tickets
 // ===========================
 export async function getAllTickets() {
-  const res = await fetch(`/api/tickets`, {
+  const res = await fetch(`/api/admin/tickets`, {
     credentials: "include",
   });
 
@@ -133,7 +133,7 @@ export async function getAllTickets() {
 
 export async function getDashboardStats() {
   try {
-    const res = await clientFetch("/dashboard/stats");
+    const res = await clientFetch("/admin/dashboard/stats");
     return await res.json();
   } catch {
     return {
@@ -148,11 +148,10 @@ export async function getDashboardStats() {
   }
 }
 
-// ===========================
 // Events (for Transactions page)
 // ===========================
 export async function getAllEvents() {
-  const res = await fetch("/api/events", {
+  const res = await fetch("/api/admin/events", {
     credentials: "include",
     cache: "no-store",
   });

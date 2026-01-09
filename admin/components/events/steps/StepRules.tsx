@@ -51,7 +51,7 @@ export function StepRules({ formData, updateFormData }: StepRulesProps) {
       </Field>
 
       <Field label="Things To Know">
-        <Input
+        <Textarea
           placeholder="Carry ID proof"
           value={formData.thingsToKnow}
           onChange={(e) => updateFormData({ thingsToKnow: e.target.value })}

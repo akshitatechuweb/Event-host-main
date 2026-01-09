@@ -220,3 +220,20 @@ export async function getApprovedHosts() {
     hosts: data.hosts.filter((h: any) => h.status === "approved"),
   };
 }
+
+
+
+
+export async function getEventTickets(eventId: string) {
+  const res = await fetch(`/api/admin/events/${eventId}/tickets`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch event tickets");
+  }
+
+  return res.json();
+}

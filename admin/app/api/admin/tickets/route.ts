@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminBackendFetch, backendFetch } from "@/lib/backend";
+import { backendFetch, safeJson } from "@/lib/backend";
 
 interface Ticket {
   _id: string;
@@ -38,69 +38,52 @@ interface EventWithPasses {
 }
 
 /**
- * GET /api/tickets
+ * GET /api/admin/tickets
  * Admin: fetch all ticket/pass stats across events
- * Uses centralized backend helper to talk to /api/admin.
+ * Aggregates data from /api/event/events and /api/booking/admin
  */
 export async function GET(req: NextRequest) {
   try {
-    const cookie = req.headers.get("cookie") || "";
-
-    if (!cookie) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     /* =====================
        FETCH EVENTS (BACKEND)
-       Uses correct route: GET /api/event/events
+       Uses: GET /api/event/events
     ===================== */
     const eventsResponse = await backendFetch("/api/event/events", req, {
       method: "GET",
     });
 
-    if (!eventsResponse.ok) {
+    const { ok: eventsOk, data: eventsData, text: eventsError } = await safeJson<{
+      events: EventWithPasses[];
+    }>(eventsResponse);
+
+    if (!eventsOk || !eventsData) {
       return NextResponse.json(
-        { success: false, message: "Failed to fetch events" },
+        { success: false, message: eventsError || "Failed to fetch events" },
         { status: eventsResponse.status }
       );
     }
 
-    const eventsRaw = await eventsResponse.json();
-
-    const events: EventWithPasses[] =
-      typeof eventsRaw === "object" &&
-        eventsRaw !== null &&
-        "events" in eventsRaw &&
-        Array.isArray((eventsRaw as any).events)
-        ? (eventsRaw as any).events
-        : [];
+    const events = eventsData.events || [];
 
     /* =====================
        FETCH BOOKINGS (BACKEND)
+       Uses: GET /api/booking/admin
     ===================== */
     let confirmedBookings: Booking[] = [];
 
     try {
-      // Backend route: GET /api/booking/admin (all bookings)
       const bookingsResponse = await backendFetch("/api/booking/admin", req, {
         method: "GET",
       });
 
-      if (bookingsResponse.ok) {
-        const bookingsRaw = await bookingsResponse.json();
+      const { ok: bookingsOk, data: bookingsData } = await safeJson<{
+        bookings: Booking[];
+      }>(bookingsResponse);
 
-        if (
-          typeof bookingsRaw === "object" &&
-          bookingsRaw !== null &&
-          Array.isArray((bookingsRaw as any).bookings)
-        ) {
-          confirmedBookings = (bookingsRaw as any).bookings.filter(
-            (b: Booking) => b.status === "confirmed"
-          );
-        }
+      if (bookingsOk && bookingsData?.bookings) {
+        confirmedBookings = bookingsData.bookings.filter(
+          (b) => b.status === "confirmed"
+        );
       }
     } catch (err) {
       console.error("⚠️ Booking fetch failed (non-fatal):", err);

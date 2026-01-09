@@ -37,31 +37,14 @@ export async function proxyFetch(
 
 /**
  * Server-side helper to fetch from backend.
- * Automatically handles path normalization to prevent double /api or /admin prefixes.
- * Detects Local vs Prod based on hostname.
+ * Uses hardcoded API URL but forwards cookies from the incoming request.
  */
-function getBackendUrl(path: string, request?: NextRequest): string {
-  // 💡 TIP: If you want to use a local backend, change this to true
-  const USE_LOCAL = false; 
-  
-  const isLocal = (request?.nextUrl.hostname === "localhost" || request?.nextUrl.hostname === "127.0.0.1") && USE_LOCAL;
-  const base = isLocal ? "http://localhost:8000" : API_BASE_URL;
-  
-  // 🧹 ULTRA CLEAN: remove /api and /admin if they exist at the start
-  let cleanPath = path
-    .replace(/^\/?api\/?/, "")
-    .replace(/^\/?admin\/?/, "")
-    .replace(/^\//, "");
-  
-  return `${base}/api/${cleanPath}`;
-}
-
 export async function adminBackendFetch(
   path: string,
   req: NextRequest,
   init: RequestInit = {}
 ): Promise<Response> {
-  const url = getBackendUrl(path, req);
+  const url = `${API_BASE_URL}/api/admin${path.startsWith("/") ? path : `/${path}`}`;
 
   const headers = new Headers(init.headers || {});
   const cookie = req.headers.get("cookie");
@@ -79,14 +62,28 @@ export async function adminBackendFetch(
 }
 
 /**
- * Generic backend fetch
+ * Generic backend fetch (no /api/admin prefix)
  */
 export async function backendFetch(
   path: string,
   req: NextRequest,
   init: RequestInit = {}
 ): Promise<Response> {
-  return adminBackendFetch(path, req, init);
+  const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const headers = new Headers(init.headers || {});
+  const cookie = req.headers.get("cookie");
+
+  if (cookie && !headers.has("cookie")) {
+    headers.set("cookie", cookie);
+  }
+
+  return fetch(url, {
+    ...init,
+    headers,
+    credentials: "include",
+    cache: "no-store",
+  });
 }
 
 export async function safeJson<T = unknown>(

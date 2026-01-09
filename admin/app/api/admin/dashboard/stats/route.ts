@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { adminBackendFetch } from "@/lib/backend";
+import { adminBackendFetch, safeJson } from "@/lib/backend";
 
 /**
  * Dashboard stats MUST NEVER fail.
@@ -9,18 +9,18 @@ export async function GET(req: NextRequest) {
   const safeFetch = async (path: string) => {
     try {
       const res = await adminBackendFetch(path, req);
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
+      const { data } = await safeJson(res);
+      return data;
+    } catch (error) {
+      console.error(`Failed to fetch ${path}:`, error);
       return null;
     }
   };
 
-  // 🔑 Fetch independently — no Promise.all fail cascade
-  // Note: Paths are now clean (the library handles the prefix)
+  // 🔑 Fetch from backend API directly — no Promise.all fail cascade
   const eventsData = await safeFetch("/events");
-  const bookingsData = await safeFetch("/booking");
-  const usersData = await safeFetch("/user?summary=true");
+  const bookingsData = await safeFetch("/bookings");
+  const usersData = await safeFetch("/users");
 
   const events = Array.isArray(eventsData?.events)
     ? eventsData.events
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     event: b.eventId?.eventName || b.eventTitle || "Event Payment",
     date: b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "Recent",
     amount: `₹${Number(b.totalAmount || 0).toLocaleString()}`,
-    status: "completed",
+    status: "completed", // Filtered by 'confirmed' above
   }));
 
   // 🔒 ALWAYS 200 — NEVER throw

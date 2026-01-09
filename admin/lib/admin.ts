@@ -150,8 +150,11 @@ export async function getDashboardStats() {
 
 // Events (for Transactions page)
 // ===========================
+// ===========================
+// Events (for Transactions page)
+// ===========================
 export async function getAllEvents() {
-  const res = await fetch("/api/admin/events", {
+  const res = await fetch("/api/event/events", {
     credentials: "include",
     cache: "no-store",
   });
@@ -166,4 +169,25 @@ export async function getAllEvents() {
   }
 
   return data;
+}
+
+// ===========================
+// Pass Management (New)
+// ===========================
+export async function createPass(eventId: string, data: any) {
+  const res = await fetch(`/api/passes/${eventId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to create pass");
+  }
+
+  return res.json();
 }

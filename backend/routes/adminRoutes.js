@@ -1,61 +1,105 @@
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
-import {
-  // approveEventHost,
-  rejectEventHost,
-  getAllHostRequests,
-  getRequestById,
-  getAllHosts,
-  getHostIdFromRequestId,
-  getEventTransactions,
-} from "../controllers/adminController.js";
-import { approveEventHostRequest } from "../controllers/hostController.js";
-import { adminCreateEvent, getEvents } from "../controllers/eventController.js"; 
 import { upload } from "../middleware/multer.js";
 import { adminLogin, adminLogout, adminMe } from "../controllers/authController.js";
+import {
+  getAllHostRequests,
+  getRequestById,
+  approveEventHost,
+  rejectEventHost,
+  getEventTransactions
+} from "../controllers/adminController.js";
+import { adminCreateEvent, getEvents } from "../controllers/eventController.js";
 
 const router = express.Router();
 
-// Admin authentication (no auth middleware needed - this is the login endpoint)
+// Admin authentication
 router.post("/auth/login", adminLogin);
-
-// Admin session + logout
 router.get("/auth/me", authMiddleware, requireRole("admin", "superadmin"), adminMe);
 router.post("/auth/logout", authMiddleware, adminLogout);
 
-// Host Request Routes
-router.get("/host-requests", authMiddleware, requireRole("admin", "superadmin"), getAllHostRequests);
-router.get("/host-requests/:id", authMiddleware, requireRole("admin", "superadmin"), getRequestById);
+// Simple dashboard stats endpoint
+router.get("/dashboard/stats", authMiddleware, requireRole("admin", "superadmin"), (req, res) => {
+  res.json({
+    success: true,
+    stats: {
+      totalRevenue: 0,
+      totalEvents: 0,
+      totalUsers: 0,
+      totalTransactions: 0
+    },
+    recentEvents: [],
+    recentTransactions: [],
+    meta: {
+      timestamp: new Date().toISOString(),
+      eventsOk: true,
+      bookingsOk: true,
+      usersOk: true
+    }
+  });
+});
 
-// OLD WAY OF APPROVING REQUESTS
-// router.post("/host-requests/approve/:id", authMiddleware, requireRole("admin", "superadmin"), approveEventHost);
+// ===============================
+// HOST REQUESTS MANAGEMENT
+// ===============================
 
+// Get all host requests
+router.get(
+  "/host-requests",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getAllHostRequests
+);
 
-// NEW WAY OF APPROVING REQUESTS
+// Get single request details
+router.get(
+  "/host-requests/:id",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getRequestById
+);
+
+// Approve host request
 router.put(
   "/approve-event-request/:id",
   authMiddleware,
   requireRole("admin", "superadmin"),
-  approveEventHostRequest
+  approveEventHost
 );
 
-router.post("/host-requests/reject/:id", authMiddleware, requireRole("admin", "superadmin"), rejectEventHost);
+// Reject host request
+router.post(
+  "/host-requests/reject/:id",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  rejectEventHost
+);
 
-// Helper Routes
-router.get("/hosts", authMiddleware, requireRole("admin", "superadmin"), getAllHosts);
-router.get("/host-requests/:requestId/host-id", authMiddleware, requireRole("admin", "superadmin"), getHostIdFromRequestId);
-
-// 🔥 Event Management Routes (Add these)
-router.post("/create-event", authMiddleware, requireRole("admin", "superadmin"), upload.single("eventImage"), adminCreateEvent);
-router.get("/events", authMiddleware, requireRole("admin", "superadmin"), getEvents);
-
-// Get transactions for a specific event (admin)
+// ===============================
+// EVENT TRANSACTIONS
+// ===============================
 router.get(
   "/events/:eventId/transactions",
   authMiddleware,
   requireRole("admin", "superadmin"),
   getEventTransactions
+);
+
+
+router.post(
+  "/create-event",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  upload.single("eventImage"),
+  adminCreateEvent
+);
+
+router.get(
+  "/events",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getEvents
 );
 
 export default router;

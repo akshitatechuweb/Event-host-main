@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminBackendFetch, proxyFetch, API_BASE_URL } from "@/lib/backend";
+import { adminBackendFetch, proxyFetch, backendFetch, API_BASE_URL } from "@/lib/backend";
 
 /* ============================
       GET EVENTS (ADMIN)
 ===============================*/
 export async function GET(req: NextRequest) {
   try {
-    // Backend route: GET /api/admin/events
-    const response = await adminBackendFetch("/events", req, {
+    // Backend route: GET /api/event/events
+    const response = await backendFetch("/api/event/events", req, {
       method: "GET",
     });
 
@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
 ===============================*/
 export async function POST(req: NextRequest) {
   try {
-    const url = `${API_BASE_URL}/api/admin/create-event`;
-    
+    const url = `${API_BASE_URL}/api/event/create-event`;
+
     const response = await proxyFetch(url, req, { method: "POST" });
     const data = await response.json();
 

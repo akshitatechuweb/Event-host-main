@@ -55,9 +55,9 @@ export async function GET(req: NextRequest) {
 
     /* =====================
        FETCH EVENTS (BACKEND)
-       Uses admin route: GET /api/admin/events
+       Uses correct route: GET /api/event/events
     ===================== */
-    const eventsResponse = await adminBackendFetch("/events", req, {
+    const eventsResponse = await backendFetch("/api/event/events", req, {
       method: "GET",
     });
 
@@ -72,9 +72,9 @@ export async function GET(req: NextRequest) {
 
     const events: EventWithPasses[] =
       typeof eventsRaw === "object" &&
-      eventsRaw !== null &&
-      "events" in eventsRaw &&
-      Array.isArray((eventsRaw as any).events)
+        eventsRaw !== null &&
+        "events" in eventsRaw &&
+        Array.isArray((eventsRaw as any).events)
         ? (eventsRaw as any).events
         : [];
 

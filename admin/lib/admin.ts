@@ -8,25 +8,22 @@ import { clientFetch } from "./client";
 
 // 🔹 Get all host requests
 export async function getHosts() {
-  const res = await fetch(`/api/admin/host-requests`, {
+  const res = await fetch("/api/admin/host-requests", {
     credentials: "include",
     cache: "no-store",
   });
 
   if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error("Your session has expired. Please log in again.");
-    }
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch host requests");
+    throw new Error("Failed to fetch host requests");
   }
 
   return res.json();
 }
 
+
 // 🔹 Get single host request
 export async function getHostById(id: string) {
-  const res = await fetch(`/api/admin/host-requests?id=${id}`, {
+  const res = await fetch(`/api/admin/host-requests/${id}`, {
     credentials: "include",
   });
 
@@ -36,6 +33,7 @@ export async function getHostById(id: string) {
 
   return res.json();
 }
+
 
 // 🔹 Approve host
 export async function approveHost(id: string) {
@@ -51,13 +49,16 @@ export async function approveHost(id: string) {
   return res.json();
 }
 
+
 // 🔹 Reject host
 export async function rejectHost(id: string, reason?: string) {
-  const res = await fetch(`/api/admin/host-requests`, {
+  const res = await fetch(`/api/admin/host-requests/reject/${id}`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, reason }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason }),
   });
 
   if (!res.ok) {
@@ -66,6 +67,7 @@ export async function rejectHost(id: string, reason?: string) {
 
   return res.json();
 }
+
 
 /* ===========================
    EVENT TRANSACTIONS
@@ -201,3 +203,20 @@ export async function createPass(eventId: string, data: any) {
 }
 
 
+export async function getApprovedHosts() {
+  const res = await fetch("/api/admin/host-requests", {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || "Failed to fetch hosts");
+  }
+
+  return {
+    ...data,
+    hosts: data.hosts.filter((h: any) => h.status === "approved"),
+  };
+}

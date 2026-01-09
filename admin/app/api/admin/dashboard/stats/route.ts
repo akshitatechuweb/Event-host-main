@@ -6,7 +6,7 @@ import { adminBackendFetch, safeJson } from "@/lib/backend";
  * It returns best-effort data only.
  */
 export async function GET(req: NextRequest) {
-  const safeFetch = async (path: string) => {
+  const safeFetch = async (path: string): Promise<any> => {
     try {
       const res = await adminBackendFetch(path, req);
       const { data } = await safeJson(res);
@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
   const events = Array.isArray(eventsData?.events)
     ? eventsData.events
     : Array.isArray(eventsData)
-    ? eventsData
-    : [];
+      ? eventsData
+      : [];
 
   const bookings = Array.isArray(bookingsData?.bookings)
     ? bookingsData.bookings

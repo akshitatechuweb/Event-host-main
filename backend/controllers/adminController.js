@@ -299,13 +299,13 @@ export const getEventTransactions = async (req, res) => {
         createdAt: t.createdAt,
         booking: booking
           ? {
-              _id: booking._id,
-              orderId: booking.orderId,
-              totalAmount: booking.totalAmount,
-              ticketCount: booking.ticketCount,
-              items: booking.items,
-              buyer: booking.userId ? { _id: booking.userId._id, name: booking.userId.name, email: booking.userId.email } : null,
-            }
+            _id: booking._id,
+            orderId: booking.orderId,
+            totalAmount: booking.totalAmount,
+            ticketCount: booking.ticketCount,
+            items: booking.items,
+            buyer: booking.userId ? { _id: booking.userId._id, name: booking.userId.name, email: booking.userId.email } : null,
+          }
           : null,
       };
     });
@@ -322,5 +322,109 @@ export const getEventTransactions = async (req, res) => {
   } catch (error) {
     console.error("Get Event Transactions Error:", error);
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ========================================================
+// ADMIN: Get Dashboard Statistics
+// ========================================================
+export const getDashboardStats = async (req, res) => {
+  try {
+    // Import Event model
+    const Event = (await import("../models/Event.js")).default;
+
+    // Aggregate statistics in parallel for better performance
+    const [
+      totalEvents,
+      totalUsers,
+      totalTransactions,
+      successfulTransactions,
+      recentEventsData,
+      recentTransactionsData
+    ] = await Promise.all([
+      Event.countDocuments(),
+      User.countDocuments(),
+      Transaction.countDocuments(),
+      Transaction.find({ status: "success" }).lean(),
+      Event.find()
+        .populate("hostId", "name email")
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean(),
+      Transaction.find({ status: "success" })
+        .populate({
+          path: "bookingId",
+          populate: {
+            path: "eventId",
+            select: "eventName title"
+          }
+        })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean()
+    ]);
+
+    // Calculate total revenue from successful transactions
+    const totalRevenue = successfulTransactions.reduce(
+      (sum, t) => sum + Number(t.amount || 0),
+      0
+    );
+
+    // Format recent events
+    const recentEvents = recentEventsData.map((e) => ({
+      id: e._id,
+      name: e.eventName || e.title || "Unnamed Event",
+      host: e.hostId?.name || "Unknown Host",
+      date: e.date ? new Date(e.date).toLocaleDateString() : "TBA",
+      attendees: Number(e.attendeesCount) || 0,
+    }));
+
+    // Format recent transactions
+    const recentTransactions = recentTransactionsData.map((t) => ({
+      id: t._id,
+      event: t.bookingId?.eventId?.eventName || t.bookingId?.eventId?.title || "Event Payment",
+      date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "Recent",
+      amount: `₹${Number(t.amount || 0).toLocaleString()}`,
+      status: "completed",
+    }));
+
+    return res.status(200).json({
+      success: true,
+      stats: {
+        totalRevenue,
+        totalEvents,
+        totalUsers,
+        totalTransactions: successfulTransactions.length,
+      },
+      recentEvents,
+      recentTransactions,
+      meta: {
+        timestamp: new Date().toISOString(),
+        eventsOk: true,
+        bookingsOk: true,
+        usersOk: true,
+      },
+    });
+  } catch (error) {
+    console.error("Get Dashboard Stats Error:", error);
+    // Return safe fallback data instead of error
+    return res.status(200).json({
+      success: true,
+      stats: {
+        totalRevenue: 0,
+        totalEvents: 0,
+        totalUsers: 0,
+        totalTransactions: 0,
+      },
+      recentEvents: [],
+      recentTransactions: [],
+      meta: {
+        timestamp: new Date().toISOString(),
+        eventsOk: false,
+        bookingsOk: false,
+        usersOk: false,
+        error: error.message,
+      },
+    });
   }
 };

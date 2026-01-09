@@ -8,7 +8,8 @@ import {
   getRequestById,
   approveEventHost,
   rejectEventHost,
-  getEventTransactions
+  getEventTransactions,
+  getDashboardStats
 } from "../controllers/adminController.js";
 import { adminCreateEvent, getEvents } from "../controllers/eventController.js";
 
@@ -19,26 +20,8 @@ router.post("/auth/login", adminLogin);
 router.get("/auth/me", authMiddleware, requireRole("admin", "superadmin"), adminMe);
 router.post("/auth/logout", authMiddleware, adminLogout);
 
-// Simple dashboard stats endpoint
-router.get("/dashboard/stats", authMiddleware, requireRole("admin", "superadmin"), (req, res) => {
-  res.json({
-    success: true,
-    stats: {
-      totalRevenue: 0,
-      totalEvents: 0,
-      totalUsers: 0,
-      totalTransactions: 0
-    },
-    recentEvents: [],
-    recentTransactions: [],
-    meta: {
-      timestamp: new Date().toISOString(),
-      eventsOk: true,
-      bookingsOk: true,
-      usersOk: true
-    }
-  });
-});
+// Dashboard stats endpoint
+router.get("/dashboard/stats", authMiddleware, requireRole("admin", "superadmin"), getDashboardStats);
 
 // ===============================
 // HOST REQUESTS MANAGEMENT

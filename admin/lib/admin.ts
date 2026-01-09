@@ -6,7 +6,7 @@ import { clientFetch } from "./client";
 // Hosts
 // ===========================
 export async function getHosts() {
-  const res = await fetch(`/api/admin/hosts?action=list`, {
+  const res = await fetch(`/api/admin/host-proxies?action=list`, {
     credentials: "include",
   });
 
@@ -73,7 +73,7 @@ export async function getEventTransactions(
 // Approved Hosts
 // ===========================
 export async function getApprovedHosts() {
-  const res = await fetch(`/api/admin/hosts`, {
+  const res = await fetch(`/api/admin/host-proxies`, {
     credentials: "include",
   });
 
@@ -85,7 +85,7 @@ export async function getApprovedHosts() {
 }
 
 export async function approveHost(id: string) {
-  const res = await fetch(`/api/admin/hosts?action=approve&id=${id}`, {
+  const res = await fetch(`/api/admin/host-proxies?action=approve&id=${id}`, {
     method: "POST",
     credentials: "include",
   });
@@ -98,7 +98,7 @@ export async function approveHost(id: string) {
 }
 
 export async function rejectHost(id: string, reason?: string) {
-  const res = await fetch(`/api/admin/hosts?action=reject&id=${id}`, {
+  const res = await fetch(`/api/admin/host-proxies?action=reject&id=${id}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",

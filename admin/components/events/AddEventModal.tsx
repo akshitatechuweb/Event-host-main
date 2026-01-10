@@ -17,7 +17,7 @@ import { StepSchedule } from "./steps/StepSchedule";
 import { StepDescription } from "./steps/StepDescription";
 import { StepPasses } from "./steps/StepPasses";
 import { StepRules } from "./steps/StepRules";
-import { getApprovedHosts } from "@/lib/admin";
+import { getApprovedHosts, createEvent, updateEvent } from "@/lib/admin";
 
 interface AdminEventForForm {
   _id: string;
@@ -255,33 +255,13 @@ export default function AddEventModal({
     formPayload.append("partyTerms", formData.partyTerms);
     formPayload.append("cancellationPolicy", formData.cancellationPolicy);
 
-    // ✅ INTERNAL NEXT.JS API ROUTES ONLY
-const endpoint = editingEvent
-      ? `/api/admin/event/update-event/${editingEvent._id}`
-      : `/api/admin/event/create-event`;
+    // ✅ USE CENTRALIZED SERVICE FUNCTIONS
+    const data = editingEvent
+      ? await updateEvent(editingEvent._id, formPayload)
+      : await createEvent(formPayload);
 
-    const method = editingEvent ? "PUT" : "POST";
-
-    const res = await fetch(endpoint, {
-      method,
-      body: formPayload,
-      credentials: "include", // still required
-    });
-
-    const contentType = res.headers.get("content-type");
-    let data;
-
-    if (contentType && contentType.includes("application/json")) {
-      data = await res.json();
-    } else {
-      const text = await res.text();
-      throw new Error(
-        `Server returned non-JSON response: ${res.status} ${res.statusText}`
-      );
-    }
-
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || `Request failed: ${res.status}`);
+    if (!data.success) {
+      throw new Error(data.message || `Request failed`);
     }
 
     toast.success(

@@ -238,3 +238,39 @@ export async function getEventTickets(eventId: string) {
 
   return res.json();
 }
+
+/**
+ * 🔹 Create Event (Admin)
+ */
+export async function createEvent(formData: FormData) {
+  const res = await fetch("/api/admin/event/create-event", {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to create event");
+  }
+
+  return res.json();
+}
+
+/**
+ * 🔹 Update Event (Admin)
+ */
+export async function updateEvent(eventId: string, formData: FormData) {
+  const res = await fetch(`/api/admin/event/update-event/${eventId}`, {
+    method: "PUT",
+    body: formData,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update event");
+  }
+
+  return res.json();
+}

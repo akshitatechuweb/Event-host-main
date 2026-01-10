@@ -172,13 +172,22 @@ export const Logo = ({ profile, isLoading }: { profile?: any, isLoading?: boolea
           <span className="text-white font-black text-sm">U</span>
         )}
       </div>
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="font-bold text-lg tracking-tight text-neutral-800 dark:text-neutral-100 truncate"
-      >
-        {profile?.name || "UnrealVibe"}
-      </motion.span>
+      <div className="flex flex-col">
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="font-bold text-base tracking-tight text-neutral-800 dark:text-neutral-100 whitespace-nowrap"
+        >
+          UnrealVibe
+        </motion.span>
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-black -mt-1 whitespace-nowrap"
+        >
+          Admin Portal
+        </motion.span>
+      </div>
     </div>
   );
 };

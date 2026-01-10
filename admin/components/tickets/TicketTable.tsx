@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { getAllTickets } from "@/lib/admin";
 import { Loader2 } from "lucide-react";
 import { EventTicketCard } from "./EventTicketCard";
 import { filterBySearchQuery } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
+import { Pagination } from "../ui/Pagination";
 
 interface Ticket {
   _id: string;
@@ -23,52 +26,44 @@ interface TicketTableProps {
 }
 
 export function TicketTable({ searchQuery = "" }: TicketTableProps) {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
 
   const debouncedQuery = useDebouncedValue(searchQuery, 250);
 
-  useEffect(() => {
-    async function fetchTickets() {
-      try {
-        setLoading(true);
-        const res = await getAllTickets();
-        if (!res.success) throw new Error("Failed to load tickets");
-        setTickets(res.tickets);
-      } catch (e: unknown) {
-        const error = e instanceof Error ? e : new Error("Failed to load tickets");
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    }
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["tickets", page, limit],
+    queryFn: () => getAllTickets(page, limit),
+  });
 
-    fetchTickets();
-  }, []);
+  const tickets = data?.tickets || [];
+  const meta = data?.meta;
 
   const filteredTickets = useMemo(
     () =>
-      filterBySearchQuery(tickets, debouncedQuery, (ticket) => [
+      filterBySearchQuery(tickets as Ticket[], debouncedQuery, (ticket) => [
         ticket.eventName,
         ticket.ticketType,
       ]),
     [tickets, debouncedQuery],
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 rounded-lg border border-border/50 bg-muted/20">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">Loading tickets...</p>
+      <div className="flex flex-col items-center justify-center p-20 rounded-3xl border border-border/50 bg-muted/10 glass-morphism">
+        <Loader2 className="w-10 h-10 animate-spin text-sidebar-primary mb-4" />
+        <p className="text-sm text-muted-foreground font-medium animate-pulse">Scanning ticket inventory...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6 rounded-lg border border-destructive/30 bg-destructive/5">
-        <p className="text-sm text-destructive">{error}</p>
+      <div className="p-8 rounded-3xl border border-destructive/20 bg-destructive/5 text-center">
+        <p className="text-sm text-destructive font-medium">
+          {error instanceof Error ? error.message : "Failed to load tickets"}
+        </p>
       </div>
     );
   }
@@ -81,17 +76,28 @@ export function TicketTable({ searchQuery = "" }: TicketTableProps) {
 
   if (Object.keys(grouped).length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 rounded-lg border border-border/50 bg-muted/20">
-        <p className="text-sm text-muted-foreground">No tickets found. Create one to get started.</p>
+      <div className="flex flex-col items-center justify-center p-20 rounded-3xl border border-border/50 bg-muted/10">
+        <p className="text-sm text-muted-foreground">No tickets found matches your search or inventory is empty.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {Object.entries(grouped).map(([eventName, passes]) => (
-        <EventTicketCard key={eventName} eventName={eventName} passes={passes} />
-      ))}
+    <div className="space-y-8">
+      <div className="space-y-4">
+        {Object.entries(grouped).map(([eventName, passes]) => (
+          <EventTicketCard key={eventName} eventName={eventName} passes={passes} />
+        ))}
+      </div>
+
+      {meta && meta.totalPages > 1 && (
+        <div className="mt-8 border-t border-border/30 pt-4">
+          <Pagination 
+            currentPage={meta.currentPage} 
+            totalPages={meta.totalPages} 
+          />
+        </div>
+      )}
     </div>
   );
 }

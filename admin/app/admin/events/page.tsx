@@ -1,21 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { EventSearch } from "@/components/events/EventSearch";
 import { EventTable } from "@/components/events/EventTable";
 import AddEventModal from "@/components/events/AddEventModal";
 import EventTransactionsModal from "@/components/events/EventTransactionsModal";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Import the single shared type
 import { Event } from "@/types/event";
 
-export default function EventsPage() {
+function EventsContent() {
   const [openAddEvent, setOpenAddEvent] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const queryClient = useQueryClient();
 
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [transactionsEventId, setTransactionsEventId] = useState<string | null>(null);
@@ -23,8 +24,8 @@ export default function EventsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleEventCreated = () => {
-    setRefreshKey((prev) => prev + 1);
+  const handleEventAction = () => {
+    queryClient.invalidateQueries({ queryKey: ["events"] });
   };
 
   const handleEdit = (event: Event) => {
@@ -39,16 +40,14 @@ export default function EventsPage() {
   };
 
   return (
-    <DashboardLayout>
-      <header className="flex items-center justify-between mb-10">
+    <div className="max-w-[1500px] mx-auto px-8 py-10 space-y-10">
+      <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            <span className="bg-linear-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">
-              Events
-            </span>
+          <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-sidebar-primary to-pink-500 bg-clip-text text-transparent inline-block">
+            Events
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage and monitor all events
+          <p className="text-muted-foreground mt-2 text-lg">
+            Manage and monitor all community events
           </p>
         </div>
 
@@ -57,18 +56,17 @@ export default function EventsPage() {
             setEditingEvent(null);
             setOpenAddEvent(true);
           }}
-          className="h-10 px-5 rounded-lg bg-background border border-border text-foreground shadow-sm hover:bg-muted dark:bg-primary dark:text-primary-foreground"
+          className="h-12 px-6 rounded-2xl bg-sidebar-primary text-white shadow-lg shadow-sidebar-primary/25 hover:bg-sidebar-primary/90 transition-smooth"
         >
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-5 w-5" />
           Add Event
         </Button>
       </header>
 
-      <section className="rounded-xl border border-border bg-card overflow-hidden">
+      <section className="rounded-3xl border border-border bg-card shadow-xl overflow-hidden glass-morphism">
         <EventSearch value={searchQuery} onChange={setSearchQuery} />
 
         <EventTable
-          refresh={refreshKey}
           onEdit={handleEdit}
           onViewTransactions={handleViewTransactions}
           searchQuery={searchQuery}
@@ -88,10 +86,24 @@ export default function EventsPage() {
           setOpenAddEvent(false);
           setEditingEvent(null);
         }}
-        onEventCreated={handleEventCreated}
-        onEventUpdated={handleEventCreated}
+        onEventCreated={handleEventAction}
+        onEventUpdated={handleEventAction}
         editingEvent={editingEvent}
       />
+    </div>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <DashboardLayout>
+      <Suspense fallback={
+        <div className="flex items-center justify-center p-20">
+          <Loader2 className="h-10 w-10 animate-spin text-sidebar-primary" />
+        </div>
+      }>
+        <EventsContent />
+      </Suspense>
     </DashboardLayout>
   );
 }

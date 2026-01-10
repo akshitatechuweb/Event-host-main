@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminBackendFetch, backendFetch, safeJson } from "@/lib/backend";
+import { paginateArray } from "@/lib/pagination";
 
 /**
  * GET /api/admin/tickets
@@ -8,28 +9,38 @@ import { adminBackendFetch, backendFetch, safeJson } from "@/lib/backend";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const eventId = searchParams.get("eventId");
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
+
+  const processAndPaginate = (allTickets: any[]) => {
+    const { items, meta } = paginateArray(allTickets, page, limit);
+    return NextResponse.json({ success: true, tickets: items, meta });
+  };
 
   // 1. Try new backend route first
   try {
     const path = eventId ? `/tickets?eventId=${eventId}` : "/tickets";
     const response = await adminBackendFetch(path, req, { method: "GET" });
     
-    // If backend returns 404, we fallback to legacy logic
     if (response.status === 404) {
-      console.warn("⚠️ Backend /api/admin/tickets not found. Falling back to frontend aggregation.");
-      return await handleFallbackAggregation(req, eventId);
+      const fallbackRes = await handleFallbackAggregation(req, eventId);
+      const fallbackData = await fallbackRes.json();
+      return processAndPaginate(fallbackData.tickets || []);
     }
 
     const { ok, status, data, text } = await safeJson(response);
     if (!ok) {
       return NextResponse.json({ success: false, message: text || "Backend error" }, { status });
     }
-    return NextResponse.json(data, { status });
+
+    const allTickets = Array.isArray(data) ? data : (data as any).tickets || [];
+    return processAndPaginate(allTickets);
 
   } catch (error) {
     console.error("❌ TICKETS PROXY ERROR:", error);
-    // On connection error, try fallback too
-    return await handleFallbackAggregation(req, eventId);
+    const fallbackRes = await handleFallbackAggregation(req, eventId);
+    const fallbackData = await fallbackRes.json();
+    return processAndPaginate(fallbackData.tickets || []);
   }
 }
 

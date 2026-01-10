@@ -7,8 +7,8 @@ import { clientFetch } from "./client";
 =========================== */
 
 // 🔹 Get all host requests
-export async function getHosts() {
-  const res = await fetch("/api/admin/host-requests", {
+export async function getHosts(page = 1, limit = 10) {
+  const res = await fetch(`/api/admin/host-requests?page=${page}&limit=${limit}`, {
     credentials: "include",
     cache: "no-store",
   });
@@ -129,8 +129,8 @@ export async function getEventTransactions(
 // ===========================
 // Tickets
 // ===========================
-export async function getAllTickets() {
-  const res = await fetch(`/api/admin/tickets`, {
+export async function getAllTickets(page = 1, limit = 10) {
+  const res = await fetch(`/api/admin/tickets?page=${page}&limit=${limit}`, {
     credentials: "include",
   });
 
@@ -167,8 +167,8 @@ export async function getDashboardStats() {
 // ===========================
 // Events (for Transactions page)
 // ===========================
-export async function getAllEvents() {
-  const res = await fetch("/api/admin/events", {
+export async function getAllEvents(page = 1, limit = 10) {
+  const res = await fetch(`/api/admin/events?page=${page}&limit=${limit}`, {
     credentials: "include",
     cache: "no-store",
   });
@@ -278,8 +278,8 @@ export async function updateEvent(eventId: string, formData: FormData) {
 /**
  * 🔹 Get All App Users
  */
-export async function getAllAppUsers() {
-  const res = await fetch("/api/admin/app-users", {
+export async function getAllAppUsers(page = 1, limit = 10) {
+  const res = await fetch(`/api/admin/app-users?page=${page}&limit=${limit}`, {
     credentials: "include",
     cache: "no-store",
   });

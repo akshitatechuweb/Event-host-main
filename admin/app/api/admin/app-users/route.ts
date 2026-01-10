@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminBackendFetch, safeJson } from "@/lib/backend";
+import { paginateArray } from "@/lib/pagination";
 
 /**
  * GET /api/admin/app-users
@@ -7,6 +8,10 @@ import { adminBackendFetch, safeJson } from "@/lib/backend";
  */
 export async function GET(req: NextRequest) {
     try {
+        const { searchParams } = new URL(req.url);
+        const page = parseInt(searchParams.get("page") || "1");
+        const limit = parseInt(searchParams.get("limit") || "10");
+
         // Backend route: GET /api/admin/app-users
         const response = await adminBackendFetch("/app-users", req, {
             method: "GET",
@@ -21,7 +26,15 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        return NextResponse.json(data, { status });
+        const allUsers = Array.isArray(data) ? data : (data as any).users || [];
+        const { items, meta } = paginateArray(allUsers, page, limit);
+
+        return NextResponse.json({
+            success: true,
+            users: items,
+            meta
+        }, { status });
+
     } catch (err) {
         console.error("API APP USERS ERROR:", err);
         return NextResponse.json(

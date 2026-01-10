@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminBackendFetch } from "@/lib/backend";
+import { paginateArray } from "@/lib/pagination";
 
 
 /* ============================
@@ -15,16 +16,32 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const id = req.nextUrl.searchParams.get("id");
+    const { searchParams } = req.nextUrl;
+    const id = searchParams.get("id");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
 
     const path = id
       ? `/admin/host-requests/${id}`
       : `/admin/host-requests`;
 
     const backendRes = await adminBackendFetch(path, req, { method: "GET" });
-
     const data = await backendRes.json();
-    return NextResponse.json(data, { status: backendRes.status });
+
+    if (id) {
+      return NextResponse.json(data, { status: backendRes.status });
+    }
+
+    // Paginate for the list view
+    const allRequests = Array.isArray(data) ? data : data.requests || [];
+    const { items, meta } = paginateArray(allRequests, page, limit);
+
+    return NextResponse.json({
+      success: true,
+      requests: items,
+      meta
+    }, { status: backendRes.status });
+
   } catch (err) {
     console.error("HOST REQUESTS GET ERROR:", err);
     return NextResponse.json(

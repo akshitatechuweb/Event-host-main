@@ -1,72 +1,48 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { EventTableHeader } from "./EventTableHeader";
 import { EventTableRow } from "./EventTableRow";
 import { toast } from "sonner";
 import { filterBySearchQuery } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useQuery } from "@tanstack/react-query";
+import { getAllEvents } from "@/lib/admin";
+import { useSearchParams } from "next/navigation";
+import { Pagination } from "../ui/Pagination";
+import { Loader2 } from "lucide-react";
 
 // Shared Event type
 import { Event } from "@/types/event";
 
 interface EventTableProps {
-  refresh?: number;
   onEdit?: (event: Event) => void;
   onViewTransactions?: (eventId: string, eventName?: string) => void;
   searchQuery?: string;
 }
 
 export function EventTable({
-  refresh,
   onEdit,
   onViewTransactions,
   searchQuery = "",
 }: EventTableProps) {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
 
   const debouncedQuery = useDebouncedValue(searchQuery, 250);
 
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["events", page, limit],
+    queryFn: () => getAllEvents(page, limit),
+  });
 
-      // ✅ Internal Next.js API route (rewrite handles backend)
-      const response = await fetch("/api/admin/events", {
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to fetch events");
-      }
-
-      const data = await response.json();
-
-      // Handle different response formats safely
-      const events = Array.isArray(data)
-        ? data
-        : data.events || data.data || [];
-
-      setEvents(events);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to fetch events";
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchEvents();
-  }, [refresh]);
+  const events = data?.events || [];
+  const meta = data?.meta;
 
   const filteredEvents = useMemo(
     () =>
-      filterBySearchQuery(events, debouncedQuery, (event) => [
+      filterBySearchQuery(events as Event[], debouncedQuery, (event) => [
         event.eventName,
         event.hostedBy,
         event.city,
@@ -74,37 +50,52 @@ export function EventTable({
     [events, debouncedQuery]
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500" />
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-sidebar-primary" />
+        <p className="text-muted-foreground font-medium animate-pulse">Syncing events...</p>
       </div>
     );
   }
 
   if (filteredEvents.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-muted-foreground mb-2">No events found</p>
-        <p className="text-sm text-muted-foreground">
-          Create your first event to get started
+      <div className="flex flex-col items-center justify-center py-20 text-center border-t border-border/50">
+        <div className="w-16 h-16 rounded-2xl bg-muted/30 flex items-center justify-center mb-4">
+          <Loader2 className="h-8 w-8 text-muted-foreground/30" />
+        </div>
+        <p className="text-muted-foreground font-medium">No events found</p>
+        <p className="text-sm text-muted-foreground/60 max-w-[250px] mt-1">
+          Try adjusting your search or create your first event
         </p>
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-border">
-      <EventTableHeader />
-      {filteredEvents.map((event) => (
-        <EventTableRow
-          key={event._id}
-          event={event}
-          onRefresh={fetchEvents}
-          onEdit={onEdit}
-          onViewTransactions={onViewTransactions}
-        />
-      ))}
+    <div className="relative">
+      <div className="divide-y divide-border">
+        <EventTableHeader />
+        {filteredEvents.map((event) => (
+          <EventTableRow
+            key={event._id}
+            event={event}
+            onRefresh={refetch}
+            onEdit={onEdit}
+            onViewTransactions={onViewTransactions}
+          />
+        ))}
+      </div>
+      
+      {meta && meta.totalPages > 1 && (
+        <div className="border-t border-border/50 bg-muted/5">
+          <Pagination 
+            currentPage={meta.currentPage} 
+            totalPages={meta.totalPages} 
+          />
+        </div>
+      )}
     </div>
   );
 }

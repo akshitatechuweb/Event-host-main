@@ -90,6 +90,13 @@ export const requestEventHostAccess = async (req, res) => {
       });
     }
 
+    if (user.eventCreationCredits > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "You already have an approved request. Please wait for the event to be created.",
+      });
+    }
+
     // Create request with ONLY image fields
     const newRequest = await EventHostRequest.create({
       userId,

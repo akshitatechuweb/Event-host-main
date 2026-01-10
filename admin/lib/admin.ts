@@ -208,7 +208,7 @@ export async function createPass(eventId: string, data: any) {
 
 
 export async function getApprovedHosts() {
-  const res = await fetch("/api/admin/host-requests", {
+  const res = await fetch("/api/admin/all-hosts", {
     credentials: "include",
     cache: "no-store",
   });
@@ -219,10 +219,7 @@ export async function getApprovedHosts() {
     throw new Error(data.message || "Failed to fetch hosts");
   }
 
-  return {
-    ...data,
-    hosts: data.hosts.filter((h: any) => h.status === "approved"),
-  };
+  return data;
 }
 
 

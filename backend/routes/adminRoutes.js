@@ -10,7 +10,8 @@ import {
   rejectEventHost,
   getEventTransactions,
   getDashboardStats,
-  getAllTickets
+  getAllTickets,
+  getAllHosts
 } from "../controllers/adminController.js";
 import { getEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
@@ -79,6 +80,14 @@ router.post(
   authMiddleware,
   requireRole("admin", "superadmin"),
   rejectEventHost
+);
+
+// Get all approved hosts (for events)
+router.get(
+  "/all-hosts",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getAllHosts
 );
 
 // ===============================

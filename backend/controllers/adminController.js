@@ -108,6 +108,7 @@ export const approveEventHost = async (req, res) => {
       user.isHostVerified = true;
     }
     user.isHostRequestPending = false;
+    user.eventCreationCredits = (user.eventCreationCredits || 0) + 1;
     await user.save();
 
     res.json({
@@ -247,9 +248,10 @@ export const getRequestById = async (req, res) => {
 export const getAllHosts = async (req, res) => {
   try {
     const hosts = await User.find({
-      $or: [{ role: "host" }, { isHostVerified: true }]
+      role: "host",
+      eventCreationCredits: { $gt: 0 }
     })
-      .select("_id name email phone city")
+      .select("_id name email phone city eventCreationCredits")
       .sort({ name: 1 });
 
     res.json({

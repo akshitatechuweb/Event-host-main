@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { clientFetch } from "@/lib/client";
 import { toast } from "sonner";
 import { 
-  User, 
+  User as UserIcon, 
   Mail, 
   Phone, 
   ShieldCheck, 
@@ -14,6 +14,8 @@ import {
   Save,
   KeyRound
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getAdminProfile, updateAdminProfile, updateAdminPassword } from "@/lib/admin";
 
 interface AdminProfile {
   id: string;
@@ -25,10 +27,7 @@ interface AdminProfile {
 }
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<AdminProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [savingPassword, setSavingPassword] = useState(false);
+  const queryClient = useQueryClient();
   
   // Profile fields state
   const [name, setName] = useState("");
@@ -44,28 +43,45 @@ export default function ProfilePage() {
     confirm: ""
   });
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  // Fetch Profile data
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["admin-profile"],
+    queryFn: getAdminProfile,
+  });
 
-  const fetchProfile = async () => {
-    try {
-      const res = await clientFetch("/admin/profile");
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-        setName(data.name || "");
-        setMobile(data.phone || "");
-        setImagePreview(data.profilePhoto || null);
-      } else {
-        toast.error("Failed to load profile");
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    } finally {
-      setLoading(false);
+  // Sync profile data to local state for editing
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || "");
+      setMobile(profile.phone || "");
+      setImagePreview(profile.profilePhoto || null);
     }
-  };
+  }, [profile]);
+
+  // Mutations
+  const updateProfileMutation = useMutation({
+    mutationFn: updateAdminProfile,
+    onSuccess: (data) => {
+      toast.success("Profile updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin-profile"] });
+      setImageFile(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update profile");
+    }
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: updateAdminPassword,
+    onSuccess: () => {
+      toast.success("Password changed successfully");
+      setPasswords({ current: "", new: "", confirm: "" });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to change password");
+    }
+  });
+
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,35 +97,15 @@ export default function ProfilePage() {
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavingProfile(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("name", name);
-      formData.append("phone", mobile);
-      if (imageFile) {
-        formData.append("profileImage", imageFile);
-      }
-
-      // We need to use fetch directly or modify clientFetch for multipart
-      const res = await fetch("/api/admin/profile", {
-        method: "PUT",
-        body: formData,
-      });
-
-      if (res.ok) {
-        toast.success("Profile updated successfully");
-        fetchProfile(); // Refresh
-        setImageFile(null);
-      } else {
-        const err = await res.json();
-        toast.error(err.message || "Failed to update profile");
-      }
-    } catch (error) {
-      toast.error("An error occurred while saving profile");
-    } finally {
-      setSavingProfile(false);
+    
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("phone", mobile);
+    if (imageFile) {
+      formData.append("profileImage", imageFile);
     }
+
+    updateProfileMutation.mutate(formData);
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -125,32 +121,13 @@ export default function ProfilePage() {
       return;
     }
 
-    setSavingPassword(true);
-
-    try {
-      const res = await clientFetch("/admin/auth/change-password", {
-        method: "PUT",
-        body: JSON.stringify({
-          currentPassword: passwords.current,
-          newPassword: passwords.new
-        })
-      });
-
-      if (res.ok) {
-        toast.success("Password changed successfully");
-        setPasswords({ current: "", new: "", confirm: "" });
-      } else {
-        const err = await res.json();
-        toast.error(err.message || "Failed to change password");
-      }
-    } catch (error) {
-      toast.error("An error occurred while changing password");
-    } finally {
-      setSavingPassword(false);
-    }
+    changePasswordMutation.mutate({
+      currentPassword: passwords.current,
+      newPassword: passwords.new
+    });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-sidebar-primary" />
@@ -179,7 +156,7 @@ export default function ProfilePage() {
                   {imagePreview ? (
                     <img src={imagePreview} alt="Profile" className="h-full w-full object-cover" />
                   ) : (
-                    <User className="h-16 w-16 text-muted-foreground/40" />
+                    <UserIcon className="h-16 w-16 text-muted-foreground/40" />
                   )}
                 </div>
                 <button 
@@ -225,7 +202,7 @@ export default function ProfilePage() {
           <div className="bg-card border border-sidebar-border rounded-2xl shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-sidebar-border bg-muted/30">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-sidebar-primary" />
+                <UserIcon className="h-5 w-5 text-sidebar-primary" />
                 <h3 className="font-semibold text-card-foreground">Profile Details</h3>
               </div>
             </div>
@@ -284,10 +261,10 @@ export default function ProfilePage() {
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
-                  disabled={savingProfile}
+                  disabled={updateProfileMutation.isPending}
                   className="flex items-center gap-2 bg-sidebar-primary text-primary-foreground px-6 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-sidebar-primary/20 transition-smooth disabled:opacity-50"
                 >
-                  {savingProfile ? (
+                  {updateProfileMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="h-4 w-4" />
@@ -350,10 +327,10 @@ export default function ProfilePage() {
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
-                  disabled={savingPassword}
+                  disabled={changePasswordMutation.isPending}
                   className="flex items-center gap-2 bg-foreground text-background dark:bg-white dark:text-black px-6 py-2.5 rounded-xl font-medium shadow-lg transition-smooth disabled:opacity-50"
                 >
-                  {savingPassword ? (
+                  {changePasswordMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Lock className="h-4 w-4" />

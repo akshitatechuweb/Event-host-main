@@ -960,6 +960,11 @@ export const updateAdminProfile = async (req, res) => {
 
     await user.save();
 
+    let profilePhoto = user.photos?.find((p) => p.isProfilePhoto)?.url || null;
+    if (profilePhoto && profilePhoto.startsWith("/")) {
+      profilePhoto = `${req.protocol}://${req.get("host")}${profilePhoto}`;
+    }
+
     res.json({
       success: true,
       message: 'Profile updated successfully',

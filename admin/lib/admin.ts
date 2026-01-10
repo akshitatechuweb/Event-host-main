@@ -173,6 +173,45 @@ export async function getAdminProfile() {
   return res.json();
 }
 
+/**
+ * 🔹 Update Admin Profile
+ */
+export async function updateAdminProfile(formData: FormData) {
+  const res = await fetch("/api/admin/profile", {
+    method: "PUT",
+    body: formData,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update profile");
+  }
+
+  return res.json();
+}
+
+/**
+ * 🔹 Update Admin Password
+ */
+export async function updateAdminPassword(data: any) {
+  const res = await fetch("/api/admin/auth/change-password", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to change password");
+  }
+
+  return res.json();
+}
+
 // Events (for Transactions page)
 // ===========================
 // ===========================

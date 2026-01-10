@@ -6,7 +6,7 @@ import { adminBackendFetch, safeJson } from "@/lib/backend";
  */
 export async function GET(req: NextRequest) {
     try {
-        const response = await adminBackendFetch("/auth/me", req, { method: "GET" });
+        const response = await adminBackendFetch("/profile", req, { method: "GET" });
         const { ok, status, data, text } = await safeJson(response);
 
         if (!ok) {

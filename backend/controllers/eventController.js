@@ -65,7 +65,7 @@ export const getEvents = async (req, res) => {
         if (imageUrl && imageUrl.startsWith("/")) {
           imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
         }
-      } catch (err) {}
+      } catch (err) { }
 
       let bookingPercentage = null;
       if (
@@ -84,8 +84,8 @@ export const getEvents = async (req, res) => {
         const eventDate = ev.eventDateTime
           ? new Date(ev.eventDateTime)
           : ev.date
-          ? new Date(ev.date)
-          : null;
+            ? new Date(ev.date)
+            : null;
         const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
         const hoursUntilEvent = eventDate
           ? (eventDate - now) / (1000 * 60 * 60)
@@ -105,7 +105,7 @@ export const getEvents = async (req, res) => {
         else if (bookingPercentage !== null && bookingPercentage >= 50)
           status = "High Demand";
         else if (hoursSinceCreation <= 48) status = "Just Started";
-      } catch (err) {}
+      } catch (err) { }
 
       return {
         ...ev,
@@ -132,10 +132,13 @@ export const getEvents = async (req, res) => {
 export const toggleSaveEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const userId = req.user._id; // from authMiddleware
+    const userId = req.user._id;
+
+    console.log(`[DEBUG] toggleSaveEvent called: userId=${userId}, eventId=${eventId}`);
 
     const event = await Event.findById(eventId);
     if (!event) {
+      console.log(`[DEBUG] Event not found: ${eventId}`);
       return res
         .status(404)
         .json({ success: false, message: "Event not found" });
@@ -143,14 +146,21 @@ export const toggleSaveEvent = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
+      console.log(`[DEBUG] User not found: ${userId}`);
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
 
-    // Check if already saved
+    // Ensure savedEvents array exists
+    if (!user.savedEvents) {
+      user.savedEvents = [];
+    }
+
+    // Check if already saved - trim and lower strings just in case
+    const eventIdStr = eventId.toString().trim();
     const existingSaveIndex = user.savedEvents.findIndex(
-      (save) => save.event.toString() === eventId
+      (save) => save.event && save.event.toString().trim() === eventIdStr
     );
 
     let isSaved = false;
@@ -158,21 +168,30 @@ export const toggleSaveEvent = async (req, res) => {
 
     if (existingSaveIndex !== -1) {
       // Already saved → unsave
+      console.log(`[DEBUG] Unsaving event ${eventIdStr} for user ${userId}`);
       user.savedEvents.splice(existingSaveIndex, 1);
       message = "Event unsaved successfully";
     } else {
       // Not saved → save
+      console.log(`[DEBUG] Saving event ${eventIdStr} for user ${userId}`);
       user.savedEvents.push({ event: eventId });
       isSaved = true;
       message = "Event saved successfully";
     }
 
-    await user.save();
+    try {
+      await user.save();
+      console.log(`[DEBUG] User profile saved successfully with updated savedEvents`);
+    } catch (saveError) {
+      console.error(`[DEBUG] Failed to save user profile:`, saveError);
+      return res.status(500).json({ success: false, message: "Database save failed", error: saveError.message });
+    }
 
-    // Optional: Get total saved count for this event
     const totalSaves = await User.countDocuments({
       "savedEvents.event": eventId,
     });
+
+    console.log(`[DEBUG] totalSaves for event ${eventIdStr}: ${totalSaves}`);
 
     return res.status(200).json({
       success: true,

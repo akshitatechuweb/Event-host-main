@@ -28,6 +28,7 @@ const router = express.Router();
 // Admin authentication
 router.post("/auth/login", adminLogin);
 router.get("/auth/me", authMiddleware, requireRole("admin", "superadmin"), adminMe);
+router.get("/profile", authMiddleware, requireRole("admin", "superadmin"), adminMe);
 router.post("/auth/logout", authMiddleware, adminLogout);
 
 // Profile management

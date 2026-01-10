@@ -12,9 +12,9 @@ import path from "path";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
-import bookingRouts from "./routes/bookingRoutes.js";     
+import bookingRouts from "./routes/bookingRoutes.js";
 import hostRoutes from "./routes/hostRoutes.js";
-import paymentRoutes from "./routes/paymentRoutes.js";   
+import paymentRoutes from "./routes/paymentRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import passRoutes from "./routes/passRoutes.js";
 import sseRoutes from "./routes/sseRoutes.js";
@@ -24,6 +24,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 8000;
 
 // ────────────────── UPLOADS FOLDER (SHARED WITH MULTER) ──────────────────
@@ -69,7 +70,7 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-      
+
       // Check if origin is in allowed list
       if (allowedOrigins.includes(origin)) {
         callback(null, true);

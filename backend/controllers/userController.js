@@ -37,8 +37,8 @@ export const getMyProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       user
     });
   } catch (err) {
@@ -55,8 +55,8 @@ export const getUserById = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       user
     });
   } catch (err) {
@@ -108,9 +108,9 @@ export const approveHostUpgrade = async (req, res) => {
 
     await user.save();
 
-    res.json({ 
-      success: true, 
-      message: "User promoted to host successfully", 
+    res.json({
+      success: true,
+      message: "User promoted to host successfully",
       user
     });
   } catch (err) {
@@ -135,10 +135,15 @@ export const getAllUsers = async (req, res) => {
       });
     }
 
-    // Fallback (should not hit for dashboard)
+    // List mode for Admin Panel
+    const users = await User.find({})
+      .select("name email phone city gender role isHost isVerified isActive createdAt profileCompletion")
+      .sort({ createdAt: -1 })
+      .lean();
+
     return res.status(200).json({
       success: true,
-      users: [],
+      users: users || [],
     });
   } catch (err) {
     console.error("❌ Admin users failed:", err);
@@ -167,9 +172,9 @@ export const deactivateUser = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.json({ 
-      success: true, 
-      message: "User deactivated successfully", 
+    res.json({
+      success: true,
+      message: "User deactivated successfully",
       user
     });
   } catch (err) {

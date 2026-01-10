@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema(
     name: { type: String, trim: true },
     email: { type: String, trim: true, lowercase: true, sparse: true },
     phone: { type: String, required: true, unique: true },
+    password: { type: String }, // For admin/superadmin login and password change
     city: { type: String, trim: true },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
 

@@ -29,7 +29,7 @@ export const authMiddleware = async (req, res, next) => {
 
     // ✅ Fetch minimal required fields only
     const user = await User.findById(decoded.sub).select(
-      "_id email role isVerified isActive"
+      "_id email role isVerified isActive name phone photos"
     );
 
     if (!user) {

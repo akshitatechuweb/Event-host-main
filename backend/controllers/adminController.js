@@ -1,4 +1,5 @@
 // controllers/adminController.js
+import bcrypt from "bcryptjs";
 import EventHostRequest from "../models/HostRequest.js";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
@@ -15,7 +16,7 @@ function computeEventExtras(ev, req) {
     if (imageUrl && imageUrl.startsWith("/")) {
       imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
     }
-  } catch (err) {}
+  } catch (err) { }
 
   let bookingPercentage = null;
   if (
@@ -32,8 +33,8 @@ function computeEventExtras(ev, req) {
     const eventDate = ev.eventDateTime
       ? new Date(ev.eventDateTime)
       : ev.date
-      ? new Date(ev.date)
-      : null;
+        ? new Date(ev.date)
+        : null;
     const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
     const hoursUntilEvent = eventDate
       ? (eventDate - now) / (1000 * 60 * 60)
@@ -931,5 +932,89 @@ export const updateEvent = async (req, res) => {
   } catch (err) {
     console.error("Update Event Error:", err);
     return res.status(500).json({ success: false, message: err.message });
+  }
+};
+// ========================================================
+// ADMIN: Update Profile
+// ========================================================
+export const updateAdminProfile = async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+
+    if (req.file) {
+      const photoUrl = '/uploads/' + req.file.filename;
+      user.photos = user.photos || [];
+      user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
+      user.photos.push({ url: photoUrl, isProfilePhoto: true });
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profilePhoto
+      }
+    });
+  } catch (error) {
+    console.error('Update Admin Profile Error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ========================================================
+// ADMIN: Update Password
+// ========================================================
+export const updateAdminPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    let isMatch = false;
+    if (user.password) {
+      isMatch = await bcrypt.compare(currentPassword, user.password);
+    } else {
+      const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+      const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL;
+      const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD;
+
+      if (user.email === ADMIN_EMAIL && currentPassword === ADMIN_PASSWORD) {
+        isMatch = true;
+      } else if (user.email === SUPERADMIN_EMAIL && currentPassword === SUPERADMIN_PASSWORD) {
+        isMatch = true;
+      }
+    }
+
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect current password' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Update Admin Password Error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };

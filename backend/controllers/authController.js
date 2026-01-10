@@ -77,6 +77,7 @@ export const requestOtp = async (req, res) => {
 export const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body || {};
+
     if (!phone || !otp) {
       return res.status(400).json({
         success: false,
@@ -107,19 +108,21 @@ export const verifyOtp = async (req, res) => {
     await Otp.deleteOne({ phone });
 
     const token = jwt.sign(
-      { sub: user._id },
+      { sub: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    // 🔑 SET COOKIE (USER LOGIN)
+    // 🔑 Cookie (web)
     res.cookie("accessToken", token, authCookieOptions);
 
     return res.json({
       success: true,
+      token,                
       role: user.role,
       isProfileComplete: user.isProfileComplete || false,
     });
+
   } catch (err) {
     console.error("OTP verify error:", err);
     return res.status(500).json({
@@ -128,6 +131,7 @@ export const verifyOtp = async (req, res) => {
     });
   }
 };
+
 
 /* =================================================
    🔐 ADMIN / SUPERADMIN LOGIN
@@ -161,34 +165,44 @@ export const adminLogin = async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: normalizedEmail });
 
     let role, hash, name, phone;
+    let isMatch = false;
 
-    if (normalizedEmail === ADMIN.email) {
-      role = "admin";
-      hash = ADMIN_HASH;
-      name = "Admin";
-      phone = "8888888888";
-    } else if (normalizedEmail === SUPERADMIN.email) {
-      role = "superadmin";
-      hash = SUPERADMIN_HASH;
-      name = "Super Admin";
-      phone = "9999999999";
-    } else {
+    // 1. Check if user exists in DB and has a password set
+    if (user && user.password) {
+      if (bcrypt.compareSync(password, user.password)) {
+        isMatch = true;
+        role = user.role;
+      }
+    }
+
+    // 2. Fallback to hardcoded admin check if not matched via DB
+    if (!isMatch) {
+      if (normalizedEmail === ADMIN.email) {
+        role = "admin";
+        hash = ADMIN_HASH;
+        name = "Admin";
+        phone = "8888888888";
+      } else if (normalizedEmail === SUPERADMIN.email) {
+        role = "superadmin";
+        hash = SUPERADMIN_HASH;
+        name = "Super Admin";
+        phone = "9999999999";
+      }
+
+      if (role && hash && bcrypt.compareSync(password, hash)) {
+        isMatch = true;
+      }
+    }
+
+    if (!isMatch) {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
     }
-
-    if (!bcrypt.compareSync(password, hash)) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    let user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       user = await User.create({
@@ -241,11 +255,19 @@ export const adminMe = async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden" });
     }
 
+    let profilePhoto = user.photos?.find(p => p.isProfilePhoto)?.url || null;
+    if (profilePhoto && profilePhoto.startsWith("/")) {
+      profilePhoto = `${req.protocol}://${req.get("host")}${profilePhoto}`;
+    }
+
     return res.json({
       success: true,
       id: user._id,
       email: user.email,
+      name: user.name,
+      phone: user.phone,
       role: user.role,
+      profilePhoto,
     });
   } catch (err) {
     console.error("Admin me error:", err);

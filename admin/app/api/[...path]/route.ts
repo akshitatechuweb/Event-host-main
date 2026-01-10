@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 const API_URL = "https://api.unrealvibe.com/api";
 
+
+
 async function proxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const pathString = path.join("/");

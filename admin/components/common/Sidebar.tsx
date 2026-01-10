@@ -7,6 +7,7 @@ import {
   Users,
   Ticket,
   CreditCard,
+  User,
   Moon,
   Sun,
 } from "lucide-react";
@@ -25,8 +26,10 @@ const navItems: readonly NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" },
   { icon: Calendar, label: "Events", href: "/admin/events" },
   { icon: Users, label: "Hosts", href: "/admin/hosts" },
+  { icon: Users, label: "App Users", href: "/admin/app-users" },
   { icon: Ticket, label: "Tickets", href: "/admin/tickets" },
   { icon: CreditCard, label: "Transactions", href: "/admin/transactions" },
+  { icon: User, label: "Profile", href: "/admin/profile" },
 ] as const;
 
 export function Sidebar() {

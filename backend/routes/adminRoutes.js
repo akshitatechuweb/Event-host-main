@@ -14,13 +14,33 @@ import {
 } from "../controllers/adminController.js";
 import { getEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
-import { createEvent, updateEvent } from "../controllers/adminController.js";
+import {
+  createEvent,
+  updateEvent,
+  updateAdminProfile,
+  updateAdminPassword,
+} from "../controllers/adminController.js";
 const router = express.Router();
 
 // Admin authentication
 router.post("/auth/login", adminLogin);
 router.get("/auth/me", authMiddleware, requireRole("admin", "superadmin"), adminMe);
 router.post("/auth/logout", authMiddleware, adminLogout);
+
+// Profile management
+router.put(
+  "/profile",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  upload.single("profileImage"),
+  updateAdminProfile
+);
+router.put(
+  "/auth/change-password",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  updateAdminPassword
+);
 
 // Dashboard stats endpoint
 router.get("/dashboard/stats", authMiddleware, requireRole("admin", "superadmin"), getDashboardStats);

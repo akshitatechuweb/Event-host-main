@@ -42,7 +42,10 @@ export const sendSms = async (phone, otp) => {
     }
 
     // ⚠️ MUST match your approved DLT template exactly
-    const message = `Your OTP is ${otp}. It is valid for 5 minutes. - ${SERVERMSG_SENDERID}`;
+    const message =
+      `Your TheNaukriMitra Job Portal OTP is ${otp}. ` +
+      `Valid for 10 minutes. ` +
+      "Do not share with anyone.";
 
     const params = new URLSearchParams({
       UserID: SERVERMSG_USERID,

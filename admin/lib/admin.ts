@@ -162,6 +162,17 @@ export async function getDashboardStats() {
   }
 }
 
+/**
+ * 🔹 Get Admin Profile
+ */
+export async function getAdminProfile() {
+  const res = await clientFetch("/admin/profile");
+  if (!res.ok) {
+    throw new Error("Failed to fetch admin profile");
+  }
+  return res.json();
+}
+
 // Events (for Transactions page)
 // ===========================
 // ===========================

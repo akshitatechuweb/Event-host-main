@@ -1,39 +1,36 @@
 "use client";
-
-import type { LucideIcon } from "lucide-react";
+import React, { useState } from "react";
+import { Sidebar as SidebarContainer, SidebarBody, SidebarLink } from "../ui/sidebar";
 import {
-  LayoutDashboard,
-  Calendar,
-  Users,
-  Ticket,
-  CreditCard,
-  User,
-  Moon,
-  Sun,
-} from "lucide-react";
+  IconBrandTabler,
+  IconCalendar,
+  IconUsers,
+  IconUserBolt,
+  IconTicket,
+  IconCash,
+  IconUser,
+  IconSettings,
+  IconLogout,
+  IconSun,
+  IconMoon,
+} from "@tabler/icons-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { SidebarFooter } from "./SidebarFooter";
-
-type NavItem = {
-  icon: LucideIcon;
-  label: string;
-  href: string;
-};
-
-// IMPORTANT: hrefs remain unchanged (logic-safe)
-const navItems: readonly NavItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" },
-  { icon: Calendar, label: "Events", href: "/admin/events" },
-  { icon: Users, label: "Hosts", href: "/admin/hosts" },
-  { icon: Users, label: "App Users", href: "/admin/app-users" },
-  { icon: Ticket, label: "Tickets", href: "/admin/tickets" },
-  { icon: CreditCard, label: "Transactions", href: "/admin/transactions" },
-  { icon: User, label: "Profile", href: "/admin/profile" },
-] as const;
+import { useLogout } from "@/hooks/useLogout";
+import { useQuery } from "@tanstack/react-query";
+import { getAdminProfile } from "@/lib/admin";
+import { Loader2, User as UserIcon } from "lucide-react";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const { logout, loading } = useLogout();
+
+  const { data: profile, isLoading: isProfileLoading } = useQuery({
+    queryKey: ["admin-profile"],
+    queryFn: () => getAdminProfile(),
+  });
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -41,91 +38,167 @@ export function Sidebar() {
     localStorage.theme = root.classList.contains("dark") ? "dark" : "light";
   };
 
+  const links = [
+    {
+      label: "Dashboard",
+      href: "/admin/dashboard",
+      icon: (
+        <IconBrandTabler className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Events",
+      href: "/admin/events",
+      icon: (
+        <IconCalendar className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Hosts",
+      href: "/admin/hosts",
+      icon: (
+        <IconUsers className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "App Users",
+      href: "/admin/app-users",
+      icon: (
+        <IconUserBolt className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Tickets",
+      href: "/admin/tickets",
+      icon: (
+        <IconTicket className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Transactions",
+      href: "/admin/transactions",
+      icon: (
+        <IconCash className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Profile",
+      href: "/admin/profile",
+      icon: (
+        <IconUser className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+  ];
+
   return (
-    <aside
-      className="
-        fixed left-0 top-0 z-40 h-screen w-60
-        bg-[var(--sidebar-gradient)]
-        backdrop-blur-xl
-        border-r border-sidebar-border
-        shadow-[var(--shadow-premium)]
-        flex flex-col
-      "
-    >
-      {/* Brand */}
-      <div className="px-6 py-8">
-        <h1 className="text-xl font-semibold tracking-tight text-sidebar-foreground">
-          UnrealVibe
-        </h1>
-        <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-          Admin Portal
-        </p>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`
-                group relative flex items-center gap-3 rounded-xl px-3 py-2.5
-                text-sm font-medium transition-smooth
-                ${
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                }
-              `}
+    <SidebarContainer open={open} setOpen={setOpen}>
+      <SidebarBody className="justify-between gap-10 border-r border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 backdrop-blur-md transition-all duration-300">
+        <div className="flex flex-1 flex-col overflow-x-hidden">
+          {open ? (
+            <Logo profile={profile} isLoading={isProfileLoading} />
+          ) : (
+            <LogoIcon profile={profile} isLoading={isProfileLoading} />
+          )}
+          <div className="mt-8 flex flex-col gap-2">
+            {links.map((link, idx) => (
+              <SidebarLink 
+                key={idx} 
+                link={link} 
+                className={cn(
+                  "rounded-xl px-2 transition-all duration-200",
+                  pathname === link.href 
+                    ? "bg-sidebar-primary/10 text-sidebar-primary" 
+                    : "hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+                )}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={toggleTheme}
+            className="flex items-center justify-start gap-2 group/sidebar py-2 px-2 rounded-xl hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 transition-all duration-200"
+          >
+            <div className="relative h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200">
+              <IconSun className="h-5 w-5 dark:hidden" />
+              <IconMoon className="hidden h-5 w-5 dark:block" />
+            </div>
+            <motion.span
+              animate={{
+                display: open ? "inline-block" : "none",
+                opacity: open ? 1 : 0,
+              }}
+              className="text-neutral-700 dark:text-neutral-200 text-sm whitespace-pre font-medium"
             >
-              <span
-                className={`
-                  flex h-9 w-9 items-center justify-center rounded-lg
-                  transition-smooth
-                  ${
-                    isActive
-                      ? "bg-sidebar-primary/15 text-sidebar-primary"
-                      : "bg-muted/40 group-hover:bg-sidebar-primary/10"
-                  }
-                `}
-              >
-                <Icon className="h-4 w-4" />
-              </span>
-
-              <span>{item.label}</span>
-
-              {isActive && (
-                <span className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-pink-500/10 to-violet-500/10" />
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Footer */}
-      <div className="px-3 py-5 border-t border-sidebar-border space-y-2">
-        <SidebarFooter />
-
-        <button
-          onClick={toggleTheme}
-          className="
-            flex w-full items-center gap-3 rounded-xl px-3 py-2.5
-            text-sm font-medium text-muted-foreground
-            hover:bg-sidebar-accent/50 hover:text-sidebar-foreground
-            transition-smooth
-          "
-        >
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted/40">
-            <Sun className="h-4 w-4 dark:hidden" />
-            <Moon className="hidden h-4 w-4 dark:block" />
-          </span>
-          <span>Toggle Theme</span>
-        </button>
-      </div>
-    </aside>
+              Toggle Theme
+            </motion.span>
+          </button>
+          
+          <button
+            onClick={logout}
+            disabled={loading}
+            className="flex items-center justify-start gap-2 group/sidebar py-2 px-2 rounded-xl hover:bg-red-500/5 text-neutral-500 hover:text-red-600 transition-all duration-200 disabled:opacity-50"
+          >
+            <IconLogout className="h-5 w-5 shrink-0 opacity-70 group-hover:opacity-100" />
+            <motion.span
+              animate={{
+                display: open ? "inline-block" : "none",
+                opacity: open ? 1 : 0,
+              }}
+              className="text-sm whitespace-pre font-medium"
+            >
+              {loading ? "Logging out..." : "Logout"}
+            </motion.span>
+          </button>
+        </div>
+      </SidebarBody>
+    </SidebarContainer>
   );
 }
+
+export const Logo = ({ profile, isLoading }: { profile?: any, isLoading?: boolean }) => {
+  return (
+    <div className="flex items-center space-x-3 py-1 text-sm font-normal text-black dark:text-white">
+      <div className="h-8 w-8 shrink-0 rounded-lg overflow-hidden bg-sidebar-primary flex items-center justify-center shadow-sm border border-neutral-200 dark:border-neutral-800">
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-white" />
+        ) : profile?.profilePhoto ? (
+          <img 
+            src={profile.profilePhoto} 
+            alt="Admin" 
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="text-white font-black text-sm">U</span>
+        )}
+      </div>
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="font-bold text-lg tracking-tight text-neutral-800 dark:text-neutral-100 truncate"
+      >
+        {profile?.name || "UnrealVibe"}
+      </motion.span>
+    </div>
+  );
+};
+
+export const LogoIcon = ({ profile, isLoading }: { profile?: any, isLoading?: boolean }) => {
+  return (
+    <div className="flex items-center space-x-2 py-1 text-sm font-normal text-black dark:text-white">
+      <div className="h-8 w-8 shrink-0 rounded-lg overflow-hidden bg-sidebar-primary flex items-center justify-center shadow-sm border border-neutral-200 dark:border-neutral-800">
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-white" />
+        ) : profile?.profilePhoto ? (
+          <img 
+            src={profile.profilePhoto} 
+            alt="Admin" 
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="text-white font-black text-sm">U</span>
+        )}
+      </div>
+    </div>
+  );
+};

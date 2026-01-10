@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendFetch, safeJson } from "@/lib/backend";
+import { adminBackendFetch, safeJson } from "@/lib/backend";
 
 /**
  * GET /api/admin/app-users
@@ -7,8 +7,8 @@ import { backendFetch, safeJson } from "@/lib/backend";
  */
 export async function GET(req: NextRequest) {
     try {
-        // Backend route: GET /api/user (registered in userRoutes.js)
-        const response = await backendFetch("/api/user", req, {
+        // Backend route: GET /api/admin/app-users
+        const response = await adminBackendFetch("/app-users", req, {
             method: "GET",
         });
 

@@ -1020,3 +1020,68 @@ export const updateAdminPassword = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// ========================================================
+// ADMIN: Get all users
+// ========================================================
+export const getAllUsers = async (req, res) => {
+  try {
+    // Summary mode for dashboard
+    if (req.query.summary === "true") {
+      const users = await User.find({})
+        .select("_id")
+        .lean();
+
+      return res.status(200).json({
+        success: true,
+        users: users || [],
+      });
+    }
+
+    // List mode for Admin Panel
+    const users = await User.find({})
+      .select("name email phone city gender role isHost isVerified isActive createdAt profileCompletion")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      users: users || [],
+    });
+  } catch (err) {
+    console.error("❌ Admin users failed:", err);
+
+    // 🔑 Never fail dashboard
+    return res.status(200).json({
+      success: true,
+      users: [],
+    });
+  }
+};
+
+// ========================================================
+// ADMIN: Deactivate user
+// ========================================================
+export const deactivateUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { isActive: false },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "User deactivated successfully",
+      user
+    });
+  } catch (err) {
+    console.error("Error deactivating user:", err);
+    res.status(500).json({ success: false, message: "Failed to deactivate user" });
+  }
+};

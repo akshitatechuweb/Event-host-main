@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendFetch, safeJson } from "@/lib/backend";
+import { adminBackendFetch, safeJson } from "@/lib/backend";
 
 /**
  * PUT /api/admin/app-users/[id]/deactivate
@@ -11,8 +11,8 @@ export async function PUT(
     try {
         const { id } = await params;
 
-        // Backend route: PUT /api/user/deactivate/:id
-        const response = await backendFetch(`/api/user/deactivate/${id}`, req, {
+        // Backend route: PUT /api/admin/app-users/deactivate/:id
+        const response = await adminBackendFetch(`/app-users/deactivate/${id}`, req, {
             method: "PUT",
         });
 

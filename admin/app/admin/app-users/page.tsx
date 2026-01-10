@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { clientFetch } from "@/lib/client";
+import { getAllAppUsers, deactivateAppUser } from "@/lib/admin";
 import { toast } from "sonner";
 import { 
   Users, 
@@ -38,17 +39,11 @@ export default function AppUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await clientFetch("/admin/app-users");
-      const data = await res.json();
-      
-      if (res.ok) {
-        setUsers(data.users || []);
-      } else {
-        toast.error(data.message || "Failed to load users");
-      }
-    } catch (error) {
+      const data = await getAllAppUsers();
+      setUsers(data.users || []);
+    } catch (error: any) {
       console.error("Error fetching users:", error);
-      toast.error("An error occurred while loading users");
+      toast.error(error.message || "An error occurred while loading users");
     } finally {
       setLoading(false);
     }
@@ -58,19 +53,11 @@ export default function AppUsersPage() {
     if (!confirm("Are you sure you want to deactivate this user?")) return;
 
     try {
-      const res = await clientFetch(`/admin/app-users/${id}/deactivate`, {
-        method: "PUT"
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        toast.success("User deactivated successfully");
-        setUsers(users.map(u => u._id === id ? { ...u, isActive: false } : u));
-      } else {
-        toast.error(data.message || "Failed to deactivate user");
-      }
-    } catch (error) {
-      toast.error("An error occurred");
+      await deactivateAppUser(id);
+      toast.success("User deactivated successfully");
+      setUsers(users.map(u => u._id === id ? { ...u, isActive: false } : u));
+    } catch (error: any) {
+      toast.error(error.message || "An error occurred");
     }
   };
 

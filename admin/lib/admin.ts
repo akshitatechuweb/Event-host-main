@@ -274,3 +274,37 @@ export async function updateEvent(eventId: string, formData: FormData) {
 
   return res.json();
 }
+
+/**
+ * 🔹 Get All App Users
+ */
+export async function getAllAppUsers() {
+  const res = await fetch("/api/admin/app-users", {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch users");
+  }
+
+  return res.json();
+}
+
+/**
+ * 🔹 Deactivate User
+ */
+export async function deactivateAppUser(id: string) {
+  const res = await fetch(`/api/admin/app-users/${id}/deactivate`, {
+    method: "PUT",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to deactivate user");
+  }
+
+  return res.json();
+}

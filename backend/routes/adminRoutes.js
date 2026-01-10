@@ -11,7 +11,9 @@ import {
   getEventTransactions,
   getDashboardStats,
   getAllTickets,
-  getAllHosts
+  getAllHosts,
+  getAllUsers,
+  deactivateUser
 } from "../controllers/adminController.js";
 import { getEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
@@ -133,6 +135,24 @@ router.put(
   requireRole("admin", "superadmin"),
   upload.single("eventImage"),
   updateEvent
+);
+
+
+// ===============================
+// APP USERS MANAGEMENT
+// ===============================
+router.get(
+  "/app-users",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getAllUsers
+);
+
+router.put(
+  "/app-users/deactivate/:id",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  deactivateUser
 );
 
 export default router;

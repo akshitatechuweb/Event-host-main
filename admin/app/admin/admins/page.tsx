@@ -267,7 +267,7 @@ function AdminsContent() {
                         title="Read"
                         className={cn(
                           "h-1.5 w-1.5 rounded-full",
-                          admin.permissions[module]?.read
+                          admin.permissions?.[module]?.read
                             ? "bg-sidebar-primary"
                             : "bg-muted-foreground/20"
                         )}
@@ -276,7 +276,7 @@ function AdminsContent() {
                         title="Write"
                         className={cn(
                           "h-1.5 w-1.5 rounded-full",
-                          admin.permissions[module]?.write
+                          admin.permissions?.[module]?.write
                             ? "bg-orange-500"
                             : "bg-muted-foreground/20"
                         )}
@@ -413,16 +413,20 @@ function AdminHandleModal({
   };
 
   const togglePermission = (module: string, type: "read" | "write") => {
-    setFormData((prev) => ({
-      ...prev,
-      permissions: {
-        ...prev.permissions,
-        [module]: {
-          ...prev.permissions[module],
-          [type]: !prev.permissions[module][type],
+    setFormData((prev) => {
+      const prevPerms = prev.permissions || {};
+      const modPerm = prevPerms[module] || { read: true, write: false };
+      return {
+        ...prev,
+        permissions: {
+          ...prevPerms,
+          [module]: {
+            ...modPerm,
+            [type]: !(modPerm[type] ?? false),
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   return (

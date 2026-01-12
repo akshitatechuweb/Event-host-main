@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        const allUsers = Array.isArray(data) ? data : (data as any).users || [];
+        const allUsers = Array.isArray(data) ? data : ((data as any)?.users ?? []);
         const { items, meta } = paginateArray(allUsers, page, limit);
 
         return NextResponse.json({

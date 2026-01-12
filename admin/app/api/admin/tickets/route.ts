@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: text || "Backend error" }, { status });
     }
 
-    const allTickets = Array.isArray(data) ? data : (data as any).tickets || [];
+    const allTickets = Array.isArray(data) ? data : ((data as any)?.tickets ?? []);
     return processAndPaginate(allTickets);
 
   } catch (error) {

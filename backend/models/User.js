@@ -3,7 +3,13 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true },
-    email: { type: String, trim: true, lowercase: true, sparse: true },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      sparse: true,
+      unique: true,
+    },
     phone: { type: String, required: true, unique: true },
     password: { type: String }, // For admin/superadmin login and password change
     city: { type: String, trim: true },
@@ -71,6 +77,30 @@ const userSchema = new mongoose.Schema(
       type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
     },
+
+    // RBAC Permissions for Admins
+    permissions: {
+      users: {
+        read: { type: Boolean, default: false },
+        write: { type: Boolean, default: false },
+      },
+      hosts: {
+        read: { type: Boolean, default: false },
+        write: { type: Boolean, default: false },
+      },
+      events: {
+        read: { type: Boolean, default: false },
+        write: { type: Boolean, default: false },
+      },
+      transactions: {
+        read: { type: Boolean, default: false },
+        write: { type: Boolean, default: false },
+      },
+      tickets: {
+        read: { type: Boolean, default: false },
+        write: { type: Boolean, default: false },
+      },
+    },
   },
   { timestamps: true }
 );
@@ -109,8 +139,12 @@ userSchema.pre("save", function (next) {
   this.profileCompletion = completion;
   this.isProfileComplete = completion === 100;
 
-  // Auto-promote to verified host when 100%
-  if (completion === 100 && hasDocs) {
+  // Auto-promote to verified host when 100% (but don't demote admins/superadmins)
+  if (
+    completion === 100 &&
+    hasDocs &&
+    !["admin", "superadmin"].includes(this.role)
+  ) {
     this.isHost = true;
     this.role = "host";
     this.isVerified = true;

@@ -1,13 +1,12 @@
-
 import { NextRequest, NextResponse } from "next/server";
 
 //const API_URL = "https://api.unrealvibe.com/api";
 const API_URL = "http://localhost:8000/api";
 
-
-
-
-async function proxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+async function proxy(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
   const { path } = await params;
   const pathString = path.join("/");
   const url = `${API_URL}/${pathString}${request.nextUrl.search}`;
@@ -23,30 +22,43 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
       headers,
       body: request.body,
       // @ts-ignore
-      duplex: "half", 
+      duplex: "half",
       cache: "no-store",
     });
 
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set("Cache-Control", "no-store, max-age=0");
-    
+
     // Production cookie handling
     const setCookieHeader = response.headers.getSetCookie();
-    
-    if (setCookieHeader && setCookieHeader.length > 0) {
-        responseHeaders.delete("set-cookie");
-        setCookieHeader.forEach(cookie => {
-            let sanitizedCookie = cookie
-                .replace(/; Domain=[^;]+/i, "; Domain=.unrealvibe.com")
-                .replace(/; Path=[^;]+/i, "; Path=/")
-                .replace(/; SameSite=[^;]+/i, "; SameSite=None");
-            
-            if (!sanitizedCookie.includes("Secure")) {
-                sanitizedCookie += "; Secure";
-            }
 
-            responseHeaders.append("set-cookie", sanitizedCookie);
-        });
+    if (setCookieHeader && setCookieHeader.length > 0) {
+      responseHeaders.delete("set-cookie");
+      setCookieHeader.forEach((cookie) => {
+        const isLocalhost =
+          request.nextUrl.hostname === "localhost" ||
+          request.nextUrl.hostname === "127.0.0.1";
+
+        let sanitizedCookie = cookie
+          .replace(/; Path=[^;]+/i, "; Path=/")
+          .replace(/; SameSite=[^;]+/i, "; SameSite=None");
+
+        if (isLocalhost) {
+          // On localhost, we MUST NOT set a domain like .unrealvibe.com
+          sanitizedCookie = sanitizedCookie.replace(/; Domain=[^;]+/i, "");
+        } else {
+          sanitizedCookie = sanitizedCookie.replace(
+            /; Domain=[^;]+/i,
+            "; Domain=.unrealvibe.com"
+          );
+        }
+
+        if (!sanitizedCookie.includes("Secure")) {
+          sanitizedCookie += "; Secure";
+        }
+
+        responseHeaders.append("set-cookie", sanitizedCookie);
+      });
     }
 
     return new NextResponse(response.body, {

@@ -7,6 +7,8 @@ import { TransactionSearch } from "./TransactionSearch";
 import { getEventTransactions } from "@/lib/admin";
 import { EventTransactionsResponse } from "@/types/transaction";
 import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
+import { Pagination } from "../ui/Pagination";
 
 interface EventTransactionsViewProps {
   eventId: string;
@@ -16,6 +18,10 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<EventTransactionsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
 
   useEffect(() => {
     if (!eventId) {
@@ -31,7 +37,7 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
         setLoading(true);
         setError(null);
 
-        const response = await getEventTransactions(eventId);
+        const response = await getEventTransactions(eventId, page, limit);
 
         console.log("RAW EVENT TRANSACTIONS RESPONSE:", response);
 
@@ -59,7 +65,7 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
     return () => {
       mounted = false;
     };
-  }, [eventId]);
+  }, [eventId, page, limit]);
 
   console.log("EVENT TRANSACTIONS VIEW MOUNTED:", eventId);
   /* -------------------- Loading -------------------- */
@@ -99,7 +105,19 @@ export function EventTransactionsView({ eventId }: EventTransactionsViewProps) {
       {/* Controls + List */}
       <div className="space-y-6">
         <TransactionSearch />
-        <TransactionList transactions={data.transactions} />
+        <div className="bg-card border border-sidebar-border rounded-3xl shadow-xl overflow-hidden glass-morphism">
+          <TransactionList transactions={data.transactions} />
+          {data.meta && (
+            <div className="border-t border-sidebar-border/50 bg-muted/30">
+              <Pagination
+                currentPage={data.meta.currentPage}
+                totalPages={data.meta.totalPages}
+                totalItems={data.meta.totalItems}
+                limit={data.meta.limit}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

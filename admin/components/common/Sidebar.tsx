@@ -1,6 +1,10 @@
 "use client";
 import React, { useState } from "react";
-import { Sidebar as SidebarContainer, SidebarBody, SidebarLink } from "../ui/sidebar";
+import {
+  Sidebar as SidebarContainer,
+  SidebarBody,
+  SidebarLink,
+} from "../ui/sidebar";
 import {
   IconBrandTabler,
   IconCalendar,
@@ -13,6 +17,7 @@ import {
   IconLogout,
   IconSun,
   IconMoon,
+  IconShieldLock,
 } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -88,6 +93,17 @@ export function Sidebar() {
         <IconUser className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
+    ...(profile?.role === "superadmin"
+      ? [
+          {
+            label: "Admins",
+            href: "/admin/admins",
+            icon: (
+              <IconShieldLock className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -101,13 +117,13 @@ export function Sidebar() {
           )}
           <div className="mt-8 flex flex-col gap-2">
             {links.map((link, idx) => (
-              <SidebarLink 
-                key={idx} 
-                link={link} 
+              <SidebarLink
+                key={idx}
+                link={link}
                 className={cn(
                   "rounded-xl px-2 transition-all duration-200",
-                  pathname === link.href 
-                    ? "bg-sidebar-primary/10 text-sidebar-primary" 
+                  pathname === link.href
+                    ? "bg-sidebar-primary/10 text-sidebar-primary"
                     : "hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
                 )}
               />
@@ -133,7 +149,7 @@ export function Sidebar() {
               Toggle Theme
             </motion.span>
           </button>
-          
+
           <button
             onClick={logout}
             disabled={loading}
@@ -156,16 +172,22 @@ export function Sidebar() {
   );
 }
 
-export const Logo = ({ profile, isLoading }: { profile?: any, isLoading?: boolean }) => {
+export const Logo = ({
+  profile,
+  isLoading,
+}: {
+  profile?: any;
+  isLoading?: boolean;
+}) => {
   return (
     <div className="flex items-center space-x-3 py-1 text-sm font-normal text-black dark:text-white">
       <div className="h-8 w-8 shrink-0 rounded-lg overflow-hidden bg-sidebar-primary flex items-center justify-center shadow-sm border border-neutral-200 dark:border-neutral-800">
         {isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-white" />
         ) : profile?.profilePhoto ? (
-          <img 
-            src={profile.profilePhoto} 
-            alt="Admin" 
+          <img
+            src={profile.profilePhoto}
+            alt="Admin"
             className="h-full w-full object-cover"
           />
         ) : (
@@ -192,16 +214,22 @@ export const Logo = ({ profile, isLoading }: { profile?: any, isLoading?: boolea
   );
 };
 
-export const LogoIcon = ({ profile, isLoading }: { profile?: any, isLoading?: boolean }) => {
+export const LogoIcon = ({
+  profile,
+  isLoading,
+}: {
+  profile?: any;
+  isLoading?: boolean;
+}) => {
   return (
     <div className="flex items-center space-x-2 py-1 text-sm font-normal text-black dark:text-white">
       <div className="h-8 w-8 shrink-0 rounded-lg overflow-hidden bg-sidebar-primary flex items-center justify-center shadow-sm border border-neutral-200 dark:border-neutral-800">
         {isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-white" />
         ) : profile?.profilePhoto ? (
-          <img 
-            src={profile.profilePhoto} 
-            alt="Admin" 
+          <img
+            src={profile.profilePhoto}
+            alt="Admin"
             className="h-full w-full object-cover"
           />
         ) : (

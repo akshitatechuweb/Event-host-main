@@ -8,10 +8,13 @@ import { clientFetch } from "./client";
 
 // 🔹 Get all host requests
 export async function getHosts(page = 1, limit = 10) {
-  const res = await fetch(`/api/admin/host-requests?page=${page}&limit=${limit}`, {
-    credentials: "include",
-    cache: "no-store",
-  });
+  const res = await fetch(
+    `/api/admin/host-requests?page=${page}&limit=${limit}`,
+    {
+      credentials: "include",
+      cache: "no-store",
+    }
+  );
 
   if (!res.ok) {
     throw new Error("Failed to fetch host requests");
@@ -19,7 +22,6 @@ export async function getHosts(page = 1, limit = 10) {
 
   return res.json();
 }
-
 
 // 🔹 Get single host request
 export async function getHostById(id: string) {
@@ -34,7 +36,6 @@ export async function getHostById(id: string) {
   return res.json();
 }
 
-
 // 🔹 Approve host
 export async function approveHost(id: string) {
   const res = await fetch(`/api/admin/approve-event-request/${id}`, {
@@ -48,7 +49,6 @@ export async function approveHost(id: string) {
 
   return res.json();
 }
-
 
 // 🔹 Reject host
 export async function rejectHost(id: string, reason?: string) {
@@ -68,17 +68,18 @@ export async function rejectHost(id: string, reason?: string) {
   return res.json();
 }
 
-
 /* ===========================
    EVENT TRANSACTIONS
    (Single source of truth)
 =========================== */
 
 export async function getEventTransactions(
-  eventId: string
+  eventId: string,
+  page = 1,
+  limit = 10
 ): Promise<EventTransactionsResponse> {
   const res = await fetch(
-    `/api/admin/events/${eventId}/transactions`,
+    `/api/admin/events/${eventId}/transactions?page=${page}&limit=${limit}`,
     {
       credentials: "include",
       cache: "no-store",
@@ -256,9 +257,8 @@ export async function createPass(eventId: string, data: any) {
   return res.json();
 }
 
-
-export async function getApprovedHosts() {
-  const res = await fetch("/api/admin/all-hosts", {
+export async function getApprovedHosts(page = 1, limit = 10) {
+  const res = await fetch(`/api/admin/all-hosts?page=${page}&limit=${limit}`, {
     credentials: "include",
     cache: "no-store",
   });
@@ -271,9 +271,6 @@ export async function getApprovedHosts() {
 
   return data;
 }
-
-
-
 
 export async function getEventTickets(eventId: string) {
   const res = await fetch(`/api/admin/tickets?eventId=${eventId}`, {
@@ -368,6 +365,77 @@ export async function deactivateAppUser(id: string) {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to deactivate user");
+  }
+
+  return res.json();
+}
+
+/**
+ * 🔹 Get All Admins (Super Admin only)
+ */
+export async function getAllAdminHandles() {
+  const res = await fetch("/api/admin/admins", {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch admins");
+  }
+
+  return res.json();
+}
+
+/**
+ * 🔹 Create Admin Handle (Super Admin only)
+ */
+export async function createAdminHandle(data: any) {
+  const res = await fetch("/api/admin/admins", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to create admin");
+  }
+
+  return res.json();
+}
+
+/**
+ * 🔹 Update Admin Handle (Super Admin only)
+ */
+export async function updateAdminHandle(id: string, data: any) {
+  const res = await fetch(`/api/admin/admins/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update admin");
+  }
+
+  return res.json();
+}
+
+/**
+ * 🔹 Delete Admin Handle (Super Admin only)
+ */
+export async function deleteAdminHandle(id: string) {
+  const res = await fetch(`/api/admin/admins/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete admin");
   }
 
   return res.json();

@@ -3,17 +3,15 @@ import User from "../models/User.js";
 import axios from "axios";
 import { computeEventExtras } from "./eventUtils.js";
 
-
-
-
-
-
 // ========================================================
 // GET EVENTS (with optional trending filter)
 // ========================================================
 export const getEvents = async (req, res) => {
   try {
-    let { userLat, userLng, trendingOnly } = req.query;
+    const { userLat, userLng, trendingOnly, page = 1, limit = 10 } = req.query;
+    const p = parseInt(page);
+    const l = parseInt(limit);
+    const skip = (p - 1) * l;
 
     let useGeoFilter = false;
     let coordinates = null; // [lng, lat]
@@ -55,10 +53,15 @@ export const getEvents = async (req, res) => {
       };
     }
 
-    const events = await Event.find(filter)
-      .populate("hostId", "name role eventsHosted")
-      .sort({ eventDateTime: 1 })
-      .lean();
+    const [events, totalItems] = await Promise.all([
+      Event.find(filter)
+        .populate("hostId", "name role eventsHosted")
+        .sort({ eventDateTime: 1 })
+        .skip(skip)
+        .limit(l)
+        .lean(),
+      Event.countDocuments(filter),
+    ]);
 
     const formatted = events.map((ev) => {
       let imageUrl = ev.eventImage || null;
@@ -66,7 +69,7 @@ export const getEvents = async (req, res) => {
         if (imageUrl && imageUrl.startsWith("/")) {
           imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
         }
-      } catch (err) { }
+      } catch (err) {}
 
       let bookingPercentage = null;
       if (
@@ -74,9 +77,11 @@ export const getEvents = async (req, res) => {
         ev.maxCapacity > 0 &&
         typeof ev.currentBookings === "number"
       ) {
-        bookingPercentage = Math.round(
-          (ev.currentBookings / ev.maxCapacity) * 100
-        );
+        if (typeof ev.currentBookings === "number") {
+          bookingPercentage = Math.round(
+            (ev.currentBookings / ev.maxCapacity) * 100
+          );
+        }
       }
 
       let status = "";
@@ -85,8 +90,8 @@ export const getEvents = async (req, res) => {
         const eventDate = ev.eventDateTime
           ? new Date(ev.eventDateTime)
           : ev.date
-            ? new Date(ev.date)
-            : null;
+          ? new Date(ev.date)
+          : null;
         const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
         const hoursUntilEvent = eventDate
           ? (eventDate - now) / (1000 * 60 * 60)
@@ -106,12 +111,16 @@ export const getEvents = async (req, res) => {
         else if (bookingPercentage !== null && bookingPercentage >= 50)
           status = "High Demand";
         else if (hoursSinceCreation <= 48) status = "Just Started";
-      } catch (err) { }
+      } catch (err) {}
 
       return {
         ...ev,
         eventImage: imageUrl,
-        hostedBy: ev.hostId?.name || (ev.hostId?.role === "admin" || ev.hostId?.role === "superadmin" ? "Admin" : "Unknown"),
+        hostedBy:
+          ev.hostId?.name ||
+          (ev.hostId?.role === "admin" || ev.hostId?.role === "superadmin"
+            ? "Admin"
+            : "Unknown"),
         totalEventsHosted: ev.hostId?.eventsHosted || 0,
         trending: useGeoFilter, // Now true when nearby events are shown
         category: ev.category || "",
@@ -120,7 +129,16 @@ export const getEvents = async (req, res) => {
       };
     });
 
-    return res.status(200).json({ success: true, events: formatted });
+    return res.status(200).json({
+      success: true,
+      events: formatted,
+      meta: {
+        totalItems,
+        currentPage: p,
+        limit: l,
+        totalPages: Math.ceil(totalItems / l),
+      },
+    });
   } catch (err) {
     console.error("Get Events Error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -135,7 +153,9 @@ export const toggleSaveEvent = async (req, res) => {
     const { eventId } = req.params;
     const userId = req.user._id;
 
-    console.log(`[DEBUG] toggleSaveEvent called: userId=${userId}, eventId=${eventId}`);
+    console.log(
+      `[DEBUG] toggleSaveEvent called: userId=${userId}, eventId=${eventId}`
+    );
 
     const event = await Event.findById(eventId);
     if (!event) {
@@ -182,10 +202,18 @@ export const toggleSaveEvent = async (req, res) => {
 
     try {
       await user.save();
-      console.log(`[DEBUG] User profile saved successfully with updated savedEvents`);
+      console.log(
+        `[DEBUG] User profile saved successfully with updated savedEvents`
+      );
     } catch (saveError) {
       console.error(`[DEBUG] Failed to save user profile:`, saveError);
-      return res.status(500).json({ success: false, message: "Database save failed", error: saveError.message });
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message: "Database save failed",
+          error: saveError.message,
+        });
     }
 
     const totalSaves = await User.countDocuments({
@@ -254,7 +282,11 @@ export const getSavedEvents = async (req, res) => {
         eventImage: extras.eventImage,
         bookingPercentage: extras.bookingPercentage,
         status: extras.status,
-        hostedBy: ev.hostId?.name || (ev.hostId?.role === "admin" || ev.hostId?.role === "superadmin" ? "Admin" : "Unknown"),
+        hostedBy:
+          ev.hostId?.name ||
+          (ev.hostId?.role === "admin" || ev.hostId?.role === "superadmin"
+            ? "Admin"
+            : "Unknown"),
         totalEventsHosted: ev.hostId?.eventsHosted || 0,
         category: ev.category || "",
       };

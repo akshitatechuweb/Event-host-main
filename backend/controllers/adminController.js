@@ -16,8 +16,10 @@ export const approveEventHost = async (req, res) => {
   try {
     const requestId = req.params.id;
 
-    const request = await EventHostRequest.findById(requestId)
-      .populate("userId", "name phone email city");
+    const request = await EventHostRequest.findById(requestId).populate(
+      "userId",
+      "name phone email city"
+    );
 
     if (!request) {
       return res.status(404).json({
@@ -133,17 +135,25 @@ export const rejectEventHost = async (req, res) => {
 // Get All Host Requests (Admin Dashboard)
 export const getAllHostRequests = async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, page = 1, limit = 10 } = req.query;
+    const p = parseInt(page);
+    const l = parseInt(limit);
+    const skip = (p - 1) * l;
 
     const filter = status ? { status } : {};
 
-    const requests = await EventHostRequest.find(filter)
-      .populate("userId", "name phone email city role")
-      .populate("reviewedBy", "name email")
-      .sort({ createdAt: -1 });
+    const [requests, totalItems] = await Promise.all([
+      EventHostRequest.find(filter)
+        .populate("userId", "name phone email city role")
+        .populate("reviewedBy", "name email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(l),
+      EventHostRequest.countDocuments(filter),
+    ]);
 
     const stats = {
-      total: requests.length,
+      total: await EventHostRequest.countDocuments(),
       pending: await EventHostRequest.countDocuments({ status: "pending" }),
       approved: await EventHostRequest.countDocuments({ status: "approved" }),
       rejected: await EventHostRequest.countDocuments({ status: "rejected" }),
@@ -153,6 +163,12 @@ export const getAllHostRequests = async (req, res) => {
       success: true,
       stats,
       requests,
+      meta: {
+        totalItems,
+        currentPage: p,
+        limit: l,
+        totalPages: Math.ceil(totalItems / l),
+      },
     });
   } catch (error) {
     console.error("Get All Requests Error:", error);
@@ -195,23 +211,41 @@ export const getRequestById = async (req, res) => {
 // Get All Approved Hosts (For Creating Events)
 export const getAllHosts = async (req, res) => {
   try {
-    const hosts = await User.find({
+    const { page = 1, limit = 10 } = req.query;
+    const p = parseInt(page);
+    const l = parseInt(limit);
+    const skip = (p - 1) * l;
+
+    const filter = {
       role: "host",
-      eventCreationCredits: { $gt: 0 }
-    })
-      .select("_id name email phone city eventCreationCredits")
-      .sort({ name: 1 });
+      eventCreationCredits: { $gt: 0 },
+    };
+
+    const [hosts, totalItems] = await Promise.all([
+      User.find(filter)
+        .select("_id name email phone city eventCreationCredits")
+        .sort({ name: 1 })
+        .skip(skip)
+        .limit(l),
+      User.countDocuments(filter),
+    ]);
 
     res.json({
       success: true,
-      total: hosts.length,
-      hosts: hosts.map(host => ({
+      total: totalItems,
+      hosts: hosts.map((host) => ({
         hostId: host._id.toString(),
         name: host.name || "No Name",
         email: host.email,
         phone: host.phone,
         city: host.city || "Not specified",
       })),
+      meta: {
+        totalItems,
+        currentPage: p,
+        limit: l,
+        totalPages: Math.ceil(totalItems / l),
+      },
     });
   } catch (error) {
     console.error("Get Hosts Error:", error);
@@ -228,8 +262,10 @@ export const getHostIdFromRequestId = async (req, res) => {
   try {
     const requestId = req.params.requestId;
 
-    const request = await EventHostRequest.findById(requestId)
-      .populate("userId", "_id name email phone city role");
+    const request = await EventHostRequest.findById(requestId).populate(
+      "userId",
+      "_id name email phone city role"
+    );
 
     if (!request || !request.userId) {
       return res.status(404).json({
@@ -260,13 +296,16 @@ export const getHostIdFromRequestId = async (req, res) => {
   }
 };
 
-
 // ========================================================
 // ADMIN: Get all transactions/bookings for a specific event
 // ========================================================
 export const getEventTransactions = async (req, res) => {
   try {
     const eventId = req.params.eventId;
+    const { page = 1, limit = 10 } = req.query;
+    const p = parseInt(page);
+    const l = parseInt(limit);
+    const skip = (p - 1) * l;
 
     // Find bookings for the event
     const bookings = await Booking.find({ eventId })
@@ -274,7 +313,17 @@ export const getEventTransactions = async (req, res) => {
       .lean();
 
     if (!bookings || bookings.length === 0) {
-      return res.status(200).json({ success: true, transactions: [], totals: { totalRevenue: 0, totalTransactions: 0, totalTickets: 0 } });
+      return res.status(200).json({
+        success: true,
+        transactions: [],
+        totals: { totalRevenue: 0, totalTransactions: 0, totalTickets: 0 },
+        meta: {
+          totalItems: 0,
+          currentPage: p,
+          limit: l,
+          totalPages: 0,
+        },
+      });
     }
 
     const bookingMap = {};
@@ -284,22 +333,34 @@ export const getEventTransactions = async (req, res) => {
     });
 
     // Find transactions for those bookings
-    const transactions = await Transaction.find({ bookingId: { $in: bookingIds } })
-      .sort({ createdAt: -1 })
-      .lean();
+    const [transactions, totalItems] = await Promise.all([
+      Transaction.find({ bookingId: { $in: bookingIds } })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(l)
+        .lean(),
+      Transaction.countDocuments({ bookingId: { $in: bookingIds } }),
+    ]);
 
-    // Map transactions to include booking and buyer info
+    // Calculate totals based on ALL bookings if needed, or maybe just return it
+    // For now, let's calculate totals from all transactions associated with these bookings
+    const allTransactions = await Transaction.find({
+      bookingId: { $in: bookingIds },
+    }).lean();
+
     let totalRevenue = 0;
     let totalTickets = 0;
-
-    const items = transactions.map((t) => {
-      const booking = bookingMap[t.bookingId.toString()];
-      const ticketCount = booking?.ticketCount || 0;
+    allTransactions.forEach((t) => {
       if (t.status === "completed") {
-        totalTickets += ticketCount;
+        const booking = bookingMap[t.bookingId.toString()];
+        totalTickets += booking?.ticketCount || 0;
         totalRevenue += Number(t.amount || 0);
       }
+    });
 
+    // Map transactions to include booking and buyer info
+    const items = transactions.map((t) => {
+      const booking = bookingMap[t.bookingId.toString()];
       return {
         _id: t._id,
         amount: t.amount,
@@ -310,13 +371,19 @@ export const getEventTransactions = async (req, res) => {
         createdAt: t.createdAt,
         booking: booking
           ? {
-            _id: booking._id,
-            orderId: booking.orderId,
-            totalAmount: booking.totalAmount,
-            ticketCount: booking.ticketCount,
-            items: booking.items,
-            buyer: booking.userId ? { _id: booking.userId._id, name: booking.userId.name, email: booking.userId.email } : null,
-          }
+              _id: booking._id,
+              orderId: booking.orderId,
+              totalAmount: booking.totalAmount,
+              ticketCount: booking.ticketCount,
+              items: booking.items,
+              buyer: booking.userId
+                ? {
+                    _id: booking.userId._id,
+                    name: booking.userId.name,
+                    email: booking.userId.email,
+                  }
+                : null,
+            }
           : null,
       };
     });
@@ -326,8 +393,14 @@ export const getEventTransactions = async (req, res) => {
       transactions: items,
       totals: {
         totalRevenue,
-        totalTransactions: transactions.length,
+        totalTransactions: allTransactions.length,
         totalTickets,
+      },
+      meta: {
+        totalItems,
+        currentPage: p,
+        limit: l,
+        totalPages: Math.ceil(totalItems / l),
       },
     });
   } catch (error) {
@@ -351,7 +424,7 @@ export const getDashboardStats = async (req, res) => {
       totalTransactions,
       successfulTransactions,
       recentEventsData,
-      recentTransactionsData
+      recentTransactionsData,
     ] = await Promise.all([
       Event.countDocuments(),
       User.countDocuments(),
@@ -367,12 +440,12 @@ export const getDashboardStats = async (req, res) => {
           path: "bookingId",
           populate: {
             path: "eventId",
-            select: "eventName title"
-          }
+            select: "eventName title",
+          },
         })
         .sort({ createdAt: -1 })
         .limit(10)
-        .lean()
+        .lean(),
     ]);
 
     // Calculate total revenue from successful transactions
@@ -393,7 +466,10 @@ export const getDashboardStats = async (req, res) => {
     // Format recent transactions
     const recentTransactions = recentTransactionsData.map((t) => ({
       id: t._id,
-      event: t.bookingId?.eventId?.eventName || t.bookingId?.eventId?.title || "Event Payment",
+      event:
+        t.bookingId?.eventId?.eventName ||
+        t.bookingId?.eventId?.title ||
+        "Event Payment",
       date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "Recent",
       amount: `₹${Number(t.amount || 0).toLocaleString()}`,
       status: "completed",
@@ -440,13 +516,18 @@ export const getDashboardStats = async (req, res) => {
   }
 };
 
-
-
-
 export const getAllTickets = async (req, res) => {
   try {
+    const { page = 1, limit = 10 } = req.query;
+    const p = parseInt(page);
+    const l = parseInt(limit);
+    const skip = (p - 1) * l;
+
+    const eventsCount = await Event.countDocuments({});
     const events = await Event.find({}).lean();
-    const confirmedBookings = await Booking.find({ status: "confirmed" }).lean();
+    const confirmedBookings = await Booking.find({
+      status: "confirmed",
+    }).lean();
 
     const allTickets = [];
 
@@ -466,7 +547,8 @@ export const getAllTickets = async (req, res) => {
           const quantity = Number(item.quantity) || 0;
 
           if (passType && quantity > 0) {
-            soldByPassType[passType] = (soldByPassType[passType] || 0) + quantity;
+            soldByPassType[passType] =
+              (soldByPassType[passType] || 0) + quantity;
           }
         });
       });
@@ -488,16 +570,25 @@ export const getAllTickets = async (req, res) => {
       });
     });
 
+    // Since this is aggregated in memory, we paginte here
+    const totalItems = allTickets.length;
+    const paginatedTickets = allTickets.slice(skip, skip + l);
+
     res.json({
       success: true,
-      tickets: allTickets,
+      tickets: paginatedTickets,
+      meta: {
+        totalItems,
+        currentPage: p,
+        limit: l,
+        totalPages: Math.ceil(totalItems / l),
+      },
     });
   } catch (error) {
     console.error("Get All Tickets Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // ========================================================
 // ADMIN/SUPERADMIN — CREATE EVENT
@@ -893,14 +984,16 @@ export const updateAdminProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Admin not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: "Admin not found" });
     }
 
     if (name) user.name = name;
     if (phone) user.phone = phone;
 
     if (req.file) {
-      const photoUrl = '/uploads/' + req.file.filename;
+      const photoUrl = "/uploads/" + req.file.filename;
       user.photos = user.photos || [];
       user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
       user.photos.push({ url: photoUrl, isProfilePhoto: true });
@@ -915,19 +1008,19 @@ export const updateAdminProfile = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Profile updated successfully',
+      message: "Profile updated successfully",
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         phone: user.phone,
         role: user.role,
-        profilePhoto
-      }
+        profilePhoto,
+      },
     });
   } catch (error) {
-    console.error('Update Admin Profile Error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Update Admin Profile Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -940,7 +1033,9 @@ export const updateAdminPassword = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Admin not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: "Admin not found" });
     }
 
     let isMatch = false;
@@ -954,23 +1049,28 @@ export const updateAdminPassword = async (req, res) => {
 
       if (user.email === ADMIN_EMAIL && currentPassword === ADMIN_PASSWORD) {
         isMatch = true;
-      } else if (user.email === SUPERADMIN_EMAIL && currentPassword === SUPERADMIN_PASSWORD) {
+      } else if (
+        user.email === SUPERADMIN_EMAIL &&
+        currentPassword === SUPERADMIN_PASSWORD
+      ) {
         isMatch = true;
       }
     }
 
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Incorrect current password' });
+      return res
+        .status(400)
+        .json({ success: false, message: "Incorrect current password" });
     }
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     await user.save();
 
-    res.json({ success: true, message: 'Password updated successfully' });
+    res.json({ success: true, message: "Password updated successfully" });
   } catch (error) {
-    console.error('Update Admin Password Error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Update Admin Password Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -982,9 +1082,7 @@ export const getAllUsers = async (req, res) => {
     // Summary mode for dashboard
     if (req.query.summary === "true") {
       // Only count app users (exclude hosts/admins)
-      const users = await User.find({ role: "user" })
-        .select("_id")
-        .lean();
+      const users = await User.find({ role: "user" }).select("_id").lean();
 
       return res.status(200).json({
         success: true,
@@ -992,15 +1090,33 @@ export const getAllUsers = async (req, res) => {
       });
     }
 
+    const { page = 1, limit = 10 } = req.query;
+    const p = parseInt(page);
+    const l = parseInt(limit);
+    const skip = (p - 1) * l;
+
     // List mode for Admin Panel - return only app users by default
-    const users = await User.find({ role: "user" })
-      .select("name email phone city gender role isHost isVerified isActive createdAt profileCompletion")
-      .sort({ createdAt: -1 })
-      .lean();
+    const [users, totalItems] = await Promise.all([
+      User.find({ role: "user" })
+        .select(
+          "name email phone city gender role isHost isVerified isActive createdAt profileCompletion"
+        )
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(l)
+        .lean(),
+      User.countDocuments({ role: "user" }),
+    ]);
 
     return res.status(200).json({
       success: true,
       users: users || [],
+      meta: {
+        totalItems,
+        currentPage: p,
+        limit: l,
+        totalPages: Math.ceil(totalItems / l),
+      },
     });
   } catch (err) {
     console.error("❌ Admin users failed:", err);
@@ -1026,16 +1142,20 @@ export const deactivateUser = async (req, res) => {
     ).select("-password");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     res.json({
       success: true,
       message: "User deactivated successfully",
-      user
+      user,
     });
   } catch (err) {
     console.error("Error deactivating user:", err);
-    res.status(500).json({ success: false, message: "Failed to deactivate user" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to deactivate user" });
   }
 };

@@ -7,9 +7,14 @@ import { HostTableRow } from "./HostTableRow";
 interface HostTableProps {
   hosts: Host[];
   onActionComplete: () => void;
+  canEdit?: boolean;
 }
 
-export function HostTable({ hosts, onActionComplete }: HostTableProps) {
+export function HostTable({
+  hosts,
+  onActionComplete,
+  canEdit = false,
+}: HostTableProps) {
   if (hosts.length === 0) {
     return (
       <div className="rounded-2xl bg-white dark:bg-black/40 border border-border p-6 text-center">
@@ -26,6 +31,7 @@ export function HostTable({ hosts, onActionComplete }: HostTableProps) {
           key={host._id}
           host={host}
           onActionComplete={onActionComplete}
+          canEdit={canEdit}
         />
       ))}
     </div>

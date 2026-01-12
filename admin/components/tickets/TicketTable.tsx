@@ -46,14 +46,16 @@ export function TicketTable({ searchQuery = "" }: TicketTableProps) {
         ticket.eventName,
         ticket.ticketType,
       ]),
-    [tickets, debouncedQuery],
+    [tickets, debouncedQuery]
   );
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-20 rounded-3xl border border-border/50 bg-muted/10 glass-morphism">
         <Loader2 className="w-10 h-10 animate-spin text-sidebar-primary mb-4" />
-        <p className="text-sm text-muted-foreground font-medium animate-pulse">Scanning ticket inventory...</p>
+        <p className="text-sm text-muted-foreground font-medium animate-pulse">
+          Scanning ticket inventory...
+        </p>
       </div>
     );
   }
@@ -77,7 +79,9 @@ export function TicketTable({ searchQuery = "" }: TicketTableProps) {
   if (Object.keys(grouped).length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-20 rounded-3xl border border-border/50 bg-muted/10">
-        <p className="text-sm text-muted-foreground">No tickets found matches your search or inventory is empty.</p>
+        <p className="text-sm text-muted-foreground">
+          No tickets found matches your search or inventory is empty.
+        </p>
       </div>
     );
   }
@@ -86,15 +90,21 @@ export function TicketTable({ searchQuery = "" }: TicketTableProps) {
     <div className="space-y-8">
       <div className="space-y-4">
         {Object.entries(grouped).map(([eventName, passes]) => (
-          <EventTicketCard key={eventName} eventName={eventName} passes={passes} />
+          <EventTicketCard
+            key={eventName}
+            eventName={eventName}
+            passes={passes}
+          />
         ))}
       </div>
 
-      {meta && meta.totalPages > 1 && (
+      {meta && (
         <div className="mt-8 border-t border-border/30 pt-4">
-          <Pagination 
-            currentPage={meta.currentPage} 
-            totalPages={meta.totalPages} 
+          <Pagination
+            currentPage={meta.currentPage}
+            totalPages={meta.totalPages}
+            totalItems={meta.totalItems}
+            limit={meta.limit}
           />
         </div>
       )}

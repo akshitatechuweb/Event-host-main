@@ -3,11 +3,7 @@
 ====================================================== */
 
 /* ---------- Transaction Status ---------- */
-export type TransactionStatus =
-  | "pending"
-  | "completed"
-  | "failed"
-  | "refunded";
+export type TransactionStatus = "pending" | "completed" | "failed" | "refunded";
 
 /* ---------- Booking Item (Pass Info) ---------- */
 export interface BookingItem {
@@ -65,4 +61,10 @@ export interface EventTransactionsResponse {
   transactions: Transaction[];
   totals: TransactionTotals;
   message?: string;
+  meta?: {
+    totalItems: number;
+    currentPage: number;
+    limit: number;
+    totalPages: number;
+  };
 }

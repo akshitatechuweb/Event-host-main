@@ -29,7 +29,7 @@ export const authMiddleware = async (req, res, next) => {
 
     // ✅ Fetch minimal required fields only
     const user = await User.findById(decoded.sub).select(
-      "_id email role isVerified isActive name phone photos"
+      "_id email role isVerified isActive name phone photos permissions"
     );
 
     if (!user) {
@@ -64,7 +64,27 @@ export const authMiddleware = async (req, res, next) => {
    🛡️ ROLE-BASED ACCESS CONTROL
 ================================================= */
 
-export const requireRole = (...roles) => (req, res, next) => {
+export const requireRole =
+  (...roles) =>
+  (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden",
+      });
+    }
+
+    next();
+  };
+
+export const checkPermission = (module, type) => (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -72,10 +92,21 @@ export const requireRole = (...roles) => (req, res, next) => {
     });
   }
 
-  if (!roles.includes(req.user.role)) {
+  // Superadmin bypasses all permission checks
+  if (req.user.role === "superadmin") {
+    return next();
+  }
+
+  const userPermissions = req.user.permissions;
+
+  if (
+    !userPermissions ||
+    !userPermissions[module] ||
+    !userPermissions[module][type]
+  ) {
     return res.status(403).json({
       success: false,
-      message: "Forbidden",
+      message: `Access denied: No ${type} permission for ${module}`,
     });
   }
 

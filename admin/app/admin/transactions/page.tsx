@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ArrowRight, Calendar, Ticket, Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Pagination } from "@/components/ui/Pagination";
 
 interface Event {
   _id: string;
@@ -16,12 +18,23 @@ interface Event {
 
 interface EventsApiResponse {
   events: Event[];
+  meta?: {
+    totalItems: number;
+    currentPage: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export default function TransactionsPage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [meta, setMeta] = useState<EventsApiResponse["meta"]>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
 
   useEffect(() => {
     async function fetchEvents(): Promise<void> {
@@ -30,10 +43,13 @@ export default function TransactionsPage() {
         setError(null);
 
         // ✅ SAME-ORIGIN FETCH (NO ENV, NO BACKEND URL)
-        const response = await fetch("/api/admin/events", {
-          credentials: "include",
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `/api/admin/events?page=${page}&limit=${limit}`,
+          {
+            credentials: "include",
+            cache: "no-store",
+          }
+        );
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -48,8 +64,10 @@ export default function TransactionsPage() {
         // Handle different response formats (unchanged)
         if (Array.isArray(data)) {
           setEvents(data);
+          setMeta(undefined);
         } else {
           setEvents((data as EventsApiResponse).events ?? []);
+          setMeta((data as EventsApiResponse).meta);
         }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to load events");
@@ -59,7 +77,7 @@ export default function TransactionsPage() {
     }
 
     fetchEvents();
-  }, []);
+  }, [page, limit]);
 
   return (
     <DashboardLayout>
@@ -107,56 +125,69 @@ export default function TransactionsPage() {
 
         {/* Events Grid */}
         {!loading && !error && events.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event) => (
-              <Link
-                key={event._id}
-                href={`/admin/transactions/${event._id}`}
-                className="group relative rounded-xl border border-border/50 bg-card p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-black/8"
-              >
-                <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {events.map((event) => (
+                <Link
+                  key={event._id}
+                  href={`/admin/transactions/${event._id}`}
+                  className="group relative rounded-xl border border-border/50 bg-card p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-black/8"
+                >
+                  <div className="pointer-events-none absolute inset-0 rounded-xl bg-linear-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-                <div className="relative flex flex-col gap-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="text-base font-medium text-foreground truncate">
-                        {event.eventName}
-                      </h3>
-                      <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="w-4 h-4" />
+                  <div className="relative flex flex-col gap-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="text-base font-medium text-foreground truncate">
+                          {event.eventName}
+                        </h3>
+                        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4" />
+                          <span>
+                            {new Date(event.date).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {event.city}
+                        </p>
+                      </div>
+
+                      <ArrowRight className="w-4 h-4 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1" />
+                    </div>
+
+                    {event.currentBookings !== undefined && (
+                      <div className="flex items-center gap-2 pt-3 border-t border-border/30 text-sm text-muted-foreground">
+                        <Ticket className="w-4 h-4" />
                         <span>
-                          {new Date(event.date).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {event.currentBookings}{" "}
+                          {event.currentBookings === 1 ? "booking" : "bookings"}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {event.city}
-                      </p>
+                    )}
+
+                    <div className="flex items-center text-sm font-medium text-foreground group-hover:text-foreground/80 transition-colors pt-1">
+                      <span>View transactions</span>
+                      <ArrowRight className="ml-1.5 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
                     </div>
-
-                    <ArrowRight className="w-4 h-4 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1" />
                   </div>
+                </Link>
+              ))}
+            </div>
 
-                  {event.currentBookings !== undefined && (
-                    <div className="flex items-center gap-2 pt-3 border-t border-border/30 text-sm text-muted-foreground">
-                      <Ticket className="w-4 h-4" />
-                      <span>
-                        {event.currentBookings}{" "}
-                        {event.currentBookings === 1 ? "booking" : "bookings"}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center text-sm font-medium text-foreground group-hover:text-foreground/80 transition-colors pt-1">
-                    <span>View transactions</span>
-                    <ArrowRight className="ml-1.5 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-                  </div>
-                </div>
-              </Link>
-            ))}
+            {meta && (
+              <div className="border-t border-border/50 pt-8">
+                <Pagination
+                  currentPage={meta.currentPage}
+                  totalPages={meta.totalPages}
+                  totalItems={meta.totalItems}
+                  limit={meta.limit}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

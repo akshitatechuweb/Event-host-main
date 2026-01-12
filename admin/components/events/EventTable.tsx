@@ -19,12 +19,14 @@ interface EventTableProps {
   onEdit?: (event: Event) => void;
   onViewTransactions?: (eventId: string, eventName?: string) => void;
   searchQuery?: string;
+  canEdit?: boolean;
 }
 
 export function EventTable({
   onEdit,
   onViewTransactions,
   searchQuery = "",
+  canEdit = false,
 }: EventTableProps) {
   const searchParams = useSearchParams();
   const page = parseInt(searchParams.get("page") || "1");
@@ -54,7 +56,9 @@ export function EventTable({
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-sidebar-primary" />
-        <p className="text-muted-foreground font-medium animate-pulse">Syncing events...</p>
+        <p className="text-muted-foreground font-medium animate-pulse">
+          Syncing events...
+        </p>
       </div>
     );
   }
@@ -84,15 +88,18 @@ export function EventTable({
             onRefresh={refetch}
             onEdit={onEdit}
             onViewTransactions={onViewTransactions}
+            canEdit={canEdit}
           />
         ))}
       </div>
-      
-      {meta && meta.totalPages > 1 && (
+
+      {meta && (
         <div className="border-t border-border/50 bg-muted/5">
-          <Pagination 
-            currentPage={meta.currentPage} 
-            totalPages={meta.totalPages} 
+          <Pagination
+            currentPage={meta.currentPage}
+            totalPages={meta.totalPages}
+            totalItems={meta.totalItems}
+            limit={meta.limit}
           />
         </div>
       )}

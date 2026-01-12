@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, Check, X } from "lucide-react";
-import { Host, HostStatus } from "@/types/host";  // ← Add HostStatus here
+import { Host, HostStatus } from "@/types/host"; // ← Add HostStatus here
 import { approveHost, rejectHost } from "@/lib/admin";
 import { useState } from "react";
 import HostDetailsModal from "./HostDetailsModal";
@@ -16,9 +16,11 @@ const STATUS_STYLES: Record<HostStatus, string> = {
 export function HostTableRow({
   host,
   onActionComplete,
+  canEdit = false,
 }: {
   host: Host;
   onActionComplete: () => void;
+  canEdit?: boolean;
 }) {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -33,7 +35,9 @@ export function HostTableRow({
   };
 
   // Safe access with fallback
-  const statusStyle = host.status ? STATUS_STYLES[host.status] : "bg-gray-500/15 text-gray-600";
+  const statusStyle = host.status
+    ? STATUS_STYLES[host.status]
+    : "bg-gray-500/15 text-gray-600";
   const displayStatus = host.status ?? "unknown";
 
   return (
@@ -58,16 +62,28 @@ export function HostTableRow({
       </div>
 
       <div className="flex justify-center gap-2">
-        <button className="icon-btn" onClick={() => setShowDetails(true)} title="View details">
+        <button
+          className="icon-btn"
+          onClick={() => setShowDetails(true)}
+          title="View details"
+        >
           <Eye className="w-4 h-4" />
         </button>
 
-        {host.status === "pending" && (
+        {host.status === "pending" && canEdit && (
           <>
-            <button onClick={handleApprove} className="icon-btn text-emerald-500" title="Approve request">
+            <button
+              onClick={handleApprove}
+              className="icon-btn text-emerald-500"
+              title="Approve request"
+            >
               <Check className="w-4 h-4" />
             </button>
-            <button onClick={handleReject} className="icon-btn text-red-500" title="Reject request">
+            <button
+              onClick={handleReject}
+              className="icon-btn text-red-500"
+              title="Reject request"
+            >
               <X className="w-4 h-4" />
             </button>
           </>

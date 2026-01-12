@@ -1,8 +1,21 @@
 import express from "express";
-import { authMiddleware } from "../middleware/authMiddleware.js";
+import {
+  authMiddleware,
+  checkPermission,
+} from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import { upload } from "../middleware/multer.js";
-import { adminLogin, adminLogout, adminMe } from "../controllers/authController.js";
+import {
+  adminLogin,
+  adminLogout,
+  adminMe,
+} from "../controllers/authController.js";
+import {
+  createAdmin,
+  getAllAdmins,
+  updateAdmin,
+  deleteAdmin,
+} from "../controllers/superAdminController.js";
 import {
   getAllHostRequests,
   getRequestById,
@@ -13,23 +26,31 @@ import {
   getAllTickets,
   getAllHosts,
   getAllUsers,
-  deactivateUser
-} from "../controllers/adminController.js";
-import { getUserById } from "../controllers/userController.js";
-import { getEvents } from "../controllers/eventController.js";
-import { getPasses } from "../controllers/passController.js";
-import {
+  deactivateUser,
   createEvent,
   updateEvent,
   updateAdminProfile,
   updateAdminPassword,
 } from "../controllers/adminController.js";
+import { getUserById } from "../controllers/userController.js";
+import { getEvents } from "../controllers/eventController.js";
+import { getPasses } from "../controllers/passController.js";
 const router = express.Router();
 
 // Admin authentication
 router.post("/auth/login", adminLogin);
-router.get("/auth/me", authMiddleware, requireRole("admin", "superadmin"), adminMe);
-router.get("/profile", authMiddleware, requireRole("admin", "superadmin"), adminMe);
+router.get(
+  "/auth/me",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  adminMe
+);
+router.get(
+  "/profile",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  adminMe
+);
 router.post("/auth/logout", authMiddleware, adminLogout);
 
 // Profile management
@@ -48,7 +69,12 @@ router.put(
 );
 
 // Dashboard stats endpoint
-router.get("/dashboard/stats", authMiddleware, requireRole("admin", "superadmin"), getDashboardStats);
+router.get(
+  "/dashboard/stats",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getDashboardStats
+);
 
 // ===============================
 // HOST REQUESTS MANAGEMENT
@@ -59,6 +85,7 @@ router.get(
   "/host-requests",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("hosts", "read"),
   getAllHostRequests
 );
 
@@ -67,6 +94,7 @@ router.get(
   "/host-requests/:id",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("hosts", "read"),
   getRequestById
 );
 
@@ -75,6 +103,7 @@ router.put(
   "/approve-event-request/:id",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("hosts", "write"),
   approveEventHost
 );
 
@@ -83,6 +112,7 @@ router.post(
   "/host-requests/reject/:id",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("hosts", "write"),
   rejectEventHost
 );
 
@@ -91,6 +121,7 @@ router.get(
   "/all-hosts",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("hosts", "read"),
   getAllHosts
 );
 
@@ -101,32 +132,37 @@ router.get(
   "/events/:eventId/transactions",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("transactions", "read"),
   getEventTransactions
 );
-
-
 
 router.get(
   "/events",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("events", "read"),
   getEvents
 );
 
 // GET: All tickets or tickets by Event ID
-router.get("/tickets", authMiddleware, requireRole("admin", "superadmin"), (req, res, next) => {
-  if (req.query.eventId) {
-    return getPasses(req, res, next);
+router.get(
+  "/tickets",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  checkPermission("tickets", "read"),
+  (req, res, next) => {
+    if (req.query.eventId) {
+      return getPasses(req, res, next);
+    }
+    return getAllTickets(req, res, next);
   }
-  return getAllTickets(req, res, next);
-});
-
-
+);
 
 router.post(
   "/event/create-event",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("events", "write"),
   upload.single("eventImage"),
   createEvent
 );
@@ -135,10 +171,10 @@ router.put(
   "/event/update-event/:eventId",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("events", "write"),
   upload.single("eventImage"),
   updateEvent
 );
-
 
 // ===============================
 // APP USERS MANAGEMENT
@@ -147,6 +183,7 @@ router.get(
   "/app-users",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("users", "read"),
   getAllUsers
 );
 
@@ -155,6 +192,7 @@ router.get(
   "/app-users/:id",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("users", "read"),
   getUserById
 );
 
@@ -162,7 +200,29 @@ router.put(
   "/app-users/deactivate/:id",
   authMiddleware,
   requireRole("admin", "superadmin"),
+  checkPermission("users", "write"),
   deactivateUser
+);
+
+// ===============================
+// SUPER ADMIN MANAGEMENT
+// ===============================
+router.post("/admins", authMiddleware, requireRole("superadmin"), createAdmin);
+
+router.get("/admins", authMiddleware, requireRole("superadmin"), getAllAdmins);
+
+router.put(
+  "/admins/:id",
+  authMiddleware,
+  requireRole("superadmin"),
+  updateAdmin
+);
+
+router.delete(
+  "/admins/:id",
+  authMiddleware,
+  requireRole("superadmin"),
+  deleteAdmin
 );
 
 export default router;

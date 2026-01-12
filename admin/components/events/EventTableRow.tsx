@@ -11,12 +11,14 @@ interface EventTableRowProps {
   onRefresh: () => void;
   onEdit?: (event: Event) => void;
   onViewTransactions?: (eventId: string, eventName?: string) => void;
+  canEdit?: boolean;
 }
 
 export function EventTableRow({
   event,
   onEdit,
   onViewTransactions,
+  canEdit = false,
 }: EventTableRowProps) {
   // Safe fallback: if maxCapacity is somehow missing (shouldn't happen with correct type)
   const maxCapacity = event.maxCapacity ?? 0;
@@ -37,7 +39,8 @@ export function EventTableRow({
             alt={event.eventName}
             className="h-full w-full object-cover"
             onError={(e) => {
-              const transparent1px = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAA6fptVAAAADUlEQVQI12NgYGBgAAAABQABDQottAAAAABJRU5ErkJggg==";
+              const transparent1px =
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAA6fptVAAAADUlEQVQI12NgYGBgAAAABQABDQottAAAAABJRU5ErkJggg==";
               const placeholderPath = "/placeholder.svg";
 
               const src = e.currentTarget.src || "";
@@ -90,20 +93,14 @@ export function EventTableRow({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() =>
-              onViewTransactions(event._id, event.eventName)
-            }
+            onClick={() => onViewTransactions(event._id, event.eventName)}
           >
             <Eye className="h-4 w-4" />
           </Button>
         )}
 
-        {onEdit && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(event)}
-          >
+        {onEdit && canEdit && (
+          <Button variant="ghost" size="icon" onClick={() => onEdit(event)}>
             <Pencil className="h-4 w-4" />
           </Button>
         )}

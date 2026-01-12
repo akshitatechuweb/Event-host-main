@@ -11,6 +11,7 @@ import { filterBySearchQuery } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Pagination } from "@/components/ui/Pagination";
 import { Loader2 } from "lucide-react";
 
@@ -32,7 +33,8 @@ function HostsContent() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  
+  const { canWrite } = usePermissions();
+
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "10");
 
@@ -46,15 +48,17 @@ function HostsContent() {
   const source = data?.requests ?? [];
   const meta = data?.meta;
 
-  const normalized: Host[] = useMemo(() => 
-    source.map((item: RawHost) => ({
-      _id: item._id,
-      userName: item.userId?.name ?? "Unknown",
-      phone: item.userId?.phone ?? "-",
-      city: item.city ?? "—",
-      preferredPartyDate: item.preferredPartyDate ?? "—",
-      status: item.status,
-    })), [source]
+  const normalized: Host[] = useMemo(
+    () =>
+      source.map((item: RawHost) => ({
+        _id: item._id,
+        userName: item.userId?.name ?? "Unknown",
+        phone: item.userId?.phone ?? "-",
+        city: item.city ?? "—",
+        preferredPartyDate: item.preferredPartyDate ?? "—",
+        status: item.status,
+      })),
+    [source]
   );
 
   const filteredHosts = useMemo(
@@ -64,7 +68,7 @@ function HostsContent() {
         host.phone,
         host.city,
       ]),
-    [normalized, debouncedQuery],
+    [normalized, debouncedQuery]
   );
 
   return (
@@ -77,23 +81,32 @@ function HostsContent() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center p-20 rounded-3xl border border-border/50 bg-muted/10 glass-morphism">
             <Loader2 className="w-10 h-10 animate-spin text-sidebar-primary mb-4" />
-            <p className="text-sm text-muted-foreground font-medium animate-pulse">Syncing host requests...</p>
+            <p className="text-sm text-muted-foreground font-medium animate-pulse">
+              Syncing host requests...
+            </p>
           </div>
         ) : error ? (
           <div className="p-8 rounded-3xl border border-destructive/20 bg-destructive/5 text-center">
-            <p className="text-sm text-destructive font-medium">Failed to load hosts</p>
+            <p className="text-sm text-destructive font-medium">
+              Failed to load hosts
+            </p>
           </div>
         ) : (
           <div className="bg-card border border-border rounded-3xl shadow-xl overflow-hidden glass-morphism">
             <HostTable
               hosts={filteredHosts}
-              onActionComplete={() => queryClient.invalidateQueries({ queryKey: ["hosts"] })}
+              onActionComplete={() =>
+                queryClient.invalidateQueries({ queryKey: ["hosts"] })
+              }
+              canEdit={canWrite("hosts")}
             />
-            {meta && meta.totalPages > 1 && (
+            {meta && (
               <div className="border-t border-border/50 bg-muted/5">
-                <Pagination 
-                  currentPage={meta.currentPage} 
-                  totalPages={meta.totalPages} 
+                <Pagination
+                  currentPage={meta.currentPage}
+                  totalPages={meta.totalPages}
+                  totalItems={meta.totalItems}
+                  limit={meta.limit}
                 />
               </div>
             )}
@@ -107,11 +120,13 @@ function HostsContent() {
 export default function HostsPage() {
   return (
     <DashboardLayout>
-      <Suspense fallback={
-        <div className="flex items-center justify-center p-20">
-          <Loader2 className="h-10 w-10 animate-spin text-sidebar-primary" />
-        </div>
-      }>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center p-20">
+            <Loader2 className="h-10 w-10 animate-spin text-sidebar-primary" />
+          </div>
+        }
+      >
         <HostsContent />
       </Suspense>
     </DashboardLayout>

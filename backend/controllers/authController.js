@@ -27,10 +27,6 @@ const authCookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
-
-
-
-
 /* =================================================
    📩 REQUEST OTP (USERS)
 ================================================= */
@@ -118,11 +114,10 @@ export const verifyOtp = async (req, res) => {
 
     return res.json({
       success: true,
-      token,                
+      token,
       role: user.role,
       isProfileComplete: user.isProfileComplete || false,
     });
-
   } catch (err) {
     console.error("OTP verify error:", err);
     return res.status(500).json({
@@ -131,7 +126,6 @@ export const verifyOtp = async (req, res) => {
     });
   }
 };
-
 
 /* =================================================
    🔐 ADMIN / SUPERADMIN LOGIN
@@ -143,13 +137,14 @@ const ADMIN = {
   role: "admin",
 };
 
+// Hardcoded Super Admin as per request
 const SUPERADMIN = {
-  email: process.env.SUPERADMIN_EMAIL,
-  password: process.env.SUPERADMIN_PASSWORD,
+  email: "superadmin@gmail.com",
+  password: "superadmin@123",
   role: "superadmin",
 };
 
-const ADMIN_HASH = bcrypt.hashSync(ADMIN.password, 10);
+const ADMIN_HASH = bcrypt.hashSync(ADMIN.password || "admin123", 10);
 const SUPERADMIN_HASH = bcrypt.hashSync(SUPERADMIN.password, 10);
 
 export const adminLogin = async (req, res) => {
@@ -205,6 +200,14 @@ export const adminLogin = async (req, res) => {
     }
 
     if (!user) {
+      const fullPermissions = {
+        users: { read: true, write: true },
+        hosts: { read: true, write: true },
+        events: { read: true, write: true },
+        transactions: { read: true, write: true },
+        tickets: { read: true, write: true },
+      };
+
       user = await User.create({
         email: normalizedEmail,
         phone,
@@ -213,7 +216,34 @@ export const adminLogin = async (req, res) => {
         isVerified: true,
         isActive: true,
         isProfileComplete: true,
+        permissions: role === "superadmin" ? fullPermissions : undefined,
       });
+    } else {
+      // 🚀 IMPORTANT: If they logged in with hardcoded credentials,
+      // ensure their DB role and permissions are elevated/synced.
+      let needsSave = false;
+      if (role && user.role !== role) {
+        console.log(`ELEVATING USER ${user.email} TO ${role}`);
+        user.role = role;
+        needsSave = true;
+      }
+
+      if (user.role === "superadmin") {
+        const fullPermissions = {
+          users: { read: true, write: true },
+          hosts: { read: true, write: true },
+          events: { read: true, write: true },
+          transactions: { read: true, write: true },
+          tickets: { read: true, write: true },
+        };
+        // Use JSON.stringify for a simple deep compare if needed, or just overwrite
+        user.permissions = fullPermissions;
+        needsSave = true;
+      }
+
+      if (needsSave) {
+        await user.save();
+      }
     }
 
     const token = jwt.sign(
@@ -255,7 +285,7 @@ export const adminMe = async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden" });
     }
 
-    let profilePhoto = user.photos?.find(p => p.isProfilePhoto)?.url || null;
+    let profilePhoto = user.photos?.find((p) => p.isProfilePhoto)?.url || null;
     if (profilePhoto && profilePhoto.startsWith("/")) {
       profilePhoto = `${req.protocol}://${req.get("host")}${profilePhoto}`;
     }
@@ -271,7 +301,9 @@ export const adminMe = async (req, res) => {
     });
   } catch (err) {
     console.error("Admin me error:", err);
-    return res.status(500).json({ success: false, message: "Session check failed" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Session check failed" });
   }
 };
 

@@ -333,13 +333,18 @@ export default function AddEventModal({
           <Button variant="ghost" onClick={step === 1 ? onClose : back}>
             {step === 1 ? "Cancel" : "Back"}
           </Button>
-          <Button onClick={step === 5 ? handleSubmit : next} disabled={loading}>
-            {step === 5
-              ? editingEvent
-                ? "Update Event"
-                : "Create Event"
-              : "Continue"}
-          </Button>
+  <Button 
+  onClick={step === 5 ? handleSubmit : next} 
+  disabled={loading}
+  className="bg-sidebar-primary text-white shadow-lg shadow-sidebar-primary/25 hover:bg-sidebar-primary/90 transition-smooth"
+>
+  {step === 5
+    ? editingEvent
+      ? "Update Event"
+      : "Create Event"
+    : "Continue"}
+</Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>

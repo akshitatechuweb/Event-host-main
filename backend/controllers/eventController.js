@@ -1,6 +1,7 @@
 import Event from "../models/Event.js";
 import User from "../models/User.js";
 import axios from "axios";
+import { computeEventExtras } from "./eventUtils.js";
 
 
 

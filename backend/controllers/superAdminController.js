@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import fs from "fs";
+import { encryptText, decryptText } from "../utils/passwordEncrypt.js";
 
 // Helper for debug logging
 const debugLog = (msg, data = {}) => {
@@ -81,6 +82,10 @@ export const createAdmin = async (req, res) => {
 
     user.name = name || user.name || "Admin";
     user.password = bcrypt.hashSync(password, 10);
+    // Store encrypted plaintext (for superadmin view only)
+    user.previous_password_encrypted = null;
+    user.password_encrypted = encryptText(password);
+
     user.permissions = permissions || {
       users: { read: true, write: false },
       hosts: { read: true, write: false },
@@ -105,6 +110,8 @@ export const createAdmin = async (req, res) => {
         phone: user.phone,
         role: user.role,
         permissions: user.permissions,
+        passwordPlain: decryptText(user.password_encrypted),
+        previousPasswordPlain: decryptText(user.previous_password_encrypted),
       },
     });
   } catch (error) {
@@ -117,15 +124,42 @@ export const createAdmin = async (req, res) => {
   }
 };
 
-// Get all admins
+// Get all admins (supports pagination)
 export const getAllAdmins = async (req, res) => {
   try {
-    const admins = await User.find({ role: "admin" }).select(
-      "name email phone role permissions isActive createdAt"
-    );
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
+
+    const total = await User.countDocuments({ role: "admin" });
+    const admins = await User.find({ role: "admin" })
+      .select("name email phone role permissions isActive createdAt password_encrypted previous_password_encrypted")
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    // Decrypt encrypted password fields for superadmin view only
+    const transformed = admins.map((a) => ({
+      _id: a._id,
+      name: a.name,
+      email: a.email,
+      phone: a.phone,
+      role: a.role,
+      permissions: a.permissions,
+      isActive: a.isActive,
+      createdAt: a.createdAt,
+      passwordPlain: decryptText(a.password_encrypted),
+      previousPasswordPlain: decryptText(a.previous_password_encrypted),
+    }));
+
     res.json({
       success: true,
-      admins,
+      admins: transformed,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -198,16 +232,33 @@ export const updateAdmin = async (req, res) => {
 
     if (password) {
       debugLog("PASSWORD CHANGED FOR:", id);
+      // preserve previous encrypted plain password and set new encrypted plain
+      admin.previous_password_encrypted = admin.password_encrypted || null;
+      admin.password_encrypted = encryptText(password);
       admin.password = bcrypt.hashSync(password, 10);
     }
 
     await admin.save();
     debugLog("UPDATE COMPLETED SUCCESSFULLY:", id);
 
+    // Return decrypted plaintext fields for convenience in UI (superadmin only)
+    const returned = {
+      _id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      phone: admin.phone,
+      role: admin.role,
+      permissions: admin.permissions,
+      isActive: admin.isActive,
+      createdAt: admin.createdAt,
+      passwordPlain: decryptText(admin.password_encrypted),
+      previousPasswordPlain: decryptText(admin.previous_password_encrypted),
+    };
+
     res.json({
       success: true,
       message: "Admin updated successfully",
-      admin,
+      admin: returned,
     });
   } catch (error) {
     debugLog("UPDATE ADMIN FATAL ERROR:", {

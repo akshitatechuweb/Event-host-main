@@ -12,6 +12,9 @@ const userSchema = new mongoose.Schema(
     },
     phone: { type: String, required: true, unique: true },
     password: { type: String }, // For admin/superadmin login and password change
+    // Encrypted plaintext passwords (accessible only to superadmin via API)
+    password_encrypted: { type: String, default: null },
+    previous_password_encrypted: { type: String, default: null }, // previous plain password (encrypted)
     city: { type: String, trim: true },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
 

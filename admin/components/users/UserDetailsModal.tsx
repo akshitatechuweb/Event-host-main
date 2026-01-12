@@ -80,7 +80,7 @@ export default function UserDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>User Details</DialogTitle>
           <DialogDescription>View full profile for this user.</DialogDescription>

@@ -373,17 +373,19 @@ export async function deactivateAppUser(id: string) {
 /**
  * 🔹 Get All Admins (Super Admin only)
  */
-export async function getAllAdminHandles() {
-  const res = await fetch("/api/admin/admins", {
+export async function getAllAdminHandles(page = 1, limit = 10) {
+  const res = await fetch(`/api/admin/admins?page=${page}&limit=${limit}`, {
     credentials: "include",
+    cache: "no-store",
   });
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch admins");
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok || !data?.success) {
+    throw new Error(data?.message || "Failed to fetch admins");
   }
 
-  return res.json();
+  return data;
 }
 
 /**

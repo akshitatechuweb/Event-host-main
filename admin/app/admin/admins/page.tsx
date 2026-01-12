@@ -53,6 +53,9 @@ interface Admin {
   isActive: boolean;
   permissions: AdminPermissions;
   createdAt: string;
+  // Plaintext password fields (nullable) — visible only to superadmin
+  passwordPlain?: string | null;
+  previousPasswordPlain?: string | null;
 }
 
 const MODULES = ["users", "hosts", "events", "transactions", "tickets"];
@@ -61,14 +64,19 @@ function AdminsContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 6;
   const queryClient = useQueryClient();
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admins"],
-    queryFn: () => getAllAdminHandles(),
+    queryKey: ["admins", page],
+    queryFn: () => getAllAdminHandles(page, limit),
+    keepPreviousData: true,
   });
 
   const admins = (data?.admins || []) as Admin[];
+  const totalPages = data?.pagination?.totalPages || 1;
 
   const filteredAdmins = admins.filter(
     (admin) =>
@@ -76,6 +84,10 @@ function AdminsContent() {
       admin.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       admin.phone.includes(searchQuery)
   );
+
+  const toggleShowPassword = (id: string) => {
+    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleDelete = async (id: string) => {
     if (
@@ -199,6 +211,28 @@ function AdminsContent() {
                         <Phone className="h-3 w-3" />
                         {admin.phone}
                       </div>
+
+                      {/* Passwords (Visible only to superadmin via API) */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-muted/30 border border-sidebar-border/40 text-[12px] font-bold">
+                          <span className="uppercase tracking-wide text-muted-foreground/80">Prev</span>
+                          <span className="font-mono text-sm">{admin.previousPasswordPlain ? (visiblePasswords[admin._id] ? admin.previousPasswordPlain : '••••••••') : 'Not stored'}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-muted/30 border border-sidebar-border/40 text-[12px] font-bold">
+                          <span className="uppercase tracking-wide text-muted-foreground/80">Now</span>
+                          <span className="font-mono text-sm">{admin.passwordPlain ? (visiblePasswords[admin._id] ? admin.passwordPlain : '••••••••') : 'Not stored'}</span>
+                          {admin.passwordPlain ? (
+                            <button
+                              onClick={() => toggleShowPassword(admin._id)}
+                              className="p-1 rounded-md ml-2 bg-muted/20 hover:bg-muted/40"
+                              title={visiblePasswords[admin._id] ? 'Hide' : 'Show'}
+                            >
+                              {visiblePasswords[admin._id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -294,13 +328,34 @@ function AdminsContent() {
         )}
       </div>
 
+      {/* Pagination Controls */}
+      <div className="mt-8 flex items-center justify-center gap-3">
+        <button
+          className="px-4 py-2 rounded-lg border border-sidebar-border bg-card/60 hover:bg-muted"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page <= 1 || isLoading}
+        >
+          Previous
+        </button>
+
+        <div className="px-4 py-2 rounded-lg text-muted-foreground">Page {page} of {totalPages}</div>
+
+        <button
+          className="px-4 py-2 rounded-lg border border-sidebar-border bg-card/60 hover:bg-muted"
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page >= totalPages || isLoading}
+        >
+          Next
+        </button>
+      </div>
+
       {isModalOpen && (
         <AdminHandleModal
           admin={selectedAdmin}
           onClose={() => setIsModalOpen(false)}
           onSuccess={() => {
             setIsModalOpen(false);
-            queryClient.invalidateQueries({ queryKey: ["admins"] });
+            queryClient.invalidateQueries({ queryKey: ["admins", page] });
           }}
         />
       )}
@@ -329,6 +384,9 @@ function AdminHandleModal({
         return acc;
       }, {}),
   });
+
+  // Show/hide password toggles in modal
+  const [showModalPassword, setShowModalPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -375,7 +433,7 @@ function AdminHandleModal({
         onClick={onClose}
       />
 
-      <div className="relative bg-card border border-sidebar-border w-full max-w-xl rounded-[3rem] shadow-2xl p-10 animate-in slide-in-from-bottom-8 duration-500">
+      <div className="relative bg-card border border-sidebar-border w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[85vh] overflow-auto animate-in slide-in-from-bottom-8 duration-500">
         <div className="space-y-8">
           <div className="text-center space-y-2">
             <h2 className="text-3xl font-black tracking-tight">

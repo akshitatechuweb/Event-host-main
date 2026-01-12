@@ -14,8 +14,10 @@ import {
   Filter,
   UserCheck,
   UserMinus,
-  Loader2
+  Loader2,
+  Eye
 } from "lucide-react";
+import UserDetailsModal from "@/components/users/UserDetailsModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { Pagination } from "@/components/ui/Pagination";
@@ -32,6 +34,8 @@ interface AppUser {
 function AppUsersContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -198,15 +202,21 @@ function AppUsersContent() {
                       )}
                     </td>
                     <td className="px-8 py-6 text-right">
-                      {user.isActive && (
-                        <button 
-                          onClick={() => handleDeactivate(user._id)}
-                          className="p-2.5 rounded-xl hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-smooth group/btn border border-transparent hover:border-red-500/20"
-                          title="Deactivate Member"
-                        >
-                          <ShieldAlert className="h-5 w-5 group-hover/btn:scale-110 transition-transform" />
+                      <div className="flex items-center gap-2 justify-end">
+                        <button className="icon-btn" onClick={() => { setSelectedUserId(user._id); setIsUserModalOpen(true) }} title="View details">
+                          <Eye className="h-4 w-4" />
                         </button>
-                      )}
+
+                        {user.isActive && (
+                          <button 
+                            onClick={() => handleDeactivate(user._id)}
+                            className="p-2.5 rounded-xl hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-smooth group/btn border border-transparent hover:border-red-500/20"
+                            title="Deactivate Member"
+                          >
+                            <ShieldAlert className="h-5 w-5 group-hover/btn:scale-110 transition-transform" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -220,7 +230,14 @@ function AppUsersContent() {
           </div>
         )}
       </div>
-    </div>
+      {selectedUserId && (
+        <UserDetailsModal
+          userId={selectedUserId}
+          open={isUserModalOpen}
+          onOpenChange={(o) => { if (!o) setSelectedUserId(null); setIsUserModalOpen(o); }}
+          onActionComplete={() => { queryClient.invalidateQueries({ queryKey: ["app-users"] }); }}
+        />
+      )}    </div>
   );
 }
 

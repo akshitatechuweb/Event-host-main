@@ -342,6 +342,20 @@ export async function getAllAppUsers(page = 1, limit = 10) {
   return res.json();
 }
 
+export async function getAppUserById(id: string) {
+  const res = await fetch(`/api/admin/app-users/${id}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch user");
+  }
+
+  return res.json();
+}
+
 /**
  * 🔹 Deactivate User
  */

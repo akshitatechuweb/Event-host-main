@@ -15,6 +15,7 @@ import {
   getAllUsers,
   deactivateUser
 } from "../controllers/adminController.js";
+import { getUserById } from "../controllers/userController.js";
 import { getEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
 import {
@@ -147,6 +148,14 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   getAllUsers
+);
+
+// Get single app user (Admin)
+router.get(
+  "/app-users/:id",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getUserById
 );
 
 router.put(

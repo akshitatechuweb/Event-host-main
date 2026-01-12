@@ -72,7 +72,6 @@ function AdminsContent() {
   const { data, isLoading } = useQuery({
     queryKey: ["admins", page],
     queryFn: () => getAllAdminHandles(page, limit),
-    keepPreviousData: true,
   });
 
   const admins = (data?.admins || []) as Admin[];

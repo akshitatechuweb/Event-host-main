@@ -176,14 +176,10 @@ export const adminLogin = async (req, res) => {
         isMatch = true;
         role = user.role;
       }
-      // If the user exists and has a DB password but it didn't match,
-      // we must NOT fall back to the hardcoded env passwords. This prevents
-      // the case where an admin updates their password but can still log in
-      // with the old env password.
     }
 
-    // 2. Fallback to hardcoded admin check only when there is no DB password
-    if (!isMatch && (!user || !user.password)) {
+    // 2. Fallback to hardcoded admin check (preserve previous behaviour)
+    if (!isMatch) {
       if (normalizedEmail === ADMIN.email) {
         role = "admin";
         hash = ADMIN_HASH;

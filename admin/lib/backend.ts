@@ -6,8 +6,6 @@ import "server-only";
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(/\/+$/, "");
 
-
-
 /**
  * Robust proxy fetch for API routes.
  * Forwards all headers and handles streaming bodies.

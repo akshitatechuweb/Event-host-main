@@ -181,7 +181,7 @@ function AppUsersContent() {
                         ${user.gender?.toLowerCase() === 'male' ? 'bg-blue-500/10 text-blue-500' : 
                           user.gender?.toLowerCase() === 'female' ? 'bg-pink-500/10 text-pink-500' : 
                           'bg-muted text-muted-foreground'}`}>
-                        {user.gender || "Unknown"}
+                        {user.gender ?? "—"}
                       </span>
                     </td>
                     <td className="px-6 py-6 text-center">

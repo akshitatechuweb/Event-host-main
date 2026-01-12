@@ -981,7 +981,8 @@ export const getAllUsers = async (req, res) => {
   try {
     // Summary mode for dashboard
     if (req.query.summary === "true") {
-      const users = await User.find({})
+      // Only count app users (exclude hosts/admins)
+      const users = await User.find({ role: "user" })
         .select("_id")
         .lean();
 
@@ -991,8 +992,8 @@ export const getAllUsers = async (req, res) => {
       });
     }
 
-    // List mode for Admin Panel
-    const users = await User.find({})
+    // List mode for Admin Panel - return only app users by default
+    const users = await User.find({ role: "user" })
       .select("name email phone city gender role isHost isVerified isActive createdAt profileCompletion")
       .sort({ createdAt: -1 })
       .lean();

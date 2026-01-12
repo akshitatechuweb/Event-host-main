@@ -37,7 +37,19 @@ export function EventTableRow({
             alt={event.eventName}
             className="h-full w-full object-cover"
             onError={(e) => {
-              e.currentTarget.src = "/placeholder.png";
+              const transparent1px = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAA6fptVAAAADUlEQVQI12NgYGBgAAAABQABDQottAAAAABJRU5ErkJggg==";
+              const placeholderPath = "/placeholder.svg";
+
+              const src = e.currentTarget.src || "";
+              // If we've already tried the data URI, stop to avoid loop
+              if (src === transparent1px) return;
+
+              // First try to load the app-level placeholder; if that fails next onError will trigger and we'll fall back to the data URI
+              if (src.includes("placeholder.svg")) {
+                e.currentTarget.src = transparent1px;
+              } else {
+                e.currentTarget.src = placeholderPath;
+              }
             }}
           />
         ) : (

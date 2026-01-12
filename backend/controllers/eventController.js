@@ -111,7 +111,7 @@ export const getEvents = async (req, res) => {
       return {
         ...ev,
         eventImage: imageUrl,
-        hostedBy: ev.hostId?.name || "Unknown",
+        hostedBy: ev.hostId?.name || (ev.hostId?.role === "admin" || ev.hostId?.role === "superadmin" ? "Admin" : "Unknown"),
         totalEventsHosted: ev.hostId?.eventsHosted || 0,
         trending: useGeoFilter, // Now true when nearby events are shown
         category: ev.category || "",
@@ -254,7 +254,7 @@ export const getSavedEvents = async (req, res) => {
         eventImage: extras.eventImage,
         bookingPercentage: extras.bookingPercentage,
         status: extras.status,
-        hostedBy: ev.hostId?.name || "Unknown",
+        hostedBy: ev.hostId?.name || (ev.hostId?.role === "admin" || ev.hostId?.role === "superadmin" ? "Admin" : "Unknown"),
         totalEventsHosted: ev.hostId?.eventsHosted || 0,
         category: ev.category || "",
       };

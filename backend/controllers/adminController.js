@@ -144,7 +144,7 @@ export const getAllHostRequests = async (req, res) => {
 
     const [requests, totalItems] = await Promise.all([
       EventHostRequest.find(filter)
-        .populate("userId", "name phone email city role")
+        .populate("userId", "name phone email city role documents photos")
         .populate("reviewedBy", "name email")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -184,7 +184,7 @@ export const getAllHostRequests = async (req, res) => {
 export const getRequestById = async (req, res) => {
   try {
     const request = await EventHostRequest.findById(req.params.id)
-      .populate("userId", "name phone email city role")
+      .populate("userId", "name phone email city role documents photos")
       .populate("reviewedBy", "name email");
 
     if (!request) {
@@ -371,19 +371,19 @@ export const getEventTransactions = async (req, res) => {
         createdAt: t.createdAt,
         booking: booking
           ? {
-              _id: booking._id,
-              orderId: booking.orderId,
-              totalAmount: booking.totalAmount,
-              ticketCount: booking.ticketCount,
-              items: booking.items,
-              buyer: booking.userId
-                ? {
-                    _id: booking.userId._id,
-                    name: booking.userId.name,
-                    email: booking.userId.email,
-                  }
-                : null,
-            }
+            _id: booking._id,
+            orderId: booking.orderId,
+            totalAmount: booking.totalAmount,
+            ticketCount: booking.ticketCount,
+            items: booking.items,
+            buyer: booking.userId
+              ? {
+                _id: booking.userId._id,
+                name: booking.userId.name,
+                email: booking.userId.email,
+              }
+              : null,
+          }
           : null,
       };
     });

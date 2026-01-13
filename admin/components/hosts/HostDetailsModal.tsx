@@ -13,10 +13,18 @@ import {
 import { getHostById, approveHost, rejectHost } from "@/lib/admin";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-
 interface HostDetail {
-  _id: string;
-  userId?: { name?: string; phone?: string; email?: string } | null;
+  userId?: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    documents?: {
+      aadhaar?: string;
+      pan?: string;
+      drivingLicense?: string;
+    } | null;
+    photos?: { url: string; isProfilePhoto?: boolean }[] | null;
+  } | null;
   preferredPartyDate?: string | null;
   locality?: string | null;
   city?: string | null;
@@ -157,7 +165,76 @@ export default function HostDetailsModal({
               )}
             </div>
 
-            {/* Files/docs (server currently doesn't store files on host requests) */}
+            {/* Photos Section */}
+            {(data.userId?.photos?.length ?? 0) > 0 && (
+              <div className="col-span-2 space-y-2">
+                <p className="text-sm text-muted-foreground">Host Photos</p>
+                <div className="flex flex-wrap gap-2">
+                  {data.userId?.photos?.map((photo, i) => (
+                    <div key={i} className="relative w-24 h-24 rounded-md overflow-hidden border border-border">
+                      <img
+                        src={photo.url}
+                        alt={`Host photo ${i + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      {photo.isProfilePhoto && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] py-0.5 text-center">
+                          Profile
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Documents Section */}
+            {data.userId?.documents && (
+              <div className="col-span-2 space-y-2">
+                <p className="text-sm text-muted-foreground">Verification Documents</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {data.userId.documents.aadhaar && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Aadhaar</p>
+                      <div className="w-full h-32 rounded-md overflow-hidden border border-border">
+                        <img
+                          src={data.userId.documents.aadhaar}
+                          alt="Aadhaar"
+                          className="w-full h-full object-cover cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
+                          onClick={() => window.open(data.userId?.documents?.aadhaar || "", "_blank")}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {data.userId.documents.pan && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">PAN</p>
+                      <div className="w-full h-32 rounded-md overflow-hidden border border-border">
+                        <img
+                          src={data.userId.documents.pan}
+                          alt="PAN"
+                          className="w-full h-full object-cover cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
+                          onClick={() => window.open(data.userId?.documents?.pan || "", "_blank")}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {data.userId.documents.drivingLicense && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Driving License</p>
+                      <div className="w-full h-32 rounded-md overflow-hidden border border-border">
+                        <img
+                          src={data.userId.documents.drivingLicense}
+                          alt="Driving License"
+                          className="w-full h-full object-cover cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
+                          onClick={() => window.open(data.userId?.documents?.drivingLicense || "", "_blank")}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="py-6 text-center text-muted-foreground">No details available</div>

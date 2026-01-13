@@ -8,7 +8,7 @@ import { computeEventExtras } from "./eventUtils.js";
 // ========================================================
 export const getEvents = async (req, res) => {
   try {
-    const { userLat, userLng, trendingOnly, page = 1, limit = 10 } = req.query;
+    const { userLat, userLng, trendingOnly, city, page = 1, limit = 10 } = req.query;
     const p = parseInt(page);
     const l = parseInt(limit);
     const skip = (p - 1) * l;
@@ -18,8 +18,11 @@ export const getEvents = async (req, res) => {
     let isTrendingRequested = trendingOnly === "true";
 
     if (isTrendingRequested) {
-      // Priority 1: Use explicit coords from frontend (for testing/manual override)
-      if (userLat && userLng) {
+      if (city) {
+        // If city is specified, we consider events in that city as trending context
+        useGeoFilter = true;
+      } else if (userLat && userLng) {
+        // Priority 1: Use explicit coords from frontend (for testing/manual override)
         coordinates = [parseFloat(userLng), parseFloat(userLat)];
         useGeoFilter = true;
       }
@@ -41,7 +44,14 @@ export const getEvents = async (req, res) => {
     }
 
     const filter = {};
-    if (useGeoFilter && coordinates) {
+
+    // 1. City Filter (Prioritize if provided)
+    if (city) {
+      filter.city = { $regex: new RegExp(`^${city}$`, "i") };
+    }
+
+    // 2. Geo Filter (Only if trending requested and NO city provided)
+    if (useGeoFilter && coordinates && !city) {
       // Use $geoWithin to filter events within a radius and allow custom sorting (e.g., by eventDateTime).
       // $near / $nearSphere can cause errors when combined with non-geospatial sorts in some MongoDB contexts.
       const radiusMeters = 20000; // 20km
@@ -70,7 +80,7 @@ export const getEvents = async (req, res) => {
         if (imageUrl && imageUrl.startsWith("/")) {
           imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
         }
-      } catch (err) {}
+      } catch (err) { }
 
       let bookingPercentage = null;
       if (
@@ -91,8 +101,8 @@ export const getEvents = async (req, res) => {
         const eventDate = ev.eventDateTime
           ? new Date(ev.eventDateTime)
           : ev.date
-          ? new Date(ev.date)
-          : null;
+            ? new Date(ev.date)
+            : null;
         const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
         const hoursUntilEvent = eventDate
           ? (eventDate - now) / (1000 * 60 * 60)
@@ -112,7 +122,7 @@ export const getEvents = async (req, res) => {
         else if (bookingPercentage !== null && bookingPercentage >= 50)
           status = "High Demand";
         else if (hoursSinceCreation <= 48) status = "Just Started";
-      } catch (err) {}
+      } catch (err) { }
 
       return {
         ...ev,

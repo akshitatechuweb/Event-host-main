@@ -21,6 +21,7 @@ import { Loader2 } from "lucide-react";
 type RawHost = {
   _id: string;
   userId?: {
+    _id?: string;
     name?: string;
     phone?: string;
   };
@@ -52,6 +53,7 @@ function HostsContent() {
     () =>
       source.map((item: RawHost) => ({
         _id: item._id,
+        realUserId: item.userId?._id,
         userName: item.userId?.name ?? "Unknown",
         phone: item.userId?.phone ?? "-",
         city: item.city ?? "—",

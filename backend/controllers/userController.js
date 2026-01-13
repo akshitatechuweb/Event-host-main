@@ -136,7 +136,16 @@ export const getAllUsers = async (req, res) => {
     }
 
     // List mode for Admin Panel
-    const users = await User.find({})
+    const { status } = req.query;
+    const filter = {};
+
+    if (status === "active") {
+      filter.isActive = true;
+    } else if (status === "deactivated") {
+      filter.isActive = false;
+    }
+
+    const users = await User.find(filter)
       .select("name email phone city gender role isHost isVerified isActive createdAt profileCompletion")
       .sort({ createdAt: -1 })
       .lean();

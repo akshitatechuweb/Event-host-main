@@ -325,8 +325,13 @@ export async function updateEvent(eventId: string, formData: FormData) {
 /**
  * 🔹 Get All App Users
  */
-export async function getAllAppUsers(page = 1, limit = 10) {
-  const res = await fetch(`/api/admin/app-users?page=${page}&limit=${limit}`, {
+export async function getAllAppUsers(page = 1, limit = 10, status = "") {
+  let url = `/api/admin/app-users?page=${page}&limit=${limit}`;
+  if (status) {
+    url += `&status=${status}`;
+  }
+
+  const res = await fetch(url, {
     credentials: "include",
     cache: "no-store",
   });
@@ -446,7 +451,7 @@ export async function deleteAdminHandle(id: string) {
 
 
 export async function getHostEvents(hostId: string) {
- const res = await fetch(`/api/admin/hosts/${hostId}/events`, {
+  const res = await fetch(`/api/admin/hosts/${hostId}/events`, {
     credentials: "include",
     cache: "no-store",
   });

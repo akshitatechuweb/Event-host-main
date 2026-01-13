@@ -97,6 +97,13 @@ export const verifyOtp = async (req, res) => {
         isVerified: true,
       });
     } else {
+      // 🚀 Check if account is deactivated
+      if (user.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          message: "This account has been deactivated. Please use a different phone number to register.",
+        });
+      }
       user.isVerified = true;
       await user.save();
     }

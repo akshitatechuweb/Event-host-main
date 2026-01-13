@@ -106,7 +106,7 @@ export function HostTableRow({
           onActionComplete={onActionComplete}
         />
         <HostEventsModal
-          hostId={host._id}
+          hostId={host.realUserId || host._id}
           hostName={host.userName}
           open={showEvents}
           onOpenChange={setShowEvents}

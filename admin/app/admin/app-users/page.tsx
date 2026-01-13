@@ -35,6 +35,7 @@ interface AppUser {
 function AppUsersContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const searchParams = useSearchParams();
@@ -45,8 +46,8 @@ function AppUsersContent() {
   const limit = parseInt(searchParams.get("limit") || "10");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["app-users", page, limit],
-    queryFn: () => getAllAppUsers(page, limit),
+    queryKey: ["app-users", page, limit, statusFilter],
+    queryFn: () => getAllAppUsers(page, limit, statusFilter),
   });
 
   const users = (data?.users || []) as AppUser[];
@@ -102,14 +103,17 @@ function AppUsersContent() {
             </p>
           </div>
           <div className="h-10 w-px bg-sidebar-border mx-2" />
-          <div className="text-center px-4">
+          <button 
+            onClick={() => setStatusFilter("deactivated")}
+            className="text-center px-4 hover:bg-red-500/5 transition-colors rounded-xl cursor-pointer"
+          >
             <p className="text-2xl font-bold text-red-500">
               {users.filter((u) => !u.isActive).length}
             </p>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
               On Page Inactive
             </p>
-          </div>
+          </button>
         </div>
       </div>
       {/* Filters & Search */}
@@ -136,6 +140,19 @@ function AppUsersContent() {
             <option value="male">Male</option>
             <option value="female">Female</option>
             <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 bg-card border border-sidebar-border px-4 py-1 rounded-2xl shadow-sm min-w-[200px]">
+          <Filter className="h-5 w-5 text-muted-foreground" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-transparent py-2.5 outline-none w-full text-sm font-medium"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active Members</option>
+            <option value="deactivated">Deactivated Members</option>
           </select>
         </div>
       </div>

@@ -31,26 +31,26 @@ const eventSchema = new mongoose.Schema(
     maxCapacity: { type: Number },
     currentBookings: { type: Number, default: 0 },
     averageRating: { type: Number, default: 0 },
-totalReviews: { type: Number, default: 0 },
-    
-    
-    shareCount: {
-  type: Number,
-  default: 0,
-},
+    totalReviews: { type: Number, default: 0 },
 
-sharedBy: [
-  {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+
+    shareCount: {
+      type: Number,
+      default: 0,
     },
-    sharedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-],
+
+    sharedBy: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        sharedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
 
     passes: [
       {

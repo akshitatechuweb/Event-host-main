@@ -11,9 +11,15 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const page = parseInt(searchParams.get("page") || "1");
         const limit = parseInt(searchParams.get("limit") || "10");
+        const userStatus = searchParams.get("status") || "";
 
         // Backend route: GET /api/admin/app-users
-        const response = await adminBackendFetch("/app-users", req, {
+        let backendUrl = "/app-users";
+        if (userStatus) {
+            backendUrl += `?status=${userStatus}`;
+        }
+
+        const response = await adminBackendFetch(backendUrl, req, {
             method: "GET",
         });
 
@@ -24,7 +30,7 @@ export async function GET(req: NextRequest) {
             console.warn("Non-JSON response from backend /app-users:", (text || "").slice(0, 200));
             return NextResponse.json(
                 { success: false, message: text || "Failed to fetch users" },
-                { status }
+                { status: status as number }
             );
         }
 
@@ -35,7 +41,7 @@ export async function GET(req: NextRequest) {
             success: true,
             users: items,
             meta
-        }, { status });
+        }, { status: status as number });
 
     } catch (err) {
         console.error("API APP USERS ERROR:", err);

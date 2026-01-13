@@ -1099,14 +1099,21 @@ export const getAllUsers = async (req, res) => {
       });
     }
 
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, status } = req.query;
     const p = parseInt(page);
     const l = parseInt(limit);
     const skip = (p - 1) * l;
 
+    const filter = { role: "user" };
+    if (status === "active") {
+      filter.isActive = true;
+    } else if (status === "deactivated") {
+      filter.isActive = false;
+    }
+
     // List mode for Admin Panel - return only app users by default
     const [users, totalItems] = await Promise.all([
-      User.find({ role: "user" })
+      User.find(filter)
         .select(
           "name email phone city gender role isHost isVerified isActive createdAt profileCompletion"
         )
@@ -1114,7 +1121,7 @@ export const getAllUsers = async (req, res) => {
         .skip(skip)
         .limit(l)
         .lean(),
-      User.countDocuments({ role: "user" }),
+      User.countDocuments(filter),
     ]);
 
     return res.status(200).json({

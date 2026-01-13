@@ -1,10 +1,11 @@
 "use client";
 
-import { Eye, Check, X } from "lucide-react";
+import { Eye, Check,Layers, X } from "lucide-react";
 import { Host, HostStatus } from "@/types/host"; // ← Add HostStatus here
 import { approveHost, rejectHost } from "@/lib/admin";
 import { useState } from "react";
 import HostDetailsModal from "./HostDetailsModal";
+import { HostEventsModal } from "./HostEventsModal"; // Added Modal
 
 // Now this works perfectly
 const STATUS_STYLES: Record<HostStatus, string> = {
@@ -23,7 +24,8 @@ export function HostTableRow({
   canEdit?: boolean;
 }) {
   const [showDetails, setShowDetails] = useState(false);
-
+  // Add this line below to fix the ReferenceError
+  const [showEvents, setShowEvents] = useState(false); 
   const handleApprove = async () => {
     await approveHost(host._id);
     onActionComplete();
@@ -70,6 +72,13 @@ export function HostTableRow({
           <Eye className="w-4 h-4" />
         </button>
 
+<button
+    className="icon-btn"
+    onClick={() => setShowEvents(true)}
+    title="View host events"
+  >
+    <Layers className="w-4 h-4" />
+  </button>
         {host.status === "pending" && canEdit && (
           <>
             <button
@@ -86,6 +95,7 @@ export function HostTableRow({
             >
               <X className="w-4 h-4" />
             </button>
+            
           </>
         )}
 
@@ -94,6 +104,12 @@ export function HostTableRow({
           open={showDetails}
           onOpenChange={(o) => setShowDetails(o)}
           onActionComplete={onActionComplete}
+        />
+        <HostEventsModal
+          hostId={host._id}
+          hostName={host.userName}
+          open={showEvents}
+          onOpenChange={setShowEvents}
         />
       </div>
     </div>

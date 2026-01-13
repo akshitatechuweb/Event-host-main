@@ -33,7 +33,7 @@ import {
   updateAdminPassword,
 } from "../controllers/adminController.js";
 import { getUserById } from "../controllers/userController.js";
-import { getEvents } from "../controllers/eventController.js";
+import { getEvents,getHostEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
 const router = express.Router();
 
@@ -223,6 +223,15 @@ router.delete(
   authMiddleware,
   requireRole("superadmin"),
   deleteAdmin
+);
+
+
+router.get(
+  "/hosts/:hostId/events",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  checkPermission("events", "read"),
+  getHostEvents
 );
 
 export default router;

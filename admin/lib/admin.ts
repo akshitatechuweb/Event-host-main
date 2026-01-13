@@ -443,3 +443,13 @@ export async function deleteAdminHandle(id: string) {
 
   return res.json();
 }
+
+
+export async function getHostEvents(hostId: string) {
+ const res = await fetch(`/api/admin/hosts/${hostId}/events`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch host events");
+  return res.json();
+}

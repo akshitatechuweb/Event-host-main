@@ -1,6 +1,7 @@
 import Event from "../models/Event.js";
 import User from "../models/User.js";
 import axios from "axios";
+import mongoose from "mongoose";
 import { computeEventExtras } from "./eventUtils.js";
 
 // ========================================================
@@ -320,6 +321,120 @@ export const getSavedEvents = async (req, res) => {
     });
   } catch (err) {
     console.error("Get Saved Events Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+
+export const getHostEvents = async (req, res) => {
+  try {
+    const { hostId } = req.params;
+
+    if (!hostId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "hostId parameter is required" });
+    }
+
+    console.log("Searching for events with hostId:", hostId);
+
+    // Try to resolve host user (may be null if this id isn't a user id)
+    const hostUser = await User.findById(hostId).select("name").lean().catch(() => null);
+    if (hostUser) {
+      console.log("Resolved host user:", hostUser.name);
+    } else {
+      console.log("No host user record found for id (will still try direct matching):", hostId);
+    }
+
+    // Build a resilient query: check both ObjectId and string storage plus a few alternate fields
+    const orClauses = [];
+
+    // Add string-equality matches (covers cases where hostId stored as string)
+    orClauses.push({ hostId: hostId }, { host: hostId }, { organizerId: hostId }, { createdBy: hostId });
+
+    // Add ObjectId matches if valid
+    if (mongoose.isValidObjectId(hostId)) {
+      try {
+        const objId = new mongoose.Types.ObjectId(hostId);
+        orClauses.push({ hostId: objId }, { host: objId }, { organizerId: objId }, { createdBy: objId });
+      } catch (err) {
+        console.warn("Failed to construct ObjectId from hostId, skipping objectId clauses", err);
+      }
+    }
+
+    // Final query
+    const query = { $or: orClauses };
+
+    console.log("Host events query:", JSON.stringify(query));
+
+    let events = await Event.find(query)
+      .populate("hostId", "name role eventsHosted")
+      .lean();
+
+    console.log(`Direct query found events: ${events.length} for hostId: ${hostId}`);
+
+    // Fallback: sometimes host reference is inconsistent; if we have a host name, do an aggregation to match by populated host.name
+    if (events.length === 0 && hostUser?.name) {
+      const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const nameRegex = new RegExp(`^${escapeRegex(hostUser.name)}$`, "i");
+
+      console.log("Attempting aggregation fallback by host name:", hostUser.name);
+
+      const agg = await Event.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "hostId",
+            foreignField: "_id",
+            as: "host",
+          },
+        },
+        { $unwind: { path: "$host", preserveNullAndEmptyArrays: true } },
+        { $match: { "host.name": nameRegex } },
+        { $limit: 500 }, // safety limit
+      ]);
+
+      // Convert aggregation result to same shape (hostId populated)
+      events = agg.map((doc) => {
+        // ensure hostId field is populated similarly to Mongoose populate
+        if (doc.host) {
+          doc.hostId = {
+            _id: doc.host._id,
+            name: doc.host.name,
+            role: doc.host.role,
+            eventsHosted: doc.host.eventsHosted,
+          };
+        }
+        return doc;
+      });
+
+      console.log(`Aggregation fallback found events: ${events.length} for host name: ${hostUser.name}`);
+    }
+
+    // Final formatting (same as other APIs)
+    const formatted = events.map((ev) => {
+      const extras = computeEventExtras(ev, req);
+      return {
+        ...ev,
+        eventImage: extras.eventImage,
+        bookingPercentage: extras.bookingPercentage,
+        status: extras.status,
+        hostedBy:
+          ev.hostId?.name ||
+          (ev.hostId?.role === "admin" || ev.hostId?.role === "superadmin"
+            ? "Admin"
+            : "Unknown"),
+        totalEventsHosted: ev.hostId?.eventsHosted || 0,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      events: formatted,
+    });
+  } catch (err) {
+    console.error("Get Host Events Error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };

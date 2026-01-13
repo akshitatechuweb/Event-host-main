@@ -23,6 +23,15 @@ export async function clientFetch(path: string, init?: RequestInit) {
       if (typeof window !== "undefined" && !window.location.pathname.includes("/admin/login")) {
          window.location.replace("/admin/login");
       }
+      // Prevent callers from attempting to parse an unauthorized response body.
+      throw new Error("Unauthorized");
+    }
+
+    if (!res.ok) {
+      // Try to extract JSON error message when possible, otherwise use status text.
+      const errData = await res.json().catch(() => null);
+      const errMessage = errData?.message || res.statusText || `Request failed with status ${res.status}`;
+      throw new Error(errMessage);
     }
 
     return res;

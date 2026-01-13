@@ -679,10 +679,15 @@ export const createEvent = async (req, res) => {
 
     const location = geoRes.data.results[0].geometry.location;
 
-    // Handle image upload
+    // Handle image upload (support both local disk and S3)
     let imagePath = eventImage;
     if (req.file) {
-      imagePath = `/uploads/${req.file.filename}`;
+      if (req.file.location) {
+        // multer-s3 exposes a 'location' property with the full S3 URL
+        imagePath = req.file.location;
+      } else if (req.file.filename) {
+        imagePath = `/uploads/${req.file.filename}`;
+      }
     }
 
     // Parse passes
@@ -874,9 +879,13 @@ export const updateEvent = async (req, res) => {
 
     // Update image
 
-    // Case 1: New image uploaded → replace old image
+    // Case 1: New image uploaded → replace old image (supports S3 and disk)
     if (req.file) {
-      event.eventImage = `/uploads/${req.file.filename}`;
+      if (req.file.location) {
+        event.eventImage = req.file.location;
+      } else if (req.file.filename) {
+        event.eventImage = `/uploads/${req.file.filename}`;
+      }
     }
 
     // Case 2: No new file, but frontend explicitly sent existing image
@@ -993,7 +1002,7 @@ export const updateAdminProfile = async (req, res) => {
     if (phone) user.phone = phone;
 
     if (req.file) {
-      const photoUrl = "/uploads/" + req.file.filename;
+      const photoUrl = req.file.location || ("/uploads/" + req.file.filename);
       user.photos = user.photos || [];
       user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
       user.photos.push({ url: photoUrl, isProfilePhoto: true });

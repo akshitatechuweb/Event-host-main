@@ -94,6 +94,21 @@ app.use(
 // ─────────────── SERVE IMAGES CORRECTLY (THIS FIXES EVERYTHING) ───────────────
 app.use("/uploads", express.static(UPLOADS_FOLDER));
 
+// Informational logs about uploads configuration (helps detect ephemeral storage mistakes)
+console.log(`Uploads folder: ${UPLOADS_FOLDER}`);
+if (!process.env.S3_BUCKET && process.env.NODE_ENV === "production") {
+  if (UPLOADS_FOLDER.startsWith(process.cwd())) {
+    console.warn(
+      "\u26A0\uFE0F WARNING: uploads folder is inside the project directory in production. This directory may be ephemeral on deploys.\nSet UPLOADS_FOLDER to a persistent host path (e.g. /var/www/unrealvibe/uploads) or enable S3 storage by setting S3_BUCKET and AWS credentials.");
+  } else {
+    try {
+      fs.accessSync(UPLOADS_FOLDER, fs.constants.W_OK);
+    } catch (err) {
+      console.warn(`\u26A0\uFE0F Uploads folder \"${UPLOADS_FOLDER}\" is not writable: ${err.message}`);
+    }
+  }
+}
+
 // Backward-compat placeholder used by older frontends when an event has no image.
 // Returns a tiny 1x1 transparent PNG so existing UI logic keeps working.
 app.get("/placeholder.png", (req, res) => {

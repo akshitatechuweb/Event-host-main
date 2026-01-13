@@ -331,12 +331,13 @@ export async function getAllAppUsers(page = 1, limit = 10) {
     cache: "no-store",
   });
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch users");
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok || !data) {
+    throw new Error(data?.message || "Failed to fetch users");
   }
 
-  return res.json();
+  return data;
 }
 
 export async function getAppUserById(id: string) {

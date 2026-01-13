@@ -42,13 +42,14 @@ export const getEvents = async (req, res) => {
 
     const filter = {};
     if (useGeoFilter && coordinates) {
+      // Use $geoWithin to filter events within a radius and allow custom sorting (e.g., by eventDateTime).
+      // $near / $nearSphere can cause errors when combined with non-geospatial sorts in some MongoDB contexts.
+      const radiusMeters = 20000; // 20km
+      const EARTH_RADIUS_METERS = 6378137; // approximate Earth radius
+      const radiusRadians = radiusMeters / EARTH_RADIUS_METERS;
       filter.location = {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates,
-          },
-          $maxDistance: 20000, // 20km — covers all of Delhi-NCR comfortably
+        $geoWithin: {
+          $centerSphere: [coordinates, radiusRadians],
         },
       };
     }

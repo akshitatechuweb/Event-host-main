@@ -271,7 +271,8 @@ export const completeProfile = async (req, res) => {
 
     // Profile Photo
     if (req.files?.profilePhoto) {
-      const photoUrl = `/uploads/${req.files.profilePhoto[0].filename}`;
+      const file = req.files.profilePhoto[0];
+      const photoUrl = file.location || `/uploads/${file.filename}`;
       // Remove old profile photo flag
       user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
       user.photos.push({ url: photoUrl, isProfilePhoto: true });
@@ -280,13 +281,16 @@ export const completeProfile = async (req, res) => {
     // Documents
     if (req.files) {
       if (req.files.aadhaar) {
-        user.documents.aadhaar = `/uploads/${req.files.aadhaar[0].filename}`;
+        const f = req.files.aadhaar[0];
+        user.documents.aadhaar = f.location || `/uploads/${f.filename}`;
       }
       if (req.files.pan) {
-        user.documents.pan = `/uploads/${req.files.pan[0].filename}`;
+        const f = req.files.pan[0];
+        user.documents.pan = f.location || `/uploads/${f.filename}`;
       }
       if (req.files.drivingLicense) {
-        user.documents.drivingLicense = `/uploads/${req.files.drivingLicense[0].filename}`;
+        const f = req.files.drivingLicense[0];
+        user.documents.drivingLicense = f.location || `/uploads/${f.filename}`;
       }
     }
 

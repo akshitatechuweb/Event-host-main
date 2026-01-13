@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
         const { ok, status, data, text } = await safeJson(response);
 
         if (!ok) {
+            // Log truncated non-JSON responses to help diagnose auth/HTML redirects in production.
+            console.warn("Non-JSON response from backend /app-users:", (text || "").slice(0, 200));
             return NextResponse.json(
                 { success: false, message: text || "Failed to fetch users" },
                 { status }

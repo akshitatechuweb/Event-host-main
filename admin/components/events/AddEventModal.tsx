@@ -26,7 +26,7 @@ interface AdminEventForForm {
   hostedBy?: string;
   subtitle?: string;
   category?: string | string[];
-  eventImage?: { url: string; publicId: string; version: string } | null;
+  eventImage?: string | { url: string; publicId: string; version: string } | null;
   date?: string | Date;
   time?: string;
   fullAddress?: string;
@@ -63,7 +63,7 @@ export interface EventFormData {
   subtitle: string;
   category: string;
   eventImage: { url: string; publicId: string; version: string } | null;
-  existingEventImage: { url: string; publicId: string; version: string } | null;
+  existingEventImage: string | { url: string; publicId: string; version: string } | null;
   date: string;
   time: string;
   fullAddress: string;
@@ -157,7 +157,7 @@ export default function AddEventModal({
           ? editingEvent.category.join(",")
           : editingEvent.category || "",
         eventImage: null,
-        existingEventImage: (editingEvent.eventImage && typeof editingEvent.eventImage === 'object') ? editingEvent.eventImage : null,
+        existingEventImage: editingEvent.eventImage || null,
         date: editingEvent.date
           ? new Date(editingEvent.date).toISOString().split("T")[0]
           : "",

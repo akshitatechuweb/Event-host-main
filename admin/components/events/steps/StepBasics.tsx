@@ -169,7 +169,12 @@ export function StepBasics({
         <SecureImageUpload
           folder="events"
           aspectRatio="video"
-          previewUrl={formData.eventImage?.url || formData.existingEventImage?.url}
+          previewUrl={
+            formData.eventImage?.url || 
+            (typeof formData.existingEventImage === 'string' 
+              ? formData.existingEventImage 
+              : formData.existingEventImage?.url)
+          }
           onSuccess={(data) => {
              updateFormData({
                 eventImage: data,

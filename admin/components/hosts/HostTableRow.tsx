@@ -43,13 +43,16 @@ export function HostTableRow({
   const displayStatus = host.status ?? "unknown";
 
   return (
-    <div className="grid grid-cols-6 gap-4 px-6 py-5 border-b border-border">
+    <div className="grid grid-cols-8 gap-4 px-6 py-5 border-b border-border">
       <div>
         <p className="font-medium">{host.userName}</p>
         <p className="text-xs text-muted-foreground">{host.phone}</p>
       </div>
 
       <div>{host.city}</div>
+
+      <div className="truncate" title={host.locality}>{host.locality}</div>
+      <div>{host.pincode}</div>
 
       <div>
         {host.preferredPartyDate

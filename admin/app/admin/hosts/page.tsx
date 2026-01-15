@@ -26,6 +26,8 @@ type RawHost = {
     phone?: string;
   };
   city?: string;
+  locality?: string;
+  pincode?: string;
   preferredPartyDate?: string;
   status?: Host["status"];
 };
@@ -57,6 +59,8 @@ function HostsContent() {
         userName: item.userId?.name ?? "Unknown",
         phone: item.userId?.phone ?? "-",
         city: item.city ?? "—",
+        locality: item.locality ?? "—",
+        pincode: item.pincode ?? "—",
         preferredPartyDate: item.preferredPartyDate ?? "—",
         status: item.status,
       })),
@@ -69,6 +73,8 @@ function HostsContent() {
         host.userName,
         host.phone,
         host.city,
+        host.locality ?? "",
+        host.pincode ?? "",
       ]),
     [normalized, debouncedQuery]
   );

@@ -8,6 +8,8 @@ export interface Host {
   userName: string;
   phone: string;
   city: string;
+  locality?: string;
+  pincode?: string;
   preferredPartyDate?: string;
   status?: HostStatus; // optional is fine
 }

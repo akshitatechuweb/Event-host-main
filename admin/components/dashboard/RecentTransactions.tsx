@@ -82,7 +82,7 @@ export function RecentTransactions() {
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {transactions.map((t) => {
+          {transactions.slice(0, 3).map((t) => {
             const isCompleted = t.status === "completed"
 
             return (

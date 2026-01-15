@@ -433,7 +433,7 @@ export const getDashboardStats = async (req, res) => {
       Event.find()
         .populate("hostId", "name email")
         .sort({ createdAt: -1 })
-        .limit(5)
+        .limit(3)
         .lean(),
       Transaction.find({ status: "completed" })
         .populate({
@@ -444,7 +444,7 @@ export const getDashboardStats = async (req, res) => {
           },
         })
         .sort({ createdAt: -1 })
-        .limit(10)
+        .limit(3)
         .lean(),
     ]);
 

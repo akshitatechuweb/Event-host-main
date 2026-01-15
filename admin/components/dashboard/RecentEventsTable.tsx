@@ -85,7 +85,7 @@ export function RecentEventsTable() {
           </thead>
 
           <tbody className="divide-y divide-border">
-            {events.map((e) => (
+            {events.slice(0, 3).map((e) => (
               <tr key={e.id} className="hover:bg-muted/30 transition-colors">
                 <td className="px-6 py-4 font-medium">{e.name}</td>
                 <td className="px-6 py-4 text-muted-foreground">{e.host}</td>

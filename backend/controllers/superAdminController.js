@@ -269,6 +269,7 @@ export const updateAdmin = async (req, res) => {
     debugLog("UPDATE ADMIN FATAL ERROR:", {
       id: req.params.id,
       error: error.message,
+      stack: error.stack,
     });
 
     if (error.name === "CastError") {

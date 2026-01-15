@@ -28,17 +28,17 @@ const userSchema = new mongoose.Schema(
       aadhaar: {
         publicId: { type: String },
         url: { type: String },
-        version: { type: String }
+        version: { type: String },
       },
       pan: {
         publicId: { type: String },
         url: { type: String },
-        version: { type: String }
+        version: { type: String },
       },
       drivingLicense: {
         publicId: { type: String },
         url: { type: String },
-        version: { type: String }
+        version: { type: String },
       },
     },
 
@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema(
     photos: {
       type: [
         {
-          publicId: { type: String, required: true },
+          publicId: { type: String, required: false },
           url: { type: String, required: true },
           version: { type: String },
           isProfilePhoto: { type: Boolean, default: false },

@@ -186,7 +186,8 @@ export const getRequestById = async (req, res) => {
   try {
     const request = await EventHostRequest.findById(req.params.id)
       .populate("userId", "name phone email city role documents photos")
-      .populate("reviewedBy", "name email");
+      .populate("reviewedBy", "name email")
+      .lean();
 
     if (!request) {
       return res.status(404).json({
@@ -210,12 +211,12 @@ export const getRequestById = async (req, res) => {
       // Transform documents
       if (request.userId.documents) {
         const docs = request.userId.documents;
-        if (docs.aadhaar && docs.aadhaar.startsWith("/"))
-          docs.aadhaar = `${baseUrl}${docs.aadhaar}`;
-        if (docs.pan && docs.pan.startsWith("/"))
-          docs.pan = `${baseUrl}${docs.pan}`;
-        if (docs.drivingLicense && docs.drivingLicense.startsWith("/"))
-          docs.drivingLicense = `${baseUrl}${docs.drivingLicense}`;
+        if (docs.aadhaar?.url && docs.aadhaar.url.startsWith("/"))
+          docs.aadhaar.url = `${baseUrl}${docs.aadhaar.url}`;
+        if (docs.pan?.url && docs.pan.url.startsWith("/"))
+          docs.pan.url = `${baseUrl}${docs.pan.url}`;
+        if (docs.drivingLicense?.url && docs.drivingLicense.url.startsWith("/"))
+          docs.drivingLicense.url = `${baseUrl}${docs.drivingLicense.url}`;
       }
     }
 
@@ -396,19 +397,19 @@ export const getEventTransactions = async (req, res) => {
         createdAt: t.createdAt,
         booking: booking
           ? {
-            _id: booking._id,
-            orderId: booking.orderId,
-            totalAmount: booking.totalAmount,
-            ticketCount: booking.ticketCount,
-            items: booking.items,
-            buyer: booking.userId
-              ? {
-                _id: booking.userId._id,
-                name: booking.userId.name,
-                email: booking.userId.email,
-              }
-              : null,
-          }
+              _id: booking._id,
+              orderId: booking.orderId,
+              totalAmount: booking.totalAmount,
+              ticketCount: booking.ticketCount,
+              items: booking.items,
+              buyer: booking.userId
+                ? {
+                    _id: booking.userId._id,
+                    name: booking.userId.name,
+                    email: booking.userId.email,
+                  }
+                : null,
+            }
           : null,
       };
     });
@@ -953,9 +954,10 @@ export const updateEvent = async (req, res) => {
         try {
           inputPasses = JSON.parse(req.body.passes);
         } catch (err) {
-          return res
-            .status(400)
-            .json({ success: false, message: "Invalid JSON format for passes" });
+          return res.status(400).json({
+            success: false,
+            message: "Invalid JSON format for passes",
+          });
         }
       } else if (Array.isArray(req.body.passes)) {
         inputPasses = req.body.passes;
@@ -1013,7 +1015,6 @@ export const updateEvent = async (req, res) => {
 
     await event.save();
 
-
     const updatedHost = await User.findById(event.hostId).select(
       "eventsHosted"
     );
@@ -1055,7 +1056,7 @@ export const updateAdminProfile = async (req, res) => {
     if (phone) user.phone = phone;
 
     if (req.file) {
-      const oldPhoto = user.photos?.find(p => p.isProfilePhoto);
+      const oldPhoto = user.photos?.find((p) => p.isProfilePhoto);
       const photoUrl = req.file.location || "/uploads/" + req.file.filename;
       const publicId = req.file.filename || null;
 
@@ -1064,15 +1065,18 @@ export const updateAdminProfile = async (req, res) => {
       user.photos.push({
         url: photoUrl,
         publicId: publicId,
-        isProfilePhoto: true
+        isProfilePhoto: true,
       });
 
       // Cleanup old Cloudinary photo
       if (oldPhoto?.publicId) {
         await deleteImage(oldPhoto.publicId);
       }
-    } else if (req.body.profilePhoto && typeof req.body.profilePhoto === "object") {
-      const oldPhoto = user.photos?.find(p => p.isProfilePhoto);
+    } else if (
+      req.body.profilePhoto &&
+      typeof req.body.profilePhoto === "object"
+    ) {
+      const oldPhoto = user.photos?.find((p) => p.isProfilePhoto);
       const newPhoto = req.body.profilePhoto;
 
       user.photos = user.photos || [];

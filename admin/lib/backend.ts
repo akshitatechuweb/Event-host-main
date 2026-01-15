@@ -4,9 +4,10 @@ import "server-only";
 // This file is safe to use in Server Components / API Routes
 // It directly talks to the external backend
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(/\/+$/, "");
-//export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
-
+// export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(/\/+$/, "");
+export const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+).replace(/\/+$/, "");
 
 /**
  * Robust proxy fetch for API routes.
@@ -18,7 +19,7 @@ export async function proxyFetch(
   init: RequestInit = {}
 ): Promise<Response> {
   const headers = new Headers();
-  
+
   // Forward all headers except restricted ones
   req.headers.forEach((value, key) => {
     const k = key.toLowerCase();
@@ -41,7 +42,7 @@ export async function proxyFetch(
     headers,
     body: hasBody ? req.body : undefined,
     // @ts-ignore
-    duplex: "half", 
+    duplex: "half",
     credentials: "include",
     cache: "no-store",
   });
@@ -58,7 +59,9 @@ export async function adminBackendFetch(
 ): Promise<Response> {
   // Fix: prevent double /admin prefix using regex
   const cleanPath = path.replace(/^\/admin/, "");
-  const url = `${API_BASE_URL}/api/admin${cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`}`;
+  const url = `${API_BASE_URL}/api/admin${
+    cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`
+  }`;
 
   const headers = new Headers(init.headers || {});
   const cookie = req.headers.get("cookie");

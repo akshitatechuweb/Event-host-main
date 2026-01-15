@@ -19,6 +19,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import passRoutes from "./routes/passRoutes.js";
 import sseRoutes from "./routes/sseRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 
 dotenv.config();
@@ -141,6 +142,7 @@ const startServer = async () => {
   app.use("/api/passes", passRoutes);
   app.use("/api/sse", sseRoutes);
   app.use("/api/notifications", notificationRoutes);
+  app.use("/api/upload", uploadRoutes);
 
   // Start server
   app.listen(PORT, () => {

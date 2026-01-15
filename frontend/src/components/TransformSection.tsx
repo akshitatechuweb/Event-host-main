@@ -2,6 +2,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { Smartphone, Heart, Calendar, MessageCircle, Star, TrendingUp } from "lucide-react";
 import appMockup from "@/assets/app-mockup.png";
 import { useRef } from "react";
+import { CldImage } from "./common/CldImage";
 
 const features = [
   {
@@ -94,7 +95,7 @@ export const TransformSection = () => {
               }}
               className="relative z-10"
             >
-              <img
+              <CldImage
                 src={appMockup}
                 alt="UnrealVibe App Interface"
                 className="w-full max-w-md mx-auto drop-shadow-2xl rounded-2xl"

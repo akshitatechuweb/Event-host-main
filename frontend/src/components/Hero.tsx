@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { Sparkles, Users, Shield, ArrowDown } from "lucide-react";
 import partyHero from "@/assets/party-hero.jpg";
 import { useRef } from "react";
+import { CldImage } from "./common/CldImage";
 
 export const Hero = () => {
   const ref = useRef(null);
@@ -22,7 +23,7 @@ export const Hero = () => {
         className="absolute inset-0 z-0"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background z-10" />
-        <img
+        <CldImage
           src={partyHero}
           alt="Cozy house party with friends having fun"
           className="w-full h-full object-cover brightness-[0.6] contrast-110"

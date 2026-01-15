@@ -168,10 +168,12 @@ export async function getAdminProfile() {
 /**
  * 🔹 Update Admin Profile
  */
-export async function updateAdminProfile(formData: FormData) {
+export async function updateAdminProfile(data: any) {
+  const isFormData = data instanceof FormData;
   const res = await fetch("/api/admin/profile", {
     method: "PUT",
-    body: formData,
+    body: isFormData ? data : JSON.stringify(data),
+    headers: isFormData ? {} : { "Content-Type": "application/json" },
     credentials: "include",
   });
 
@@ -280,10 +282,12 @@ export async function getEventTickets(eventId: string) {
 /**
  * 🔹 Create Event (Admin)
  */
-export async function createEvent(formData: FormData) {
+export async function createEvent(data: any) {
+  const isFormData = data instanceof FormData;
   const res = await fetch("/api/admin/event/create-event", {
     method: "POST",
-    body: formData,
+    body: isFormData ? data : JSON.stringify(data),
+    headers: isFormData ? {} : { "Content-Type": "application/json" },
     credentials: "include",
   });
 
@@ -298,10 +302,12 @@ export async function createEvent(formData: FormData) {
 /**
  * 🔹 Update Event (Admin)
  */
-export async function updateEvent(eventId: string, formData: FormData) {
+export async function updateEvent(eventId: string, data: any) {
+  const isFormData = data instanceof FormData;
   const res = await fetch(`/api/admin/event/update-event/${eventId}`, {
     method: "PUT",
-    body: formData,
+    body: isFormData ? data : JSON.stringify(data),
+    headers: isFormData ? {} : { "Content-Type": "application/json" },
     credentials: "include",
   });
 

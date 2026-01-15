@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import axios from "axios";
+import { deleteImage } from "../services/cloudinary.js";
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
@@ -280,28 +281,63 @@ export const completeProfile = async (req, res) => {
 
     // Profile Photo
     if (req.files?.profilePhoto) {
+      const oldPhoto = user.photos?.find(p => p.isProfilePhoto);
       const file = req.files.profilePhoto[0];
       const photoUrl = file.location || `/uploads/${file.filename}`;
+      const publicId = file.filename || null;
+
       // Remove old profile photo flag
       user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
-      user.photos.push({ url: photoUrl, isProfilePhoto: true });
+      user.photos.push({
+        url: photoUrl,
+        publicId: publicId,
+        isProfilePhoto: true
+      });
+
+      if (oldPhoto?.publicId) {
+        await deleteImage(oldPhoto.publicId);
+      }
+    } else if (req.body.profilePhoto && typeof req.body.profilePhoto === "object") {
+      const oldPhoto = user.photos?.find(p => p.isProfilePhoto);
+      const newPhoto = req.body.profilePhoto;
+
+      user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
+      user.photos.push({ ...newPhoto, isProfilePhoto: true });
+
+      if (oldPhoto?.publicId && oldPhoto.publicId !== newPhoto.publicId) {
+        await deleteImage(oldPhoto.publicId);
+      }
     }
 
     // Documents
     if (req.files) {
-      if (req.files.aadhaar) {
-        const f = req.files.aadhaar[0];
-        user.documents.aadhaar = f.location || `/uploads/${f.filename}`;
-      }
-      if (req.files.pan) {
-        const f = req.files.pan[0];
-        user.documents.pan = f.location || `/uploads/${f.filename}`;
-      }
-      if (req.files.drivingLicense) {
-        const f = req.files.drivingLicense[0];
-        user.documents.drivingLicense = f.location || `/uploads/${f.filename}`;
+      const docTypes = ["aadhaar", "pan", "drivingLicense"];
+      for (const type of docTypes) {
+        if (req.files[type]) {
+          const oldDoc = user.documents?.[type];
+          const f = req.files[type][0];
+          user.documents[type] = {
+            url: f.location || `/uploads/${f.filename}`,
+            publicId: f.filename || null,
+          };
+          if (oldDoc?.publicId) {
+            await deleteImage(oldDoc.publicId);
+          }
+        }
       }
     }
+
+    // Handle JSON doc objects from frontend (signed upload flow)
+    ["aadhaar", "pan", "drivingLicense"].forEach(type => {
+      if (req.body[type] && typeof req.body[type] === "object") {
+        const oldDoc = user.documents?.[type];
+        const newDoc = req.body[type];
+        user.documents[type] = newDoc;
+        if (oldDoc?.publicId && oldDoc.publicId !== newDoc.publicId) {
+          deleteImage(oldDoc.publicId); // Async background delete
+        }
+      }
+    });
 
     // Geocode only if city changed or never geocoded before
     if (cityChanged || (user.location.coordinates[0] === 0 && user.location.coordinates[1] === 0)) {

@@ -25,16 +25,30 @@ const userSchema = new mongoose.Schema(
 
     // Verification docs
     documents: {
-      aadhaar: { type: String, default: null },
-      pan: { type: String, default: null },
-      drivingLicense: { type: String, default: null },
+      aadhaar: {
+        publicId: { type: String },
+        url: { type: String },
+        version: { type: String }
+      },
+      pan: {
+        publicId: { type: String },
+        url: { type: String },
+        version: { type: String }
+      },
+      drivingLicense: {
+        publicId: { type: String },
+        url: { type: String },
+        version: { type: String }
+      },
     },
 
     // Photos
     photos: {
       type: [
         {
+          publicId: { type: String, required: true },
           url: { type: String, required: true },
+          version: { type: String },
           isProfilePhoto: { type: Boolean, default: false },
         },
       ],

@@ -7,11 +7,12 @@ import { upload } from "../middleware/multer.js";
 import { shareEvent } from "../controllers/eventShareController.js";
 import { getEventDirections } from "../controllers/eventDirectionController.js";
 import { addOrUpdateReview, getReviews } from "../controllers/eventReviewController.js";
+import { deleteImage } from "../services/cloudinary.js";
 
-import { 
+import {
 
   getEvents,
-  toggleSaveEvent,        
+  toggleSaveEvent,
   getSavedEvents,
 } from "../controllers/eventController.js"; // your existing admin controller
 
@@ -20,7 +21,7 @@ import { searchEvents } from "../controllers/eventSearchController.js";
 const router = express.Router();
 
 // === PUBLIC / USER SEARCH API (Main Feed) ===
-router.get("/search", authMiddleware, searchEvents); 
+router.get("/search", authMiddleware, searchEvents);
 
 
 
@@ -43,7 +44,7 @@ router.get(
 // SHARE EVENT
 router.post(
   "/:eventId/share",
-  authMiddleware, 
+  authMiddleware,
   shareEvent
 );
 
@@ -59,11 +60,23 @@ router.delete(
   authMiddleware,
   requireRole("admin", "superadmin"),
   async (req, res) => {
-    const event = await Event.findByIdAndDelete(req.params.eventId);
-    if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+    try {
+      const event = await Event.findById(req.params.eventId);
+      if (!event) {
+        return res.status(404).json({ success: false, message: "Event not found" });
+      }
+
+      // Cleanup Cloudinary image
+      if (event.eventImage?.publicId) {
+        await deleteImage(event.eventImage.publicId);
+      }
+
+      await Event.findByIdAndDelete(req.params.eventId);
+      res.json({ success: true, message: "Event deleted and images cleaned up" });
+    } catch (error) {
+      console.error("Delete Event Error:", error);
+      res.status(500).json({ success: false, message: "Failed to delete event" });
     }
-    res.json({ success: true, message: "Event deleted" });
   }
 );
 

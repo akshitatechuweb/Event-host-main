@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Pencil, Eye } from "lucide-react";
+import { CldImage } from "../common/CldImage";
 
 // Import the SINGLE source of truth for Event
 import { Event } from "@/types/event";
@@ -33,33 +34,14 @@ export function EventTableRow({
           EVENT IMAGE
       ========================== */}
       <div className="h-12 w-12 rounded-lg overflow-hidden bg-black/10 dark:bg-white/10 flex items-center justify-center">
-        {event.eventImage ? (
-          <img
-            src={event.eventImage}
-            alt={event.eventName}
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              const transparent1px =
-                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAA6fptVAAAADUlEQVQI12NgYGBgAAAABQABDQottAAAAABJRU5ErkJggg==";
-              const placeholderPath = "/placeholder.svg";
-
-              const src = e.currentTarget.src || "";
-              // If we've already tried the data URI, stop to avoid loop
-              if (src === transparent1px) return;
-
-              // First try to load the app-level placeholder; if that fails next onError will trigger and we'll fall back to the data URI
-              if (src.includes("placeholder.svg")) {
-                e.currentTarget.src = transparent1px;
-              } else {
-                e.currentTarget.src = placeholderPath;
-              }
-            }}
-          />
-        ) : (
-          <span className="text-xs text-black/40 dark:text-white/40">
-            No Image
-          </span>
-        )}
+        <CldImage
+          src={event.eventImage}
+          transformation="thumbnail"
+          alt={event.eventName}
+          width={48}
+          height={48}
+          className="h-full w-full object-cover"
+        />
       </div>
 
       {/* Event Name */}

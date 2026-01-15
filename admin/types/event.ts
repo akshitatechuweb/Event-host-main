@@ -13,7 +13,7 @@ export interface Event {
   city: string;
   currentBookings: number;
   maxCapacity: number;
-  eventImage?: string | null;
+  eventImage?: string | { url: string; publicId: string; version: string } | null;
   status?: "active" | "completed" | "cancelled";
   hostId?: string;
   passes?: EventPass[];

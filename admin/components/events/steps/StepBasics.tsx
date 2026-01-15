@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { X, ChevronDown } from "lucide-react"
 import { EventFormData } from "@/components/events/AddEventModal"
+import { SecureImageUpload } from "../../common/SecureImageUpload"
+import { CldImage } from "../../common/CldImage"
 
 interface Host {
   hostId: string
@@ -162,40 +164,24 @@ export function StepBasics({
         </div>
       </Field>
 
-      {/* Existing Image Preview */}
-      {formData.existingEventImage && !formData.eventImage && (
-        <Field label="Current Event Image">
-          <div className="relative">
-            <img
-              src={formData.existingEventImage}
-              alt="Current event"
-              className="h-40 w-full rounded-xl object-cover border border-black/10 dark:border-white/10"
-              onError={(e) => {
-                e.currentTarget.style.display = "none"
-              }}
-            />
-            <p className="mt-2 text-xs text-black/50 dark:text-white/50">
-              This image will be kept unless you upload a new one.
-            </p>
-          </div>
-        </Field>
-      )}
-
-      {/* Upload New Image */}
-      <Field label="Event Image">
-        <Input
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0] ?? null
-            updateFormData({
-              eventImage: file,
-              existingEventImage: file
-                ? null
-                : formData.existingEventImage,
-            })
+      {/* Event Image */}
+      <Field label="Event Image *">
+        <SecureImageUpload
+          folder="events"
+          aspectRatio="video"
+          previewUrl={formData.eventImage?.url || formData.existingEventImage?.url}
+          onSuccess={(data) => {
+             updateFormData({
+                eventImage: data,
+                existingEventImage: null
+             });
           }}
         />
+        {(formData.eventImage || formData.existingEventImage) && (
+           <p className="mt-2 text-xs text-black/50 dark:text-white/50">
+             Current image loaded from Cloudinary. Upload a new one to replace.
+           </p>
+        )}
       </Field>
     </div>
   )

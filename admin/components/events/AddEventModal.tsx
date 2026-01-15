@@ -26,7 +26,7 @@ interface AdminEventForForm {
   hostedBy?: string;
   subtitle?: string;
   category?: string | string[];
-  eventImage?: string | null;
+  eventImage?: { url: string; publicId: string; version: string } | null;
   date?: string | Date;
   time?: string;
   fullAddress?: string;
@@ -62,8 +62,8 @@ export interface EventFormData {
   hostedBy: string;
   subtitle: string;
   category: string;
-  eventImage: File | null;
-  existingEventImage: string | null;
+  eventImage: { url: string; publicId: string; version: string } | null;
+  existingEventImage: { url: string; publicId: string; version: string } | null;
   date: string;
   time: string;
   fullAddress: string;
@@ -157,7 +157,7 @@ export default function AddEventModal({
           ? editingEvent.category.join(",")
           : editingEvent.category || "",
         eventImage: null,
-        existingEventImage: editingEvent.eventImage || null,
+        existingEventImage: (editingEvent.eventImage && typeof editingEvent.eventImage === 'object') ? editingEvent.eventImage : null,
         date: editingEvent.date
           ? new Date(editingEvent.date).toISOString().split("T")[0]
           : "",
@@ -209,80 +209,44 @@ export default function AddEventModal({
   const back = () => setStep((s) => Math.max(s - 1, 1));
 
   const handleSubmit = async () => {
-  setLoading(true);
+    setLoading(true);
+    try {
+      const payload = {
+        ...formData,
+        // If we have a new upload, use it. Otherwise use the existing one.
+        eventImage: formData.eventImage || formData.existingEventImage,
+      };
 
-  try {
-    const formPayload = new FormData();
+      // Remove the explicit helper fields before sending
+      delete (payload as any).existingEventImage;
 
-    formPayload.append("eventName", formData.eventName);
-    formPayload.append("hostedBy", formData.hostedBy);
-    formPayload.append("subtitle", formData.subtitle);
-    formPayload.append("category", formData.category);
+      const data = editingEvent
+        ? await updateEvent(editingEvent._id, payload)
+        : await createEvent(payload);
 
-    if (formData.eventImage) {
-      formPayload.append("eventImage", formData.eventImage);
-    } else if (editingEvent && formData.existingEventImage) {
-      formPayload.append("existingImageUrl", formData.existingEventImage);
+      if (!data.success) {
+        throw new Error(data.message || `Request failed`);
+      }
+
+      toast.success(
+        editingEvent
+          ? "Event updated successfully!"
+          : "Event created successfully!"
+      );
+
+      editingEvent ? onEventUpdated?.() : onEventCreated?.();
+      onClose();
+      setFormData(initialFormState);
+      setStep(1);
+    } catch (err: unknown) {
+      const error =
+        err instanceof Error ? err : new Error("Something went wrong");
+      console.error("Submit error:", error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
-
-    formPayload.append("date", formData.date);
-    formPayload.append("time", formData.time);
-    formPayload.append("fullAddress", formData.fullAddress);
-    formPayload.append("city", formData.city);
-
-    formPayload.append("about", formData.about);
-    formPayload.append("partyFlow", formData.partyFlow);
-    formPayload.append("whatsIncluded", formData.whatsIncluded);
-    formPayload.append("howItWorks", formData.howItWorks);
-    formPayload.append(
-      "whatsIncludedInTicket",
-      formData.whatsIncludedInTicket
-    );
-
-    formPayload.append("passes", JSON.stringify(formData.passes));
-
-    if (formData.hostId) {
-      formPayload.append("hostId", formData.hostId);
-    }
-
-    formPayload.append("ageRestriction", formData.ageRestriction);
-    formPayload.append("maxCapacity", String(formData.maxCapacity));
-    formPayload.append("expectedGuestCount", formData.expectedGuestCount);
-    formPayload.append("maleToFemaleRatio", formData.maleToFemaleRatio);
-    formPayload.append("thingsToKnow", formData.thingsToKnow);
-    formPayload.append("partyEtiquette", formData.partyEtiquette);
-    formPayload.append("houseRules", formData.houseRules);
-    formPayload.append("partyTerms", formData.partyTerms);
-    formPayload.append("cancellationPolicy", formData.cancellationPolicy);
-
-    // ✅ USE CENTRALIZED SERVICE FUNCTIONS
-    const data = editingEvent
-      ? await updateEvent(editingEvent._id, formPayload)
-      : await createEvent(formPayload);
-
-    if (!data.success) {
-      throw new Error(data.message || `Request failed`);
-    }
-
-    toast.success(
-      editingEvent
-        ? "Event updated successfully!"
-        : "Event created successfully!"
-    );
-
-    editingEvent ? onEventUpdated?.() : onEventCreated?.();
-    onClose();
-    setFormData(initialFormState);
-    setStep(1);
-  } catch (err: unknown) {
-    const error =
-      err instanceof Error ? err : new Error("Something went wrong");
-    console.error("Submit error:", error);
-    toast.error(error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
 
   return (

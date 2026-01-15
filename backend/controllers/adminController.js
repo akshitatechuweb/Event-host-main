@@ -7,6 +7,7 @@ import Transaction from "../models/Transaction.js";
 import Event from "../models/Event.js";
 import axios from "axios";
 import { computeEventExtras } from "./eventUtils.js";
+import { deleteImage } from "../services/cloudinary.js";
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const DEFAULT_RADIUS = 20000;
@@ -395,19 +396,19 @@ export const getEventTransactions = async (req, res) => {
         createdAt: t.createdAt,
         booking: booking
           ? {
-              _id: booking._id,
-              orderId: booking.orderId,
-              totalAmount: booking.totalAmount,
-              ticketCount: booking.ticketCount,
-              items: booking.items,
-              buyer: booking.userId
-                ? {
-                    _id: booking.userId._id,
-                    name: booking.userId.name,
-                    email: booking.userId.email,
-                  }
-                : null,
-            }
+            _id: booking._id,
+            orderId: booking.orderId,
+            totalAmount: booking.totalAmount,
+            ticketCount: booking.ticketCount,
+            items: booking.items,
+            buyer: booking.userId
+              ? {
+                _id: booking.userId._id,
+                name: booking.userId.name,
+                email: booking.userId.email,
+              }
+              : null,
+          }
           : null,
       };
     });
@@ -703,28 +704,42 @@ export const createEvent = async (req, res) => {
 
     const location = geoRes.data.results[0].geometry.location;
 
-    // Handle image upload (support both local disk and S3)
-    let imagePath = eventImage;
-    if (req.file) {
-      if (req.file.location) {
-        // multer-s3 exposes a 'location' property with the full S3 URL
-        imagePath = req.file.location;
-      } else if (req.file.filename) {
-        imagePath = `/uploads/${req.file.filename}`;
+    // Handle image (Cloudinary metadata object expected from frontend)
+    let imageObject = null;
+    if (typeof eventImage === "string") {
+      try {
+        imageObject = JSON.parse(eventImage);
+      } catch (err) {
+        // Fallback for old string-only URLs if any (though we aim for objects now)
+        imageObject = { url: eventImage };
       }
+    } else if (typeof eventImage === "object") {
+      imageObject = eventImage;
+    }
+
+    // Fallback for multer upload if signed upload wasn't used
+    if (req.file) {
+      imageObject = {
+        url: req.file.location || `/uploads/${req.file.filename}`,
+        publicId: req.file.filename || null,
+      };
     }
 
     // Parse passes
     let inputPasses = [];
-    try {
-      if (req.body.passes) {
-        inputPasses = JSON.parse(req.body.passes);
+    if (req.body.passes) {
+      if (typeof req.body.passes === "string") {
+        try {
+          inputPasses = JSON.parse(req.body.passes);
+        } catch (err) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid JSON format for passes",
+          });
+        }
+      } else if (Array.isArray(req.body.passes)) {
+        inputPasses = req.body.passes;
       }
-    } catch (err) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid JSON format for passes",
-      });
     }
 
     if (!Array.isArray(inputPasses)) {
@@ -753,7 +768,7 @@ export const createEvent = async (req, res) => {
       hostedBy: host.name,
       eventName,
       subtitle,
-      eventImage: imagePath,
+      eventImage: imageObject,
       date: eventDate,
       time,
       day: weekday,
@@ -901,36 +916,49 @@ export const updateEvent = async (req, res) => {
       }
     }
 
-    // Update image
+    // Update image (Cloudinary lifecycle)
+    const oldImagePublicId = event.eventImage?.publicId;
+    let newImageObject = null;
 
-    // Case 1: New image uploaded → replace old image (supports S3 and disk)
     if (req.file) {
-      if (req.file.location) {
-        event.eventImage = req.file.location;
-      } else if (req.file.filename) {
-        event.eventImage = `/uploads/${req.file.filename}`;
+      newImageObject = {
+        url: req.file.location || `/uploads/${req.file.filename}`,
+        publicId: req.file.filename || null,
+      };
+    } else if (eventImage && typeof eventImage === "object") {
+      newImageObject = eventImage;
+    } else if (typeof eventImage === "string" && eventImage.trim() !== "") {
+      try {
+        newImageObject = JSON.parse(eventImage);
+      } catch (err) {
+        // If it's a raw URL string, we don't know the publicId, so we just update the URL
+        if (event.eventImage?.url !== eventImage) {
+          newImageObject = { url: eventImage };
+        }
       }
     }
 
-    // Case 2: No new file, but frontend explicitly sent existing image
-    else if (
-      typeof req.body.eventImage === "string" &&
-      req.body.eventImage.trim() !== ""
-    ) {
-      event.eventImage = req.body.eventImage;
+    if (newImageObject) {
+      event.eventImage = newImageObject;
+      // Delete old image if it's a Cloudinary image and different from new one
+      if (oldImagePublicId && oldImagePublicId !== newImageObject.publicId) {
+        await deleteImage(oldImagePublicId);
+      }
     }
-
-    // Case 3: Nothing sent → DO NOTHING (preserve existing image)
 
     // Update passes (supports totalQuantity)
     if (req.body.passes) {
       let inputPasses = [];
-      try {
-        inputPasses = JSON.parse(req.body.passes);
-      } catch (err) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Invalid JSON format for passes" });
+      if (typeof req.body.passes === "string") {
+        try {
+          inputPasses = JSON.parse(req.body.passes);
+        } catch (err) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Invalid JSON format for passes" });
+        }
+      } else if (Array.isArray(req.body.passes)) {
+        inputPasses = req.body.passes;
       }
 
       if (!Array.isArray(inputPasses)) {
@@ -985,6 +1013,7 @@ export const updateEvent = async (req, res) => {
 
     await event.save();
 
+
     const updatedHost = await User.findById(event.hostId).select(
       "eventsHosted"
     );
@@ -1026,10 +1055,33 @@ export const updateAdminProfile = async (req, res) => {
     if (phone) user.phone = phone;
 
     if (req.file) {
+      const oldPhoto = user.photos?.find(p => p.isProfilePhoto);
       const photoUrl = req.file.location || "/uploads/" + req.file.filename;
+      const publicId = req.file.filename || null;
+
       user.photos = user.photos || [];
       user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
-      user.photos.push({ url: photoUrl, isProfilePhoto: true });
+      user.photos.push({
+        url: photoUrl,
+        publicId: publicId,
+        isProfilePhoto: true
+      });
+
+      // Cleanup old Cloudinary photo
+      if (oldPhoto?.publicId) {
+        await deleteImage(oldPhoto.publicId);
+      }
+    } else if (req.body.profilePhoto && typeof req.body.profilePhoto === "object") {
+      const oldPhoto = user.photos?.find(p => p.isProfilePhoto);
+      const newPhoto = req.body.profilePhoto;
+
+      user.photos = user.photos || [];
+      user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
+      user.photos.push({ ...newPhoto, isProfilePhoto: true });
+
+      if (oldPhoto?.publicId && oldPhoto.publicId !== newPhoto.publicId) {
+        await deleteImage(oldPhoto.publicId);
+      }
     }
 
     await user.save();

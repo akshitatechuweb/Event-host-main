@@ -13,7 +13,10 @@ import {
   Loader2,
   Save,
   KeyRound,
+  Check,
 } from "lucide-react";
+import { SecureImageUpload } from "@/components/common/SecureImageUpload";
+import { CldImage } from "@/components/common/CldImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAdminProfile,
@@ -36,9 +39,7 @@ export default function ProfilePage() {
   // Profile fields state
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cloudinaryData, setCloudinaryData] = useState<{ url: string; publicId: string; version: string } | null>(null);
 
   // Password fields state
   const [passwords, setPasswords] = useState({
@@ -58,7 +59,8 @@ export default function ProfilePage() {
     if (profile) {
       setName(profile.name || "");
       setMobile(profile.phone || "");
-      setImagePreview(profile.profilePhoto || null);
+      // If profile.profilePhoto is a string (old format) or object (new format)
+      // CldImage handles it, but for the upload component we might need just the URL for preview
     }
   }, [profile]);
 
@@ -68,7 +70,7 @@ export default function ProfilePage() {
     onSuccess: (data) => {
       toast.success("Profile updated successfully");
       queryClient.invalidateQueries({ queryKey: ["admin-profile"] });
-      setImageFile(null);
+      setCloudinaryData(null);
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update profile");
@@ -86,29 +88,21 @@ export default function ProfilePage() {
     },
   });
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("phone", mobile);
-    if (imageFile) {
-      formData.append("profileImage", imageFile);
+    const payload: any = {
+      name,
+      phone: mobile,
+    };
+
+    if (cloudinaryData) {
+      payload.profilePhoto = cloudinaryData;
     }
 
-    updateProfileMutation.mutate(formData);
+    updateProfileMutation.mutate(payload);
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -156,31 +150,28 @@ export default function ProfilePage() {
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-sidebar-primary to-pink-500" />
 
             <div className="flex flex-col items-center pt-4">
-              <div className="relative">
-                <div className="h-32 w-32 rounded-full border-4 border-background shadow-lg overflow-hidden bg-muted flex items-center justify-center">
-                  {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      alt="Profile"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <UserIcon className="h-16 w-16 text-muted-foreground/40" />
-                  )}
-                </div>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 h-10 w-10 bg-sidebar-primary text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
-                >
-                  <Camera className="h-5 w-5" />
-                </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleImageChange}
+              <div className="relative group">
+                <CldImage
+                  src={cloudinaryData || profile?.profilePhoto}
+                  transformation="avatar"
+                  alt="Profile"
+                  width={128}
+                  height={128}
+                  className="h-32 w-32 rounded-full border-4 border-background shadow-lg overflow-hidden bg-muted flex items-center justify-center object-cover"
                 />
+                
+                <div className="absolute -bottom-2 -right-2">
+                   <SecureImageUpload
+                     folder={`users/${profile?.id || 'admin'}/avatar`}
+                     onSuccess={(data) => setCloudinaryData(data)}
+                     label=""
+                     className="w-12"
+                   >
+                     <div className="h-10 w-10 bg-sidebar-primary text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer">
+                        <Camera className="h-5 w-5" />
+                     </div>
+                   </SecureImageUpload>
+                </div>
               </div>
 
               <h2 className="mt-4 text-xl font-bold">

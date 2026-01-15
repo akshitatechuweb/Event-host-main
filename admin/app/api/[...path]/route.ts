@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const API_URL = "https://api.unrealvibe.com/api";
-// const API_URL = "http://localhost:8000/api";
+//const API_URL = "http://localhost:8000/api";
 
 async function proxy(
   request: NextRequest,
@@ -16,11 +16,20 @@ async function proxy(
   headers.delete("connection");
   headers.delete("content-length");
 
+  let body: any = undefined;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    try {
+      body = await request.arrayBuffer();
+    } catch (e) {
+      // Body might be empty or already consumed
+    }
+  }
+
   try {
     const response = await fetch(url, {
       method: request.method,
       headers,
-      body: request.body,
+      body,
       // @ts-ignore
       duplex: "half",
       cache: "no-store",

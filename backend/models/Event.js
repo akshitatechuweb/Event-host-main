@@ -7,7 +7,11 @@ const eventSchema = new mongoose.Schema(
     hostedBy: { type: String, required: true },
     eventName: { type: String, required: true },
     subtitle: { type: String, default: "" },
-    eventImage: { type: String },
+    eventImage: {
+      publicId: { type: String, required: true },
+      url: { type: String, required: true },
+      version: { type: String }
+    },
     date: { type: Date, required: true },
     time: { type: String, required: true },
     day: { type: String },

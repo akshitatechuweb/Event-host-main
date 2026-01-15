@@ -3,6 +3,7 @@ import { UserPlus, Calendar, PartyPopper, Heart, Sparkles } from "lucide-react";
 import friendsConnecting from "@/assets/friends-connecting.jpg";
 import partyHero from "@/assets/party-hero.jpg";
 import socialNetwork from "@/assets/social-network-3d.png";
+import { CldImage } from "./common/CldImage";
 
 const steps = [
   {
@@ -36,7 +37,7 @@ export const HowItWorks = () => {
     <section className="py-32 px-4 relative overflow-hidden" id="how-it-works">
       {/* Background image with overlay */}
       <div className="absolute inset-0 opacity-10">
-        <img
+        <CldImage
           src={friendsConnecting}
           alt="Friends connecting at an UnrealVibe party"
           className="w-full h-full object-cover"
@@ -121,12 +122,10 @@ export const HowItWorks = () => {
                 <span>From awkward hellos to group chats</span>
               </div>
               <div className="rounded-2xl overflow-hidden aspect-[4/5]">
-                <motion.img
+                <CldImage
                   src={friendsConnecting}
                   alt="New friends bonding at an UnrealVibe house party"
                   className="w-full h-full object-cover"
-                  whileHover={{ scale: 1.03 }}
-                  transition={{ duration: 0.5 }}
                 />
               </div>
               <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
@@ -170,11 +169,10 @@ export const HowItWorks = () => {
                 transition={{ type: "spring", stiffness: 260, damping: 20 }}
                 className="relative rounded-2xl overflow-hidden group"
               >
-                <img
+                <CldImage
                   src={friendsConnecting}
                   alt="Group of new friends laughing together at a house party"
-                  className="w-full h-44 md:h-56 object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
+                  className="w-full h-44 md:h-56 object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
                 <figcaption className="absolute bottom-4 left-4 right-4 text-sm text-foreground">
@@ -188,11 +186,10 @@ export const HowItWorks = () => {
                 transition={{ type: "spring", stiffness: 260, damping: 20 }}
                 className="relative rounded-2xl overflow-hidden group"
               >
-                <img
+                <CldImage
                   src={partyHero}
                   alt="Candid house party moment with cozy lighting"
-                  className="w-full h-44 md:h-56 object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
+                  className="w-full h-44 md:h-56 object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
                 <figcaption className="absolute bottom-4 left-4 right-4 text-sm text-foreground">
@@ -206,11 +203,10 @@ export const HowItWorks = () => {
                 transition={{ type: "spring", stiffness: 260, damping: 20 }}
                 className="relative rounded-2xl overflow-hidden group sm:col-span-2"
               >
-                <img
+                <CldImage
                   src={socialNetwork}
                   alt="Group photo from an UnrealVibe party with everyone smiling"
-                  className="w-full h-48 md:h-64 object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
+                  className="w-full h-48 md:h-64 object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/10 to-transparent" />
                 <figcaption className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm text-foreground">

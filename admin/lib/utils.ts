@@ -34,13 +34,23 @@ export function filterBySearchQuery<T>(
     });
   });
 }
-export function formatImageUrl(url: string | null | undefined): string {
+export function formatImageUrl(url: any): string {
   if (!url) return "";
-  if (url.startsWith("http")) return url;
+
+  let finalUrl = "";
+  if (typeof url === "string") {
+    finalUrl = url;
+  } else if (typeof url === "object" && url.url) {
+    finalUrl = url.url;
+  }
+
+  if (!finalUrl || typeof finalUrl !== "string") return "";
+
+  if (finalUrl.startsWith("http")) return finalUrl;
 
   // Resolve relative /uploads paths to the production backend by default
   const baseUrl =
     process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com";
-  const trimmed = url.startsWith("/") ? url : `/${url}`;
+  const trimmed = finalUrl.startsWith("/") ? finalUrl : `/${finalUrl}`;
   return `${baseUrl}${trimmed}`;
 }

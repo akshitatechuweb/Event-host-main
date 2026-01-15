@@ -102,32 +102,7 @@ export function Pagination({
         className
       )}
     >
-      <div className="flex items-center gap-8 order-2 sm:order-1">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-muted-foreground/70 uppercase tracking-widest text-[10px]">
-            Rows per page
-          </span>
-          <div className="relative group">
-            <select
-              value={safeLimit}
-              onChange={(e) => handleLimitChange(Number(e.target.value))}
-              className="appearance-none bg-muted/50 border border-sidebar-border/50 rounded-xl text-sm pl-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-sidebar-primary/40 transition-all font-bold text-foreground cursor-pointer hover:bg-muted hover:border-sidebar-border shadow-sm min-w-[80px]"
-            >
-              {[10, 20, 50, 100].map((option) => (
-                <option
-                  key={option}
-                  value={option}
-                  className="bg-card text-foreground"
-                >
-                  {option}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground group-hover:text-sidebar-primary transition-colors">
-              <ChevronRight className="h-4 w-4 rotate-90" />
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center gap-4 order-2 sm:order-1">
         <div className="text-sm font-bold tracking-tight text-muted-foreground/50">
           <span className="text-foreground text-base">{startRange}</span>
           <span className="mx-1.5">—</span>
@@ -159,9 +134,7 @@ export function Pagination({
           </button>
         </div>
 
-        <div className="hidden md:flex items-center gap-1.5">
-          {renderPageNumbers()}
-        </div>
+        <div className="flex items-center gap-1.5">{renderPageNumbers()}</div>
 
         <div className="flex items-center gap-1.5 ml-2">
           <button

@@ -194,6 +194,30 @@ export const getRequestById = async (req, res) => {
       });
     }
 
+    // 🚀 Transform image paths to absolute URLs (Fix for admin portal display)
+    if (request.userId) {
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+      // Transform photos
+      if (request.userId.photos && request.userId.photos.length > 0) {
+        request.userId.photos = request.userId.photos.map((p) => ({
+          ...p,
+          url: p.url.startsWith("/") ? `${baseUrl}${p.url}` : p.url,
+        }));
+      }
+
+      // Transform documents
+      if (request.userId.documents) {
+        const docs = request.userId.documents;
+        if (docs.aadhaar && docs.aadhaar.startsWith("/"))
+          docs.aadhaar = `${baseUrl}${docs.aadhaar}`;
+        if (docs.pan && docs.pan.startsWith("/"))
+          docs.pan = `${baseUrl}${docs.pan}`;
+        if (docs.drivingLicense && docs.drivingLicense.startsWith("/"))
+          docs.drivingLicense = `${baseUrl}${docs.drivingLicense}`;
+      }
+    }
+
     res.json({
       success: true,
       request,
@@ -371,19 +395,19 @@ export const getEventTransactions = async (req, res) => {
         createdAt: t.createdAt,
         booking: booking
           ? {
-            _id: booking._id,
-            orderId: booking.orderId,
-            totalAmount: booking.totalAmount,
-            ticketCount: booking.ticketCount,
-            items: booking.items,
-            buyer: booking.userId
-              ? {
-                _id: booking.userId._id,
-                name: booking.userId.name,
-                email: booking.userId.email,
-              }
-              : null,
-          }
+              _id: booking._id,
+              orderId: booking.orderId,
+              totalAmount: booking.totalAmount,
+              ticketCount: booking.ticketCount,
+              items: booking.items,
+              buyer: booking.userId
+                ? {
+                    _id: booking.userId._id,
+                    name: booking.userId.name,
+                    email: booking.userId.email,
+                  }
+                : null,
+            }
           : null,
       };
     });
@@ -1002,7 +1026,7 @@ export const updateAdminProfile = async (req, res) => {
     if (phone) user.phone = phone;
 
     if (req.file) {
-      const photoUrl = req.file.location || ("/uploads/" + req.file.filename);
+      const photoUrl = req.file.location || "/uploads/" + req.file.filename;
       user.photos = user.photos || [];
       user.photos = user.photos.map((p) => ({ ...p, isProfilePhoto: false }));
       user.photos.push({ url: photoUrl, isProfilePhoto: true });
@@ -1024,6 +1048,7 @@ export const updateAdminProfile = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        permissions: user.permissions, // 🚩 FIX: Keep permissions synced after profile update
         profilePhoto,
       },
     });

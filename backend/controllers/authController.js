@@ -101,7 +101,8 @@ export const verifyOtp = async (req, res) => {
       if (user.isActive === false) {
         return res.status(403).json({
           success: false,
-          message: "This account has been deactivated. Please use a different phone number to register.",
+          message:
+            "This account has been deactivated. Please use a different phone number to register.",
         });
       }
       user.isVerified = true;
@@ -304,6 +305,7 @@ export const adminMe = async (req, res) => {
       name: user.name,
       phone: user.phone,
       role: user.role,
+      permissions: user.permissions, // 🚩 FIX: Required for frontend usePermissions hook
       profilePhoto,
     });
   } catch (err) {

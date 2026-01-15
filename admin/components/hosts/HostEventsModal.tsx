@@ -2,17 +2,25 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getHostEvents } from "@/lib/admin";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Loader2, Calendar } from "lucide-react";
 
 const formatDate = (date: any) => {
   if (!date) return "TBA";
   const d = new Date(date);
-  return isNaN(d.getTime()) ? "TBA" : d.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  return isNaN(d.getTime())
+    ? "TBA"
+    : d.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
 };
 
 export function HostEventsModal({ hostId, hostName, open, onOpenChange }: any) {
@@ -26,14 +34,14 @@ export function HostEventsModal({ hostId, hostName, open, onOpenChange }: any) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle>Events by {hostName}</DialogTitle>
           <DialogDescription>
             View all events organized by this host.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-2">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="animate-spin w-8 h-8 text-sidebar-primary" />
@@ -50,7 +58,10 @@ export function HostEventsModal({ hostId, hostName, open, onOpenChange }: any) {
           ) : (
             <div className="grid gap-3">
               {events.map((ev: any) => (
-                <div key={ev._id} className="group flex items-center justify-between p-4 rounded-2xl border border-border/50 bg-card hover:bg-muted/5 transition-all">
+                <div
+                  key={ev._id}
+                  className="group flex items-center justify-between p-4 rounded-2xl border border-border/50 bg-card hover:bg-muted/5 transition-all"
+                >
                   <div className="space-y-1">
                     <p className="font-semibold text-foreground group-hover:text-sidebar-primary transition-colors">
                       {ev.eventName}
@@ -61,13 +72,14 @@ export function HostEventsModal({ hostId, hostName, open, onOpenChange }: any) {
                       <span>{formatDate(ev.date || ev.eventDateTime)}</span>
                     </div>
                   </div>
-                  
+
                   <div className="text-right space-y-1">
                     <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/60">
                       {ev.category || "General"}
                     </div>
                     <div className="text-xs font-semibold bg-sidebar-primary/5 text-sidebar-primary px-3 py-1 rounded-full">
-                      {ev.currentBookings || 0} / {ev.maxCapacity || "∞"} Bookings
+                      {ev.currentBookings || 0} / {ev.maxCapacity || "∞"}{" "}
+                      Bookings
                     </div>
                   </div>
                 </div>

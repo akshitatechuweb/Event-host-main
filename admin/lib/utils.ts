@@ -17,7 +17,7 @@ export type SearchableField = string | number | null | undefined;
 export function filterBySearchQuery<T>(
   items: T[],
   query: string,
-  getFields: (item: T) => SearchableField[],
+  getFields: (item: T) => SearchableField[]
 ): T[] {
   const trimmed = query.trim();
   if (!trimmed) return items;
@@ -33,4 +33,14 @@ export function filterBySearchQuery<T>(
       return value.includes(loweredQuery);
     });
   });
+}
+export function formatImageUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+
+  // Resolve relative /uploads paths to the production backend by default
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com";
+  const trimmed = url.startsWith("/") ? url : `/${url}`;
+  return `${baseUrl}${trimmed}`;
 }

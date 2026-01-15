@@ -104,11 +104,17 @@ export const checkPermission = (module, type) => (req, res, next) => {
     !userPermissions[module] ||
     !userPermissions[module][type]
   ) {
+    console.warn(
+      `[PERM] ACCESS DENIED: ${req.user.role} "${req.user.email}" requested ${type} on ${module}`
+    );
     return res.status(403).json({
       success: false,
       message: `Access denied: No ${type} permission for ${module}`,
     });
   }
 
+  console.log(
+    `[PERM] ACCESS GRANTED: ${req.user.role} "${req.user.email}" -> ${module}:${type}`
+  );
   next();
 };

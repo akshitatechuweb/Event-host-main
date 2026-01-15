@@ -106,24 +106,15 @@ export async function getEventTransactions(
     booking: t.booking ?? null,
   }));
 
-  // 🔥 recompute totals safely
-  const totals = {
-    totalRevenue: transactions.reduce(
-      (sum, t) => sum + (t.status === "completed" ? Number(t.amount) : 0),
-      0
-    ),
-    totalTransactions: transactions.length,
-    totalTickets: transactions.reduce(
-      (sum, t) =>
-        sum + (t.status === "completed" ? t.booking?.ticketCount ?? 0 : 0),
-      0
-    ),
-  };
-
   return {
     success: true,
     transactions,
-    totals,
+    totals: raw.totals || {
+      totalRevenue: 0,
+      totalTransactions: 0,
+      totalTickets: 0,
+    },
+    meta: raw.meta, // 🚩 FIX: Preserve meta for pagination
   };
 }
 
@@ -448,7 +439,6 @@ export async function deleteAdminHandle(id: string) {
 
   return res.json();
 }
-
 
 export async function getHostEvents(hostId: string) {
   const res = await fetch(`/api/admin/hosts/${hostId}/events`, {

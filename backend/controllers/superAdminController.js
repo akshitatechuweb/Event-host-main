@@ -132,7 +132,9 @@ export const getAllAdmins = async (req, res) => {
 
     const total = await User.countDocuments({ role: "admin" });
     const admins = await User.find({ role: "admin" })
-      .select("name email phone role permissions isActive createdAt password_encrypted previous_password_encrypted")
+      .select(
+        "name email phone role permissions isActive createdAt password_encrypted previous_password_encrypted"
+      )
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
@@ -187,7 +189,10 @@ export const updateAdmin = async (req, res) => {
       });
     }
 
-    if (permissions) admin.permissions = permissions;
+    if (permissions) {
+      admin.permissions = permissions;
+      admin.markModified("permissions");
+    }
     if (isActive !== undefined) admin.isActive = isActive;
     if (name) admin.name = name;
 

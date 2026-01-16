@@ -55,6 +55,7 @@ export const approveEventHost = async (req, res) => {
     // Upgrade user to host
     if (user.role !== "host") {
       user.role = "host";
+      user.isHost = true;
       user.isVerified = true;
       user.isHostVerified = true;
     }

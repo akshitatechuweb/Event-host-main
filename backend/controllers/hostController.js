@@ -68,11 +68,22 @@ export const requestEventHostAccess = async (req, res) => {
 
     const user = await User.findById(userId);
 
-    // Only host users can request
-    if (user.role !== "host") {
-      return res.status(403).json({
+    // Ensure profile is complete before requesting host status
+    if (!user.isProfileComplete) {
+      return res.status(400).json({
         success: false,
-        message: "Only hosts can request event hosting access",
+        message:
+          "Please complete your profile (100%) including document uploads before requesting to become a host.",
+      });
+    }
+
+    // If already a host, they don't need to request basic host access
+    // unless this is for specific event creation credits (which seems to be the case in the current code)
+    // However, the user wants a separate flow for becoming a host.
+    if (user.role === "host" && user.eventCreationCredits > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "You are already a host with active creation credits.",
       });
     }
 
@@ -93,7 +104,8 @@ export const requestEventHostAccess = async (req, res) => {
     if (user.eventCreationCredits > 0) {
       return res.status(400).json({
         success: false,
-        message: "You already have an approved request. Please wait for the event to be created.",
+        message:
+          "You already have an approved request. Please wait for the event to be created.",
       });
     }
 
@@ -105,6 +117,10 @@ export const requestEventHostAccess = async (req, res) => {
       city,
       pincode,
     });
+
+    // Update user status
+    user.isHostRequestPending = true;
+    await user.save();
 
     // 🔔 NOTIFICATION: NEW HOST REQUEST (ADMIN)
     broadcastNotification({

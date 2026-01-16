@@ -147,11 +147,30 @@ export const verifyPayment = async (req, res) => {
       eventId,
       items = [],
       attendees = [],
-      subtotal,
-      discountAmount,
-      taxAmount,
       appliedCouponCode,
     } = req.body;
+
+    // Securely parse financial values from body or default to 0
+    const subtotal = Number(req.body.subtotal) || 0;
+    const discountAmount = Number(req.body.discountAmount) || 0;
+    const taxAmount = Number(req.body.taxAmount) || 0;
+
+    // Calculate totalAmount securely
+    const totalAmount = subtotal + taxAmount - discountAmount;
+
+    // Critical check: If totalAmount is NaN or Infinity, stop here
+    if (!Number.isFinite(totalAmount)) {
+      console.error("VERIFY PAYMENT ERROR: Invalid totalAmount", {
+        subtotal,
+        taxAmount,
+        discountAmount,
+        totalAmount,
+      });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment calculation: NaN detected",
+      });
+    }
 
     if (!razorpay_order_id) {
       return res.status(400).json({
@@ -183,8 +202,6 @@ export const verifyPayment = async (req, res) => {
     });
 
     let totalPersons = 0;
-    let totalAmount = 0;
-
     for (const item of items) {
       const pass = passMap[item.passType];
       if (!pass) {
@@ -193,8 +210,6 @@ export const verifyPayment = async (req, res) => {
           message: `${item.passType} pass not available`,
         });
       }
-
-      totalAmount += pass.price * item.quantity;
       totalPersons +=
         item.passType === "Couple" ? item.quantity * 2 : item.quantity;
     }
@@ -233,7 +248,7 @@ export const verifyPayment = async (req, res) => {
       attendees,
       ticketCount: totalPersons,
       items,
-      totalAmount: subtotal + taxAmount - discountAmount,
+      totalAmount, // Use verified value
       subtotal,
       discountAmount,
       taxAmount,
@@ -326,7 +341,7 @@ export const verifyPayment = async (req, res) => {
     // Save transaction
     await Transaction.create({
       bookingId: booking._id,
-      amount: totalAmount,
+      amount: totalAmount, // Use pre-verified totalAmount
       providerTxnId: razorpay_order_id,
       status: "completed",
     });

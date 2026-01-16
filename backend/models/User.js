@@ -156,19 +156,6 @@ userSchema.pre("save", function (next) {
   this.profileCompletion = completion;
   this.isProfileComplete = completion === 100;
 
-  // Auto-promote to verified host when 100% (but don't demote admins/superadmins)
-  if (
-    completion === 100 &&
-    hasDocs &&
-    !["admin", "superadmin"].includes(this.role)
-  ) {
-    this.isHost = true;
-    this.role = "host";
-    this.isVerified = true;
-    this.isHostVerified = true;
-    this.isHostRequestPending = false;
-  }
-
   next();
 });
 

@@ -33,8 +33,13 @@ import {
   updateAdminPassword,
 } from "../controllers/adminController.js";
 import { getUserById } from "../controllers/userController.js";
-import { getEvents,getHostEvents } from "../controllers/eventController.js";
+import { getEvents, getHostEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
+import {
+  createCoupon,
+  getAllCoupons,
+  updateCouponStatus,
+} from "../controllers/couponController.js";
 const router = express.Router();
 
 // Admin authentication
@@ -225,6 +230,29 @@ router.delete(
   deleteAdmin
 );
 
+// ===============================
+// COUPON MANAGEMENT
+// ===============================
+router.post(
+  "/coupons",
+  authMiddleware,
+  requireRole("superadmin"),
+  createCoupon
+);
+
+router.get(
+  "/coupons",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  getAllCoupons
+);
+
+router.patch(
+  "/coupons/:id/status",
+  authMiddleware,
+  requireRole("superadmin"),
+  updateCouponStatus
+);
 
 router.get(
   "/hosts/:hostId/events",

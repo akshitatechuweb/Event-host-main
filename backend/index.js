@@ -20,7 +20,7 @@ import passRoutes from "./routes/passRoutes.js";
 import sseRoutes from "./routes/sseRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
-
+import couponRoutes from "./routes/couponRoutes.js";
 
 dotenv.config();
 
@@ -58,12 +58,14 @@ const allowedOrigins = [
   "https://unrealvibe.com",
   "https://www.unrealvibe.com",
   "https://admin.unrealvibe.com",
-  "https://event-host-main.vercel.app"
+  "https://event-host-main.vercel.app",
 ];
 
 // Allow additional origins from environment variable (comma-separated)
 if (process.env.ALLOWED_ORIGINS) {
-  allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()));
+  allowedOrigins.push(
+    ...process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  );
 }
 
 app.use(
@@ -100,12 +102,15 @@ console.log(`Uploads folder: ${UPLOADS_FOLDER}`);
 if (!process.env.S3_BUCKET && process.env.NODE_ENV === "production") {
   if (UPLOADS_FOLDER.startsWith(process.cwd())) {
     console.warn(
-      "\u26A0\uFE0F WARNING: uploads folder is inside the project directory in production. This directory may be ephemeral on deploys.\nSet UPLOADS_FOLDER to a persistent host path (e.g. /var/www/unrealvibe/uploads) or enable S3 storage by setting S3_BUCKET and AWS credentials.");
+      "\u26A0\uFE0F WARNING: uploads folder is inside the project directory in production. This directory may be ephemeral on deploys.\nSet UPLOADS_FOLDER to a persistent host path (e.g. /var/www/unrealvibe/uploads) or enable S3 storage by setting S3_BUCKET and AWS credentials."
+    );
   } else {
     try {
       fs.accessSync(UPLOADS_FOLDER, fs.constants.W_OK);
     } catch (err) {
-      console.warn(`\u26A0\uFE0F Uploads folder \"${UPLOADS_FOLDER}\" is not writable: ${err.message}`);
+      console.warn(
+        `\u26A0\uFE0F Uploads folder \"${UPLOADS_FOLDER}\" is not writable: ${err.message}`
+      );
     }
   }
 }
@@ -143,6 +148,7 @@ const startServer = async () => {
   app.use("/api/sse", sseRoutes);
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/upload", uploadRoutes);
+  app.use("/api/coupons", couponRoutes);
 
   // Start server
   app.listen(PORT, () => {

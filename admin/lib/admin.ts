@@ -76,15 +76,17 @@ export async function rejectHost(id: string, reason?: string) {
 export async function getEventTransactions(
   eventId: string,
   page = 1,
-  limit = 10
+  limit = 10,
+  ticketType?: string
 ): Promise<EventTransactionsResponse> {
-  const res = await fetch(
-    `/api/admin/events/${eventId}/transactions?page=${page}&limit=${limit}`,
-    {
-      credentials: "include",
-      cache: "no-store",
-    }
-  );
+  let url = `/api/admin/events/${eventId}/transactions?page=${page}&limit=${limit}`;
+  if (ticketType) {
+    url += `&ticketType=${encodeURIComponent(ticketType)}`;
+  }
+  const res = await fetch(url, {
+    credentials: "include",
+    cache: "no-store",
+  });
 
   const raw: EventTransactionsResponse = await res.json();
 

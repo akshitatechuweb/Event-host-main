@@ -328,13 +328,18 @@ export const getHostIdFromRequestId = async (req, res) => {
 export const getEventTransactions = async (req, res) => {
   try {
     const eventId = req.params.eventId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, ticketType } = req.query;
     const p = parseInt(page);
     const l = parseInt(limit);
     const skip = (p - 1) * l;
 
     // Find bookings for the event
-    const bookings = await Booking.find({ eventId })
+    const bookingQuery = { eventId };
+    if (ticketType) {
+      bookingQuery["items.passType"] = ticketType;
+    }
+
+    const bookings = await Booking.find(bookingQuery)
       .populate("userId", "name email phone")
       .lean();
 
@@ -397,19 +402,19 @@ export const getEventTransactions = async (req, res) => {
         createdAt: t.createdAt,
         booking: booking
           ? {
-            _id: booking._id,
-            orderId: booking.orderId,
-            totalAmount: booking.totalAmount,
-            ticketCount: booking.ticketCount,
-            items: booking.items,
-            buyer: booking.userId
-              ? {
-                _id: booking.userId._id,
-                name: booking.userId.name,
-                email: booking.userId.email,
-              }
-              : null,
-          }
+              _id: booking._id,
+              orderId: booking.orderId,
+              totalAmount: booking.totalAmount,
+              ticketCount: booking.ticketCount,
+              items: booking.items,
+              buyer: booking.userId
+                ? {
+                    _id: booking.userId._id,
+                    name: booking.userId.name,
+                    email: booking.userId.email,
+                  }
+                : null,
+            }
           : null,
       };
     });
@@ -1206,7 +1211,10 @@ export const getAllUsers = async (req, res) => {
       (async () => ({
         total: await User.countDocuments({ role: "user" }),
         active: await User.countDocuments({ role: "user", isActive: true }),
-        deactivated: await User.countDocuments({ role: "user", isActive: false }),
+        deactivated: await User.countDocuments({
+          role: "user",
+          isActive: false,
+        }),
       }))(),
     ]);
 

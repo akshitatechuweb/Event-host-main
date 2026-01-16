@@ -89,13 +89,17 @@ export function TicketTable({ searchQuery = "" }: TicketTableProps) {
   return (
     <div className="space-y-8">
       <div className="space-y-4">
-        {Object.entries(grouped).map(([eventName, passes]) => (
-          <EventTicketCard
-            key={eventName}
-            eventName={eventName}
-            passes={passes}
-          />
-        ))}
+        {Object.entries(grouped).map(([eventName, passes]) => {
+          const firstPass = passes[0];
+          return (
+            <EventTicketCard
+              key={eventName}
+              eventId={firstPass?.eventId || ""}
+              eventName={eventName}
+              passes={passes}
+            />
+          );
+        })}
       </div>
 
       {meta && (

@@ -72,22 +72,24 @@ export function CouponList({ coupons }: CouponListProps) {
             exit={{ opacity: 0, scale: 0.95 }}
             layout
           >
-            <Card className="relative overflow-hidden group border-border/40 bg-card/50 backdrop-blur-xl hover:border-sidebar-primary/30 transition-all duration-300">
+            <Card className="relative overflow-hidden group border-border/40 bg-card/40 backdrop-blur-xl hover:border-violet-500/20 transition-all duration-300 rounded-4xl">
               {/* Status Indicator Bar */}
               <div
-                className={`absolute top-0 left-0 w-1 h-full ${
-                  coupon.isActive ? "bg-green-500" : "bg-muted-foreground/30"
+                className={`absolute top-0 left-0 w-1.5 h-full ${
+                  coupon.isActive
+                    ? "bg-linear-to-b from-pink-500 to-violet-500"
+                    : "bg-muted-foreground/10"
                 }`}
               />
 
-              <div className="p-6 space-y-5">
+              <div className="p-7 space-y-6">
                 {/* Header */}
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
-                    <h3 className="text-2xl font-black tracking-tighter text-foreground group-hover:text-sidebar-primary transition-colors">
+                    <h3 className="text-2xl font-semibold tracking-tight text-foreground group-hover:text-violet-500 transition-colors">
                       {coupon.code}
                     </h3>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
+                    <p className="text-[10px] text-muted-foreground/50 font-bold uppercase tracking-[0.2em]">
                       {coupon.discountType.replace("_", " ")}
                     </p>
                   </div>
@@ -95,65 +97,64 @@ export function CouponList({ coupons }: CouponListProps) {
                     variant={coupon.isActive ? "default" : "secondary"}
                     className={
                       coupon.isActive
-                        ? "bg-green-500/10 text-green-600 border-green-500/20"
-                        : ""
+                        ? "bg-pink-500/10 text-pink-500 border-pink-500/20 font-medium"
+                        : "font-medium"
                     }
                   >
-                    {coupon.isActive ? "Active" : "Inactive"}
+                    {coupon.isActive ? "Active" : "Paused"}
                   </Badge>
                 </div>
 
-                {/* Description */}
                 {coupon.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-sm text-muted-foreground/70 leading-relaxed line-clamp-2">
                     {coupon.description}
                   </p>
                 )}
 
                 {/* Value Display */}
-                <div className="py-4 px-5 rounded-2xl bg-muted/20 border border-border/20 flex items-center justify-between">
+                <div className="py-5 px-6 rounded-2xl bg-muted/10 border border-border/10 flex items-center justify-between group-hover:bg-muted/20 transition-colors">
                   <div className="flex flex-col">
-                    <span className="text-3xl font-bold text-foreground">
+                    <span className="text-3xl font-semibold text-foreground tracking-tight">
                       {coupon.discountType === "PERCENTAGE"
                         ? `${coupon.discountValue}%`
                         : `₹${coupon.discountValue}`}
                     </span>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
-                      Discount Value
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground/40 tracking-wider">
+                      Discount
                     </span>
                   </div>
                   <div className="text-right flex flex-col">
-                    <span className="text-sm font-semibold text-foreground">
+                    <span className="text-xl font-semibold text-foreground">
                       {coupon.usageLimit
                         ? `${coupon.usageCount}/${coupon.usageLimit}`
                         : coupon.usageCount}
                     </span>
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
-                      Used
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground/40 tracking-wider">
+                      Redeemed
                     </span>
                   </div>
                 </div>
 
                 {/* Info Grid */}
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="w-3.5 h-3.5" />
+                <div className="grid grid-cols-2 gap-5 text-[11px]">
+                  <div className="flex items-center gap-2.5 text-muted-foreground/60">
+                    <Calendar className="w-3.5 h-3.5 text-pink-500/50" />
                     <span>
                       {coupon.expiryDate
                         ? new Date(coupon.expiryDate).toLocaleDateString()
                         : "No Expiry"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2.5 text-muted-foreground/60">
+                    <Users className="w-3.5 h-3.5 text-violet-500/50" />
                     <span>{coupon.perUserLimit} per user</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground col-span-2">
-                    <Ticket className="w-3.5 h-3.5" />
-                    <span>
+                  <div className="flex items-center gap-2.5 text-muted-foreground/60 col-span-2">
+                    <Ticket className="w-3.5 h-3.5 text-indigo-500/50" />
+                    <span className="truncate">
                       {coupon.applicableEvents.length > 0
-                        ? `${coupon.applicableEvents.length} Events Restricted`
-                        : "Global Coupon"}
+                        ? `${coupon.applicableEvents.length} Targeted Events`
+                        : "All Events"}
                     </span>
                   </div>
                 </div>

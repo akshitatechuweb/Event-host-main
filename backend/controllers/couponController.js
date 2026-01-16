@@ -195,7 +195,7 @@ export const applyCoupon = async (req, res) => {
 export const getAllCoupons = async (req, res) => {
   try {
     const coupons = await Coupon.find()
-      .populate("applicableEvents", "title")
+      .populate("applicableEvents", "eventName")
       .sort({ createdAt: -1 });
     res.json({ success: true, coupons });
   } catch (error) {

@@ -35,6 +35,7 @@ import {
 import { getUserById } from "../controllers/userController.js";
 import { getEvents, getHostEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
+import {
   createCoupon,
   getAllCoupons,
   updateCouponStatus,
@@ -247,6 +248,10 @@ router.get(
   getAllCoupons
 );
 
+router.patch(
+  "/coupons/:id/status",
+  authMiddleware,
+  requireRole("superadmin"),
   updateCouponStatus
 );
 

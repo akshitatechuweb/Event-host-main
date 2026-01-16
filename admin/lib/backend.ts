@@ -4,10 +4,10 @@ import "server-only";
 // This file is safe to use in Server Components / API Routes
 // It directly talks to the external backend
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(/\/+$/, "");
-//  export const API_BASE_URL = (
-//    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-//  ).replace(/\/+$/, "");
+// export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "https://api.unrealvibe.com").replace(/\/+$/, "");
+export const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+).replace(/\/+$/, "");
 
 /**
  * Robust proxy fetch for API routes.

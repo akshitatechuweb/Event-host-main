@@ -40,76 +40,100 @@ function CouponsContent() {
   }
 
   return (
-    <div className="max-w-[1500px] mx-auto px-8 py-14 space-y-12">
+    <div className="max-w-[1500px] mx-auto px-10 py-14 space-y-12">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sidebar-primary/10 text-sidebar-primary text-xs font-black uppercase tracking-wider mb-2">
-            <Ticket className="w-3 h-3" /> Promotion Engine
-          </div>
-          <h1 className="text-5xl font-black tracking-tight text-foreground">
-            Coupons <span className="text-sidebar-primary">&</span> Promos
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-xl">
-            Design and manage high-conversion discount offers for your global
-            event attendees.
-          </p>
-        </div>
+      <header className="relative space-y-3 mb-14">
+        <div className="absolute -top-28 -left-28 w-96 h-96 bg-pink-300/15 blur-[160px] rounded-full -z-10" />
+        <div className="absolute -top-24 right-0 w-96 h-96 bg-indigo-300/15 blur-[160px] rounded-full -z-10" />
 
-        <Button
-          onClick={() => setOpenAdd(true)}
-          className="h-14 px-8 rounded-2xl bg-sidebar-primary text-white font-black uppercase tracking-widest shadow-xl shadow-sidebar-primary/20 hover:bg-sidebar-primary/90 transition-all active:scale-95 group"
-        >
-          <Plus className="w-5 h-5 mr-3 group-hover:rotate-90 transition-transform duration-300" />
-          Create New Promo
-        </Button>
-      </div>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+          <div className="space-y-3">
+            <h1 className="text-[3.2rem] font-semibold tracking-tight bg-linear-to-r from-pink-500 via-violet-500 to-indigo-500 bg-clip-text text-transparent">
+              Coupons <span className="text-muted-foreground/20">&</span> Promos
+            </h1>
+
+            <p className="flex items-center gap-3 text-muted-foreground">
+              <span className="h-px w-8 bg-linear-to-r from-pink-400 to-indigo-400" />
+              Design and manage high-conversion discount offers for your events.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => setOpenAdd(true)}
+            className="h-14 px-8 rounded-2xl bg-linear-to-r from-pink-600 to-indigo-600 text-white font-semibold uppercase tracking-widest shadow-xl shadow-pink-500/10 hover:shadow-indigo-500/20 transition-all active:scale-95 group"
+          >
+            <Plus className="w-5 h-5 mr-3 group-hover:rotate-90 transition-transform duration-300" />
+            Create New Promo
+          </Button>
+        </div>
+      </header>
 
       {/* Stats Quick View (Mock) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {[
           {
             label: "Active Promos",
-            value: coupons.filter((c) => c.isActive).length,
-            color: "text-green-500",
+            value: coupons.filter((c: any) => c.isActive).length,
+            gradient: "from-pink-500/20 to-rose-500/20",
+            iconColor: "text-pink-500",
           },
           {
             label: "Total Redemptions",
-            value: coupons.reduce((s, c) => s + c.usageCount, 0),
-            color: "text-sidebar-primary",
+            value: coupons.reduce((s: number, c: any) => s + c.usageCount, 0),
+            gradient: "from-violet-500/20 to-purple-500/20",
+            iconColor: "text-violet-500",
           },
-          { label: "Expiring Soon", value: "3", color: "text-amber-500" },
-          { label: "Global Reach", value: "95%", color: "text-blue-500" },
+          {
+            label: "Expiring Soon",
+            value: "3",
+            gradient: "from-amber-500/20 to-orange-500/20",
+            iconColor: "text-amber-500",
+          },
+          {
+            label: "Global Reach",
+            value: "95%",
+            gradient: "from-blue-500/20 to-indigo-500/20",
+            iconColor: "text-blue-500",
+          },
         ].map((stat, i) => (
           <div
             key={i}
-            className="p-6 rounded-3xl bg-card/40 border border-border/40 backdrop-blur-sm"
+            className="group relative p-6 rounded-4xl bg-card/40 border border-border/40 backdrop-blur-xl overflow-hidden transition-all hover:bg-card/60"
           >
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">
-              {stat.label}
-            </p>
-            <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+            <div
+              className={`absolute inset-0 bg-linear-to-br ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity`}
+            />
+            <div className="relative z-10">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">
+                {stat.label}
+              </p>
+              <p
+                className={`text-3xl font-semibold tracking-tight ${stat.iconColor}`}
+              >
+                {stat.value}
+              </p>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col md:flex-row gap-6">
         <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/40 group-focus-within:text-sidebar-primary transition-colors" />
-          <Input
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 group-focus-within:text-violet-500 transition-colors" />
+          <input
             placeholder="Search coupon by code or description..."
-            className="h-14 pl-12 rounded-2xl bg-card border-border/40 focus:border-sidebar-primary/50 text-lg transition-all"
+            className="w-full h-14 pl-12 pr-4 rounded-2xl bg-card/30 border-border/40 focus:border-violet-500/50 text-base transition-all placeholder:text-muted-foreground/30 outline-hidden"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <Button
           variant="outline"
-          className="h-14 px-6 rounded-2xl border-border/40 bg-card hover:bg-muted/50"
+          className="h-14 px-8 rounded-2xl border-border/40 bg-card/30 hover:bg-muted/50 text-muted-foreground font-medium"
         >
-          <Filter className="w-5 h-5 mr-2" />
-          Advanced Filters
+          <Filter className="w-4 h-4 mr-2" />
+          More Filters
         </Button>
       </div>
 

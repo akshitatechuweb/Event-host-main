@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
             success: true,
             users: items,
+            stats: (data as any)?.stats,
             meta
         }, { status: status as number });
 

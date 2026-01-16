@@ -94,24 +94,49 @@ function AppUsersContent() {
         </div>
 
         <div className="flex items-center gap-4 bg-card border border-sidebar-border px-6 py-4 rounded-2xl shadow-sm">
-          <div className="text-center px-4">
+          <button 
+            onClick={() => setStatusFilter("all")}
+            className={`text-center px-4 transition-colors rounded-xl cursor-pointer py-2 ${
+              statusFilter === "all" ? "bg-sidebar-primary/10" : "hover:bg-sidebar-primary/5"
+            }`}
+          >
             <p className="text-2xl font-bold">
-              {meta?.totalItems || users.length}
+              {data?.stats?.total || 0}
             </p>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
               Total Members
             </p>
-          </div>
+          </button>
+          
           <div className="h-10 w-px bg-sidebar-border mx-2" />
+          
+          <button 
+            onClick={() => setStatusFilter("active")}
+            className={`text-center px-4 transition-colors rounded-xl cursor-pointer py-2 ${
+              statusFilter === "active" ? "bg-green-500/10" : "hover:bg-green-500/5"
+            }`}
+          >
+            <p className="text-2xl font-bold text-green-500">
+              {data?.stats?.active || 0}
+            </p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+              Active Members
+            </p>
+          </button>
+
+          <div className="h-10 w-px bg-sidebar-border mx-2" />
+          
           <button 
             onClick={() => setStatusFilter("deactivated")}
-            className="text-center px-4 hover:bg-red-500/5 transition-colors rounded-xl cursor-pointer"
+            className={`text-center px-4 transition-colors rounded-xl cursor-pointer py-2 ${
+              statusFilter === "deactivated" ? "bg-red-500/10" : "hover:bg-red-500/5"
+            }`}
           >
             <p className="text-2xl font-bold text-red-500">
-              {users.filter((u) => !u.isActive).length}
+              {data?.stats?.deactivated || 0}
             </p>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              On Page Inactive
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+              Inactive Members
             </p>
           </button>
         </div>

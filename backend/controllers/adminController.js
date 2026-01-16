@@ -397,19 +397,19 @@ export const getEventTransactions = async (req, res) => {
         createdAt: t.createdAt,
         booking: booking
           ? {
-              _id: booking._id,
-              orderId: booking.orderId,
-              totalAmount: booking.totalAmount,
-              ticketCount: booking.ticketCount,
-              items: booking.items,
-              buyer: booking.userId
-                ? {
-                    _id: booking.userId._id,
-                    name: booking.userId.name,
-                    email: booking.userId.email,
-                  }
-                : null,
-            }
+            _id: booking._id,
+            orderId: booking.orderId,
+            totalAmount: booking.totalAmount,
+            ticketCount: booking.ticketCount,
+            items: booking.items,
+            buyer: booking.userId
+              ? {
+                _id: booking.userId._id,
+                name: booking.userId.name,
+                email: booking.userId.email,
+              }
+              : null,
+          }
           : null,
       };
     });
@@ -1193,7 +1193,7 @@ export const getAllUsers = async (req, res) => {
     }
 
     // List mode for Admin Panel - return only app users by default
-    const [users, totalItems] = await Promise.all([
+    const [users, totalItems, stats] = await Promise.all([
       User.find(filter)
         .select(
           "name email phone city gender role isHost isVerified isActive createdAt profileCompletion"
@@ -1203,11 +1203,17 @@ export const getAllUsers = async (req, res) => {
         .limit(l)
         .lean(),
       User.countDocuments(filter),
+      (async () => ({
+        total: await User.countDocuments({ role: "user" }),
+        active: await User.countDocuments({ role: "user", isActive: true }),
+        deactivated: await User.countDocuments({ role: "user", isActive: false }),
+      }))(),
     ]);
 
     return res.status(200).json({
       success: true,
       users: users || [],
+      stats,
       meta: {
         totalItems,
         currentPage: p,

@@ -13,6 +13,7 @@ type CardTransaction = {
   id: string;
   event: string;
   user: string;
+  userId?: string;
   amount: string;
   date: string;
   status: CardTransactionStatus;
@@ -44,6 +45,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 .join(", ")
             : "N/A",
           user: transaction.booking?.buyer?.name || "Guest",
+          userId: transaction.booking?.buyer?._id,
           amount: `₹${transaction.amount.toLocaleString()}`,
           date: new Date(transaction.createdAt).toLocaleDateString("en-US", {
             year: "numeric",

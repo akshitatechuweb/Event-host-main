@@ -1,15 +1,24 @@
 import Event from "../models/Event.js";
 import User from "../models/User.js";
+import EventHostRequest from "../models/HostRequest.js";
 import axios from "axios";
 import mongoose from "mongoose";
 import { computeEventExtras } from "./eventUtils.js";
+import { broadcastNotification } from "./sseController.js";
 
 // ========================================================
 // GET EVENTS (with optional trending filter)
 // ========================================================
 export const getEvents = async (req, res) => {
   try {
-    const { userLat, userLng, trendingOnly, city, page = 1, limit = 10 } = req.query;
+    const {
+      userLat,
+      userLng,
+      trendingOnly,
+      city,
+      page = 1,
+      limit = 10,
+    } = req.query;
     const p = parseInt(page);
     const l = parseInt(limit);
     const skip = (p - 1) * l;
@@ -81,7 +90,7 @@ export const getEvents = async (req, res) => {
         if (imageUrl && imageUrl.startsWith("/")) {
           imageUrl = `${req.protocol}://${req.get("host")}${imageUrl}`;
         }
-      } catch (err) { }
+      } catch (err) {}
 
       let bookingPercentage = null;
       if (
@@ -102,8 +111,8 @@ export const getEvents = async (req, res) => {
         const eventDate = ev.eventDateTime
           ? new Date(ev.eventDateTime)
           : ev.date
-            ? new Date(ev.date)
-            : null;
+          ? new Date(ev.date)
+          : null;
         const createdAt = ev.createdAt ? new Date(ev.createdAt) : now;
         const hoursUntilEvent = eventDate
           ? (eventDate - now) / (1000 * 60 * 60)
@@ -123,7 +132,7 @@ export const getEvents = async (req, res) => {
         else if (bookingPercentage !== null && bookingPercentage >= 50)
           status = "High Demand";
         else if (hoursSinceCreation <= 48) status = "Just Started";
-      } catch (err) { }
+      } catch (err) {}
 
       return {
         ...ev,
@@ -219,13 +228,11 @@ export const toggleSaveEvent = async (req, res) => {
       );
     } catch (saveError) {
       console.error(`[DEBUG] Failed to save user profile:`, saveError);
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Database save failed",
-          error: saveError.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Database save failed",
+        error: saveError.message,
+      });
     }
 
     const totalSaves = await User.countDocuments({
@@ -325,8 +332,6 @@ export const getSavedEvents = async (req, res) => {
   }
 };
 
-
-
 export const getHostEvents = async (req, res) => {
   try {
     const { hostId } = req.params;
@@ -340,26 +345,45 @@ export const getHostEvents = async (req, res) => {
     console.log("Searching for events with hostId:", hostId);
 
     // Try to resolve host user (may be null if this id isn't a user id)
-    const hostUser = await User.findById(hostId).select("name").lean().catch(() => null);
+    const hostUser = await User.findById(hostId)
+      .select("name")
+      .lean()
+      .catch(() => null);
     if (hostUser) {
       console.log("Resolved host user:", hostUser.name);
     } else {
-      console.log("No host user record found for id (will still try direct matching):", hostId);
+      console.log(
+        "No host user record found for id (will still try direct matching):",
+        hostId
+      );
     }
 
     // Build a resilient query: check both ObjectId and string storage plus a few alternate fields
     const orClauses = [];
 
     // Add string-equality matches (covers cases where hostId stored as string)
-    orClauses.push({ hostId: hostId }, { host: hostId }, { organizerId: hostId }, { createdBy: hostId });
+    orClauses.push(
+      { hostId: hostId },
+      { host: hostId },
+      { organizerId: hostId },
+      { createdBy: hostId }
+    );
 
     // Add ObjectId matches if valid
     if (mongoose.isValidObjectId(hostId)) {
       try {
         const objId = new mongoose.Types.ObjectId(hostId);
-        orClauses.push({ hostId: objId }, { host: objId }, { organizerId: objId }, { createdBy: objId });
+        orClauses.push(
+          { hostId: objId },
+          { host: objId },
+          { organizerId: objId },
+          { createdBy: objId }
+        );
       } catch (err) {
-        console.warn("Failed to construct ObjectId from hostId, skipping objectId clauses", err);
+        console.warn(
+          "Failed to construct ObjectId from hostId, skipping objectId clauses",
+          err
+        );
       }
     }
 
@@ -372,14 +396,19 @@ export const getHostEvents = async (req, res) => {
       .populate("hostId", "name role eventsHosted")
       .lean();
 
-    console.log(`Direct query found events: ${events.length} for hostId: ${hostId}`);
+    console.log(
+      `Direct query found events: ${events.length} for hostId: ${hostId}`
+    );
 
     // Fallback: sometimes host reference is inconsistent; if we have a host name, do an aggregation to match by populated host.name
     if (events.length === 0 && hostUser?.name) {
       const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const nameRegex = new RegExp(`^${escapeRegex(hostUser.name)}$`, "i");
 
-      console.log("Attempting aggregation fallback by host name:", hostUser.name);
+      console.log(
+        "Attempting aggregation fallback by host name:",
+        hostUser.name
+      );
 
       const agg = await Event.aggregate([
         {
@@ -409,7 +438,9 @@ export const getHostEvents = async (req, res) => {
         return doc;
       });
 
-      console.log(`Aggregation fallback found events: ${events.length} for host name: ${hostUser.name}`);
+      console.log(
+        `Aggregation fallback found events: ${events.length} for host name: ${hostUser.name}`
+      );
     }
 
     // Final formatting (same as other APIs)
@@ -436,5 +467,292 @@ export const getHostEvents = async (req, res) => {
   } catch (err) {
     console.error("Get Host Events Error:", err);
     return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ========================================================
+// HOST: Request Event Hosting Access
+// ========================================================
+export const requestEventHosting = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { preferredPartyDate, locality, city, pincode } = req.body;
+
+    if (!preferredPartyDate || !locality || !city || !pincode) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    if (user.role !== "host") {
+      return res.status(403).json({
+        success: false,
+        message: "Only verified hosts can request permission to host events.",
+      });
+    }
+
+    if (!user.isProfileComplete) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please complete your profile (100%) before requesting permission to host events.",
+      });
+    }
+
+    // Check existing pending request
+    const existingPending = await EventHostRequest.findOne({
+      userId,
+      status: "pending",
+    });
+
+    if (existingPending) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You already have a pending request. Please wait for approval.",
+      });
+    }
+
+    // Create request
+    const newRequest = await EventHostRequest.create({
+      userId,
+      preferredPartyDate,
+      locality,
+      city,
+      pincode,
+    });
+
+    user.isHostRequestPending = true;
+    await user.save();
+
+    // 🔔 NOTIFICATION: NEW HOST REQUEST (ADMIN)
+    broadcastNotification({
+      type: "host_request_submitted",
+      title: "New Host Request 📝",
+      message: `A new host request has been submitted from ${city}.`,
+      meta: {
+        requestId: newRequest._id,
+        userId,
+        city,
+        locality,
+      },
+      createdAt: new Date().toISOString(),
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Host request sent successfully!",
+      request: newRequest,
+    });
+  } catch (error) {
+    console.error("Host request error:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to send host request" });
+  }
+};
+
+// ========================================================
+// ADMIN: Get All Hosting Requests
+// ========================================================
+export const getPendingHostingRequests = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    const p = parseInt(page);
+    const l = parseInt(limit);
+    const skip = (p - 1) * l;
+
+    const filter = status ? { status } : {};
+
+    const [requests, totalItems] = await Promise.all([
+      EventHostRequest.find(filter)
+        .populate("userId", "name phone email city role documents photos")
+        .populate("reviewedBy", "name email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(l),
+      EventHostRequest.countDocuments(filter),
+    ]);
+
+    const stats = {
+      total: await EventHostRequest.countDocuments(),
+      pending: await EventHostRequest.countDocuments({ status: "pending" }),
+      approved: await EventHostRequest.countDocuments({ status: "approved" }),
+      rejected: await EventHostRequest.countDocuments({ status: "rejected" }),
+    };
+
+    res.json({
+      success: true,
+      stats,
+      requests,
+      meta: {
+        totalItems,
+        currentPage: p,
+        limit: l,
+        totalPages: Math.ceil(totalItems / l),
+      },
+    });
+  } catch (error) {
+    console.error("Get All Requests Error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch requests" });
+  }
+};
+
+// ========================================================
+// ADMIN: Approve/Reject Hosting Request
+// ========================================================
+export const approveHostingRequest = async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const request = await EventHostRequest.findById(requestId).populate(
+      "userId",
+      "name phone email city"
+    );
+
+    if (!request) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Host request not found" });
+    }
+
+    if (request.status === "approved") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Already approved" });
+    }
+
+    request.status = "approved";
+    request.reviewedBy = req.user._id;
+    request.reviewedAt = new Date();
+    await request.save();
+
+    const user = await User.findById(request.userId._id);
+    if (user) {
+      user.eventCreationCredits = (user.eventCreationCredits || 0) + 1;
+      user.isHostRequestPending = false;
+      await user.save();
+
+      broadcastNotification(
+        {
+          type: "event_permission_granted",
+          title: "Event Permission Granted! 🎫",
+          message: `You have received 1 event creation credit.`,
+          meta: { requestId: request._id, credits: user.eventCreationCredits },
+          createdAt: new Date().toISOString(),
+        },
+        [user._id]
+      );
+    }
+
+    res.json({ success: true, message: "Approved successfully" });
+  } catch (error) {
+    console.error("Approve Host Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const rejectHostingRequest = async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const { reason } = req.body;
+
+    const request = await EventHostRequest.findById(requestId);
+    if (!request) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found" });
+    }
+
+    request.status = "rejected";
+    request.rejectionReason = reason || "Not eligible at this time";
+    request.reviewedBy = req.user._id;
+    request.reviewedAt = new Date();
+    await request.save();
+
+    await User.updateOne(
+      { _id: request.userId },
+      { $set: { isHostRequestPending: false } }
+    );
+
+    broadcastNotification(
+      {
+        type: "event_permission_rejected",
+        title: "Hosting Request Update",
+        message: `Your request was not approved. Reason: ${request.rejectionReason}`,
+        meta: { requestId: request._id, reason: request.rejectionReason },
+        createdAt: new Date().toISOString(),
+      },
+      [request.userId]
+    );
+
+    res.json({ success: true, message: "Rejected successfully" });
+  } catch (error) {
+    console.error("Reject Host Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ========================================================
+// ADMIN: Get Single Hosting Request
+// ========================================================
+export const getHostingRequestById = async (req, res) => {
+  try {
+    const request = await EventHostRequest.findById(req.params.id)
+      .populate("userId", "name phone email city role documents photos")
+      .populate("reviewedBy", "name email")
+      .lean();
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found",
+      });
+    }
+
+    // 🚀 Transform image paths to absolute URLs (Fix for admin portal display)
+    if (request.userId) {
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+      // Transform photos
+      if (request.userId.photos && request.userId.photos.length > 0) {
+        request.userId.photos = request.userId.photos.map((p) => ({
+          ...p,
+          url: p.url.startsWith("/") ? `${baseUrl}${p.url}` : p.url,
+        }));
+      }
+
+      // Transform documents
+      if (request.userId.documents) {
+        const docs = request.userId.documents;
+        if (docs.aadhaar?.url && docs.aadhaar.url.startsWith("/"))
+          docs.aadhaar.url = `${baseUrl}${docs.aadhaar.url}`;
+        if (docs.pan?.url && docs.pan.url.startsWith("/"))
+          docs.pan.url = `${baseUrl}${docs.pan.url}`;
+        if (docs.drivingLicense?.url && docs.drivingLicense.url.startsWith("/"))
+          docs.drivingLicense.url = `${baseUrl}${docs.drivingLicense.url}`;
+      }
+    }
+
+    res.json({
+      success: true,
+      request,
+    });
+  } catch (error) {
+    console.error("Get Request Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };

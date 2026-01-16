@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { getAllAppUsers, deactivateAppUser } from "@/lib/admin";
+import { getAllAppUsers, deactivateAppUser, promoteToHost } from "@/lib/admin";
 import { toast } from "sonner";
 import {
   Users,
@@ -30,6 +30,7 @@ interface AppUser {
   city?: string;
   gender?: string;
   isActive: boolean;
+  isHostRequestPending?: boolean;
 }
 
 function AppUsersContent() {
@@ -65,6 +66,18 @@ function AppUsersContent() {
     }
   };
 
+  const handlePromote = async (id: string) => {
+    if (!confirm("Are you sure you want to promote this user to Host?")) return;
+
+    try {
+      await promoteToHost(id);
+      toast.success("User promoted to Host successfully!");
+      queryClient.invalidateQueries({ queryKey: ["app-users"] });
+    } catch (error: any) {
+      toast.error(error.message || "An error occurred");
+    }
+  };
+
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const matchesSearch =
@@ -94,26 +107,28 @@ function AppUsersContent() {
         </div>
 
         <div className="flex items-center gap-4 bg-card border border-sidebar-border px-6 py-4 rounded-2xl shadow-sm">
-          <button 
+          <button
             onClick={() => setStatusFilter("all")}
             className={`text-center px-4 transition-colors rounded-xl cursor-pointer py-2 ${
-              statusFilter === "all" ? "bg-sidebar-primary/10" : "hover:bg-sidebar-primary/5"
+              statusFilter === "all"
+                ? "bg-sidebar-primary/10"
+                : "hover:bg-sidebar-primary/5"
             }`}
           >
-            <p className="text-2xl font-bold">
-              {data?.stats?.total || 0}
-            </p>
+            <p className="text-2xl font-bold">{data?.stats?.total || 0}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
               Total Members
             </p>
           </button>
-          
+
           <div className="h-10 w-px bg-sidebar-border mx-2" />
-          
-          <button 
+
+          <button
             onClick={() => setStatusFilter("active")}
             className={`text-center px-4 transition-colors rounded-xl cursor-pointer py-2 ${
-              statusFilter === "active" ? "bg-green-500/10" : "hover:bg-green-500/5"
+              statusFilter === "active"
+                ? "bg-green-500/10"
+                : "hover:bg-green-500/5"
             }`}
           >
             <p className="text-2xl font-bold text-green-500">
@@ -125,11 +140,13 @@ function AppUsersContent() {
           </button>
 
           <div className="h-10 w-px bg-sidebar-border mx-2" />
-          
-          <button 
+
+          <button
             onClick={() => setStatusFilter("deactivated")}
             className={`text-center px-4 transition-colors rounded-xl cursor-pointer py-2 ${
-              statusFilter === "deactivated" ? "bg-red-500/10" : "hover:bg-red-500/5"
+              statusFilter === "deactivated"
+                ? "bg-red-500/10"
+                : "hover:bg-red-500/5"
             }`}
           >
             <p className="text-2xl font-bold text-red-500">
@@ -225,9 +242,16 @@ function AppUsersContent() {
                     className="hover:bg-muted/20 transition-smooth group"
                   >
                     <td className="px-8 py-6">
-                      <p className="font-bold text-card-foreground">
-                        {user.name || "N/A"}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-card-foreground">
+                          {user.name || "N/A"}
+                        </p>
+                        {user.isHostRequestPending && (
+                          <span className="bg-yellow-500/10 text-yellow-600 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter animate-pulse">
+                            Pending Host
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-6 font-medium text-muted-foreground/80">
                       <div className="flex items-center gap-2">
@@ -280,6 +304,16 @@ function AppUsersContent() {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
+
+                        {user.isHostRequestPending && canWrite("users") && (
+                          <button
+                            onClick={() => handlePromote(user._id)}
+                            className="p-2.5 rounded-xl bg-sidebar-primary/10 text-sidebar-primary hover:bg-sidebar-primary hover:text-white transition-all border border-sidebar-primary/20"
+                            title="Promote to Host"
+                          >
+                            <UserCheck className="h-5 w-5" />
+                          </button>
+                        )}
 
                         {user.isActive && canWrite("users") && (
                           <button

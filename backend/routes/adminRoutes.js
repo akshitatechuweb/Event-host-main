@@ -17,10 +17,6 @@ import {
   deleteAdmin,
 } from "../controllers/superAdminController.js";
 import {
-  getAllHostRequests,
-  getRequestById,
-  approveEventHost,
-  rejectEventHost,
   getEventTransactions,
   getDashboardStats,
   getAllTickets,
@@ -32,8 +28,18 @@ import {
   updateAdminProfile,
   updateAdminPassword,
 } from "../controllers/adminController.js";
-import { getUserById } from "../controllers/userController.js";
-import { getEvents, getHostEvents } from "../controllers/eventController.js";
+import {
+  getUserById,
+  approveHostUpgrade,
+} from "../controllers/userController.js";
+import {
+  getEvents,
+  getHostEvents,
+  getPendingHostingRequests,
+  approveHostingRequest,
+  rejectHostingRequest,
+  getHostingRequestById,
+} from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
 import {
   createCoupon,
@@ -92,7 +98,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "read"),
-  getAllHostRequests
+  getPendingHostingRequests
 );
 
 // Get single request details
@@ -101,7 +107,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "read"),
-  getRequestById
+  getHostingRequestById
 );
 
 // Approve host request
@@ -110,7 +116,7 @@ router.put(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "write"),
-  approveEventHost
+  approveHostingRequest
 );
 
 // Reject host request
@@ -119,7 +125,7 @@ router.post(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "write"),
-  rejectEventHost
+  rejectHostingRequest
 );
 
 // Get all approved hosts (for events)
@@ -208,6 +214,15 @@ router.put(
   requireRole("admin", "superadmin"),
   checkPermission("users", "write"),
   deactivateUser
+);
+
+// Promote user to host (admin action based on isHostRequestPending)
+router.put(
+  "/app-users/promote-to-host/:id",
+  authMiddleware,
+  requireRole("admin", "superadmin"),
+  checkPermission("users", "write"),
+  approveHostUpgrade
 );
 
 // ===============================

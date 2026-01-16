@@ -500,3 +500,20 @@ export async function getHostEvents(hostId: string) {
   if (!res.ok) throw new Error("Failed to fetch host events");
   return res.json();
 }
+
+/**
+ * 🔹 Promote User to Host
+ */
+export async function promoteToHost(id: string) {
+  const res = await fetch(`/api/admin/app-users/promote-to-host/${id}`, {
+    method: "PUT",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to promote user to host");
+  }
+
+  return res.json();
+}

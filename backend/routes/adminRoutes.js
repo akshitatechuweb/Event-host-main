@@ -35,10 +35,10 @@ import {
 import { getUserById } from "../controllers/userController.js";
 import { getEvents, getHostEvents } from "../controllers/eventController.js";
 import { getPasses } from "../controllers/passController.js";
-import {
   createCoupon,
   getAllCoupons,
   updateCouponStatus,
+  deleteCoupon,
 } from "../controllers/couponController.js";
 const router = express.Router();
 
@@ -247,11 +247,14 @@ router.get(
   getAllCoupons
 );
 
-router.patch(
-  "/coupons/:id/status",
+  updateCouponStatus
+);
+
+router.delete(
+  "/coupons/:id",
   authMiddleware,
   requireRole("superadmin"),
-  updateCouponStatus
+  deleteCoupon
 );
 
 router.get(

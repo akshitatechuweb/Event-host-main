@@ -1,6 +1,7 @@
 import type { EventTransactionsResponse } from "@/types/transaction";
 import type { Transaction } from "@/types/transaction";
 import { clientFetch } from "./client";
+import { Coupon, CreateCouponInput } from "@/types/coupon";
 
 /* ===========================
    HOST REQUESTS
@@ -120,6 +121,51 @@ export async function getEventTransactions(
   };
 }
 
+export async function getAllCoupons(): Promise<Coupon[]> {
+  const res = await fetch("/api/admin/coupons", {
+    credentials: "include",
+    cache: "no-store",
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch coupons");
+  return data.coupons;
+}
+
+export async function createCoupon(input: CreateCouponInput) {
+  const res = await fetch("/api/admin/coupons", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    credentials: "include",
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to create coupon");
+  return data;
+}
+
+export async function updateCouponStatus(id: string, isActive: boolean) {
+  const res = await fetch(`/api/admin/coupons/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ isActive }),
+    credentials: "include",
+  });
+  const data = await res.json();
+  if (!res.ok)
+    throw new Error(data.message || "Failed to update coupon status");
+  return data;
+}
+
+export async function deleteCoupon(id: string) {
+  const res = await fetch(`/api/admin/coupons/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to delete coupon");
+  return data;
+}
+
 // ===========================
 // Tickets
 // ===========================
@@ -208,10 +254,8 @@ export async function updateAdminPassword(data: any) {
   return res.json();
 }
 
-// Events (for Transactions page)
 // ===========================
-// ===========================
-// Events (for Transactions page)
+// Events
 // ===========================
 export async function getAllEvents(page = 1, limit = 10) {
   const res = await fetch(`/api/admin/events?page=${page}&limit=${limit}`, {

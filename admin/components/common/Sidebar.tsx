@@ -102,6 +102,13 @@ export function Sidebar() {
               <IconShieldLock className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
             ),
           },
+          {
+            label: "Coupons",
+            href: "/admin/coupons",
+            icon: (
+              <IconTicket className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+            ),
+          },
         ]
       : []),
   ];

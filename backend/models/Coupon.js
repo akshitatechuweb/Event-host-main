@@ -19,13 +19,23 @@ const couponSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    description: {
+      type: String,
+      trim: true,
+    },
+    applicableEvents: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Event",
+      },
+    ],
     minOrderAmount: {
       type: Number,
       default: 0,
     },
     maxDiscount: {
       type: Number,
-      default: null, // Especially for PERCENTAGE type
+      default: null,
     },
     expiryDate: {
       type: Date,
@@ -33,7 +43,11 @@ const couponSchema = new mongoose.Schema(
     },
     usageLimit: {
       type: Number,
-      default: null, // Total number of times this coupon can be used
+      default: null,
+    },
+    perUserLimit: {
+      type: Number,
+      default: 1, // Default to once per user
     },
     usageCount: {
       type: Number,

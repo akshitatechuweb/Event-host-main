@@ -16,7 +16,7 @@ const razorpay = new Razorpay({
 ===================================================== */
 export const createOrder = async (req, res) => {
   try {
-    const { eventId, items = [], attendees = [] } = req.body;
+    const { eventId, items = [], attendees = [], couponCode } = req.body;
     const userId = req.user?._id || null;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -65,24 +65,56 @@ export const createOrder = async (req, res) => {
         item.passType === "Couple" ? item.quantity * 2 : item.quantity;
     }
 
-    // Capacity check
-    if (event.currentBookings + totalPersons > event.maxCapacity) {
-      return res.status(400).json({
-        success: false,
-        message: "Event sold out or insufficient capacity",
+    const subtotal = totalAmount;
+    let discountAmount = 0;
+    let taxAmount = 0;
+    let appliedCoupon = null;
+
+    if (couponCode) {
+      const Coupon = (await import("../models/Coupon.js")).default;
+      const coupon = await Coupon.findOne({
+        code: couponCode.trim().toUpperCase(),
+        isActive: true,
       });
+
+      if (coupon) {
+        const isEligible =
+          (!coupon.expiryDate || new Date() <= coupon.expiryDate) &&
+          (coupon.usageLimit === null || coupon.usageCount < coupon.usageLimit);
+
+        const isEventEligible =
+          !coupon.applicableEvents ||
+          coupon.applicableEvents.length === 0 ||
+          coupon.applicableEvents.some((id) => id.toString() === eventId);
+
+        if (
+          isEligible &&
+          isEventEligible &&
+          subtotal >= coupon.minOrderAmount
+        ) {
+          if (coupon.discountType === "PERCENTAGE") {
+            discountAmount = (subtotal * coupon.discountValue) / 100;
+            if (
+              coupon.maxDiscount !== null &&
+              discountAmount > coupon.maxDiscount
+            ) {
+              discountAmount = coupon.maxDiscount;
+            }
+          } else {
+            discountAmount = coupon.discountValue;
+          }
+          if (discountAmount > subtotal) discountAmount = subtotal;
+          appliedCoupon = coupon.code;
+        }
+      }
     }
 
-    // Optional attendees validation
-    if (attendees.length > 0 && attendees.length !== totalPersons) {
-      return res.status(400).json({
-        success: false,
-        message: "Attendees count mismatch",
-      });
-    }
+    const discountedAmount = subtotal - discountAmount;
+    taxAmount = Math.round(discountedAmount * 0.1); // 10% tax
+    const finalAmount = discountedAmount + taxAmount;
 
     const order = await razorpay.orders.create({
-      amount: totalAmount * 100,
+      amount: finalAmount * 100,
       currency: "INR",
       receipt: `booking_${Date.now()}`,
     });
@@ -90,7 +122,11 @@ export const createOrder = async (req, res) => {
     return res.json({
       success: true,
       orderId: order.id,
-      amount: totalAmount,
+      amount: finalAmount,
+      subtotal,
+      discountAmount,
+      taxAmount,
+      couponCode: appliedCoupon,
       key_id: process.env.RAZORPAY_KEY_ID,
       eventName: event.eventName,
       ticketCount: totalPersons,
@@ -106,7 +142,16 @@ export const createOrder = async (req, res) => {
 ===================================================== */
 export const verifyPayment = async (req, res) => {
   try {
-    const { razorpay_order_id, eventId, items = [], attendees = [] } = req.body;
+    const {
+      razorpay_order_id,
+      eventId,
+      items = [],
+      attendees = [],
+      subtotal,
+      discountAmount,
+      taxAmount,
+      appliedCouponCode,
+    } = req.body;
 
     if (!razorpay_order_id) {
       return res.status(400).json({
@@ -188,10 +233,23 @@ export const verifyPayment = async (req, res) => {
       attendees,
       ticketCount: totalPersons,
       items,
-      totalAmount,
+      totalAmount: subtotal + taxAmount - discountAmount,
+      subtotal,
+      discountAmount,
+      taxAmount,
+      appliedCouponCode,
       orderId: razorpay_order_id,
       status: "confirmed",
     });
+
+    // ⚡ Atomic Usage Increment for Coupon
+    if (appliedCouponCode) {
+      const Coupon = (await import("../models/Coupon.js")).default;
+      await Coupon.findOneAndUpdate(
+        { code: appliedCouponCode.toUpperCase() },
+        { $inc: { usageCount: 1 } }
+      );
+    }
 
     // 🔔 NOTIFICATION: BOOKING CONFIRMED (USER)
     if (userId) {

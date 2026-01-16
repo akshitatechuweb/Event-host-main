@@ -185,6 +185,7 @@ export const getEventTransactions = async (req, res) => {
               totalAmount: booking.totalAmount,
               ticketCount: booking.ticketCount,
               items: booking.items,
+              attendees: booking.attendees || [],
               buyer: booking.userId
                 ? {
                     _id: booking.userId._id,

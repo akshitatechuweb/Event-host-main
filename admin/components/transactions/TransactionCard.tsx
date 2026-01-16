@@ -1,25 +1,28 @@
-"use client"
+"use client";
 
-import { ArrowRight } from "lucide-react"
-import { useState } from "react"
-import UserDetailsModal from "../users/UserDetailsModal"
-import { useQueryClient } from "@tanstack/react-query"
+import { ArrowRight } from "lucide-react";
+import { useState } from "react";
+import UserDetailsModal from "../users/UserDetailsModal";
+import AttendeeDetailsModal from "./AttendeeDetailsModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface TransactionCardProps {
   transaction: {
-    id: string
-    event: string
-    user: string
-    userId?: string
-    amount: string
-    date: string
-    status: "completed" | "pending" | "failed"
-  }
+    id: string;
+    event: string;
+    user: string;
+    userId?: string;
+    amount: string;
+    date: string;
+    status: "completed" | "pending" | "failed";
+    attendees: any[];
+  };
 }
 
 export function TransactionCard({ transaction }: TransactionCardProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const queryClient = useQueryClient()
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAttendeeModalOpen, setIsAttendeeModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const statusMap = {
     completed: {
@@ -37,9 +40,9 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
       dot: "bg-destructive",
       text: "text-destructive",
     },
-  }
+  };
 
-  const status = statusMap[transaction.status]
+  const status = statusMap[transaction.status];
 
   return (
     <>
@@ -56,17 +59,28 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
         "
       >
         {/* Subtle hover wash */}
-        <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-white/5" />
+        <div className="pointer-events-none absolute inset-0 rounded-xl bg-linear-to-br from-white/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-white/5" />
 
         <div className="relative flex flex-col gap-5">
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
-            <h3 className="text-sm font-medium text-foreground truncate">
+            <button
+              onClick={() =>
+                transaction.attendees.length > 0 && setIsAttendeeModalOpen(true)
+              }
+              className={`text-sm font-medium text-foreground truncate hover:text-sidebar-primary transition-colors text-left ${
+                transaction.attendees.length > 0
+                  ? "cursor-pointer"
+                  : "cursor-default"
+              }`}
+            >
               {transaction.event}
-            </h3>
+            </button>
 
             {/* Status */}
-            <div className={`flex items-center gap-2 text-xs font-medium ${status.text}`}>
+            <div
+              className={`flex items-center gap-2 text-xs font-medium ${status.text}`}
+            >
               <span className={`h-2 w-2 rounded-full ${status.dot}`} />
               <span className="whitespace-nowrap">{status.label}</span>
             </div>
@@ -106,6 +120,14 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
           }}
         />
       )}
+
+      {transaction.attendees.length > 0 && (
+        <AttendeeDetailsModal
+          attendees={transaction.attendees}
+          open={isAttendeeModalOpen}
+          onOpenChange={setIsAttendeeModalOpen}
+        />
+      )}
     </>
-  )
+  );
 }

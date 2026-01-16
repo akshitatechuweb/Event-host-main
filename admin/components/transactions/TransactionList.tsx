@@ -17,6 +17,7 @@ type CardTransaction = {
   amount: string;
   date: string;
   status: CardTransactionStatus;
+  attendees: any[];
 };
 
 export function TransactionList({ transactions }: TransactionListProps) {
@@ -58,6 +59,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
               : transaction.status === "pending"
               ? "pending"
               : "failed",
+          attendees: transaction.booking?.attendees || [],
         };
 
         return (

@@ -20,6 +20,15 @@ export interface Buyer {
   phone?: string;
 }
 
+/* ---------- Attendee Info ---------- */
+export interface Attendee {
+  fullName: string;
+  email: string;
+  phone: string;
+  gender: "Male" | "Female" | "Other";
+  passType: "Male" | "Female" | "Couple";
+}
+
 /* ---------- Booking Summary ---------- */
 export interface BookingSummary {
   _id: string;
@@ -27,6 +36,7 @@ export interface BookingSummary {
   totalAmount: number;
   ticketCount: number;
   items: BookingItem[];
+  attendees: Attendee[];
   buyer?: Buyer | null;
 }
 

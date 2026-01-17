@@ -42,28 +42,17 @@ export function AddCouponModal({ open, onClose }: AddCouponModalProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     code: "",
-    discountType: "PERCENTAGE" as "PERCENTAGE" | "FLAT_AMOUNT",
-    discountValue: "",
-    description: "",
-    minOrderAmount: "",
-    maxDiscount: "",
-    expiryDate: "",
-    usageLimit: "",
-    perUserLimit: "1",
-    applicableEvents: [] as string[],
-  });
-
-  const { data: events, isLoading: isEventsLoading } = useQuery({
-    queryKey: ["events-all"],
-    queryFn: () => getAllEvents(),
-    enabled: open,
+    type: "PERCENTAGE" as "PERCENTAGE" | "FLAT_AMOUNT",
+    value: "",
+    expiry_date: "",
+    usage_limit: "",
   });
 
   const mutation = useMutation({
     mutationFn: (data: any) => createCoupon(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coupons"] });
-      toast.success("Coupon created successfully!");
+      toast.success("Global Coupon created successfully!");
       onClose();
       resetForm();
     },
@@ -75,48 +64,31 @@ export function AddCouponModal({ open, onClose }: AddCouponModalProps) {
   const resetForm = () => {
     setFormData({
       code: "",
-      discountType: "PERCENTAGE",
-      discountValue: "",
-      description: "",
-      minOrderAmount: "",
-      maxDiscount: "",
-      expiryDate: "",
-      usageLimit: "",
-      perUserLimit: "1",
-      applicableEvents: [],
+      type: "PERCENTAGE",
+      value: "",
+      expiry_date: "",
+      usage_limit: "",
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.code || !formData.discountValue) {
+    if (!formData.code || !formData.value) {
       toast.error("Please fill in required fields");
       return;
     }
 
     mutation.mutate({
       ...formData,
-      discountValue: Number(formData.discountValue),
-      minOrderAmount: Number(formData.minOrderAmount) || 0,
-      maxDiscount: formData.maxDiscount ? Number(formData.maxDiscount) : null,
-      usageLimit: formData.usageLimit ? Number(formData.usageLimit) : null,
-      perUserLimit: Number(formData.perUserLimit) || 1,
-      expiryDate: formData.expiryDate || null,
+      value: Number(formData.value),
+      usage_limit: formData.usage_limit ? Number(formData.usage_limit) : null,
+      expiry_date: formData.expiry_date || null,
     });
-  };
-
-  const toggleEvent = (eventId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      applicableEvents: prev.applicableEvents.includes(eventId)
-        ? prev.applicableEvents.filter((id) => id !== eventId)
-        : [...prev.applicableEvents, eventId],
-    }));
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] bg-background/80 backdrop-blur-2xl border-border/40 max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[600px] bg-background/80 backdrop-blur-2xl border-border/40 max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-0 overflow-hidden">
         <div className="p-10 space-y-8">
           <DialogHeader>
             <div className="space-y-3">
@@ -124,11 +96,15 @@ export function AddCouponModal({ open, onClose }: AddCouponModalProps) {
               <DialogTitle className="text-3xl font-semibold tracking-tight">
                 Create New{" "}
                 <span className="bg-linear-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">
-                  Promo
+                  Global Coupon
                 </span>
               </DialogTitle>
-              <DialogDescription className="text-muted-foreground/60 font-medium">
-                Design a high-conversion discount for your attendees.
+              <DialogDescription className="text-muted-foreground/60 font-medium text-base">
+                This coupon will be applicable to{" "}
+                <span className="text-foreground font-bold italic">
+                  all events
+                </span>{" "}
+                on the platform.
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -162,19 +138,19 @@ export function AddCouponModal({ open, onClose }: AddCouponModalProps) {
 
               <div className="space-y-3">
                 <Label
-                  htmlFor="discountType"
+                  htmlFor="type"
                   className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground/40"
                 >
                   Discount Type
                 </Label>
                 <Select
-                  value={formData.discountType}
+                  value={formData.type}
                   onValueChange={(val: any) =>
-                    setFormData({ ...formData, discountType: val })
+                    setFormData({ ...formData, type: val })
                   }
                 >
                   <SelectTrigger
-                    id="discountType"
+                    id="type"
                     className="h-14 rounded-2xl bg-muted/10 border-border/30 font-medium"
                   >
                     <SelectValue placeholder="Select type" />
@@ -194,28 +170,26 @@ export function AddCouponModal({ open, onClose }: AddCouponModalProps) {
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label
-                  htmlFor="discountValue"
+                  htmlFor="value"
                   className="text-xs uppercase tracking-widest font-bold text-muted-foreground"
                 >
                   Discount Value
                 </Label>
                 <Input
-                  id="discountValue"
+                  id="value"
                   type="number"
-                  placeholder={
-                    formData.discountType === "PERCENTAGE" ? "20" : "500"
-                  }
+                  placeholder={formData.type === "PERCENTAGE" ? "20" : "500"}
                   className="h-12 rounded-xl bg-input/20 border-border/30"
-                  value={formData.discountValue}
+                  value={formData.value}
                   onChange={(e) =>
-                    setFormData({ ...formData, discountValue: e.target.value })
+                    setFormData({ ...formData, value: e.target.value })
                   }
                 />
               </div>
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="expiryDate"
+                  htmlFor="expiry_date"
                   className="text-xs uppercase tracking-widest font-bold text-muted-foreground"
                 >
                   Expiry Date (Optional)
@@ -223,161 +197,41 @@ export function AddCouponModal({ open, onClose }: AddCouponModalProps) {
                 <div className="relative">
                   <CalendarIcon className="absolute left-3 top-3 w-4 h-4 text-muted-foreground/50" />
                   <Input
-                    id="expiryDate"
+                    id="expiry_date"
                     type="date"
                     className="pl-10 h-12 rounded-xl bg-input/20 border-border/30"
-                    value={formData.expiryDate}
+                    value={formData.expiry_date}
                     onChange={(e) =>
-                      setFormData({ ...formData, expiryDate: e.target.value })
+                      setFormData({ ...formData, expiry_date: e.target.value })
                     }
                   />
                 </div>
               </div>
             </div>
 
-            {/* Description */}
             <div className="space-y-2">
               <Label
-                htmlFor="description"
+                htmlFor="usage_limit"
                 className="text-xs uppercase tracking-widest font-bold text-muted-foreground"
               >
-                Description (Publicly Visible)
+                Global Usage Limit
               </Label>
               <div className="relative">
-                <Info className="absolute left-3 top-3 w-4 h-4 text-muted-foreground/50" />
-                <Textarea
-                  id="description"
-                  placeholder="e.g. Get 20% off on your next event booking!"
-                  className="pl-10 min-h-[80px] rounded-xl bg-input/20 border-border/30"
-                  value={formData.description}
+                <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30" />
+                <Input
+                  id="usage_limit"
+                  type="number"
+                  placeholder="Unlimited (e.g. 100)"
+                  className="pl-10 h-12 rounded-xl bg-input/20 border-border/30"
+                  value={formData.usage_limit}
                   onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
+                    setFormData({ ...formData, usage_limit: e.target.value })
                   }
                 />
               </div>
-            </div>
-
-            {/* Limits & Constraints */}
-            <div className="p-6 rounded-2xl bg-muted/20 border border-border/20 space-y-6">
-              <h4 className="text-xs uppercase tracking-widest font-black text-muted-foreground/60 flex items-center gap-2">
-                <Users className="w-3.5 h-3.5" /> Usage & Constraints
-              </h4>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="minOrderAmount"
-                    className="text-sm font-semibold"
-                  >
-                    Min Order (₹)
-                  </Label>
-                  <Input
-                    id="minOrderAmount"
-                    type="number"
-                    placeholder="0"
-                    className="rounded-xl bg-background/50 border-border/30"
-                    value={formData.minOrderAmount}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        minOrderAmount: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="maxDiscount"
-                    className="text-sm font-semibold"
-                  >
-                    Max Discount Cap (₹)
-                  </Label>
-                  <Input
-                    id="maxDiscount"
-                    type="number"
-                    placeholder="No limit"
-                    className="rounded-xl bg-background/50 border-border/30"
-                    value={formData.maxDiscount}
-                    onChange={(e) =>
-                      setFormData({ ...formData, maxDiscount: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="usageLimit" className="text-sm font-semibold">
-                    Global Usage Limit
-                  </Label>
-                  <Input
-                    id="usageLimit"
-                    type="number"
-                    placeholder="Unlimited"
-                    className="rounded-xl bg-background/50 border-border/30"
-                    value={formData.usageLimit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, usageLimit: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="perUserLimit"
-                    className="text-sm font-semibold"
-                  >
-                    Per User Limit
-                  </Label>
-                  <Input
-                    id="perUserLimit"
-                    type="number"
-                    placeholder="1"
-                    className="rounded-xl bg-background/50 border-border/30"
-                    value={formData.perUserLimit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, perUserLimit: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Event Targeting */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">
-                  Target Specific Events (Optional)
-                </Label>
-                <span className="text-[10px] bg-sidebar-primary/10 text-sidebar-primary px-2 py-0.5 rounded-full font-bold">
-                  {formData.applicableEvents.length} Selected
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2 max-h-[150px] overflow-y-auto p-4 rounded-2xl bg-muted/10 border border-border/20 custom-scrollbar">
-                {isEventsLoading ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-sidebar-primary" />
-                  </div>
-                ) : (events?.events || []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-2">
-                    No events found to track
-                  </p>
-                ) : (
-                  (events?.events || []).map((event: any) => (
-                    <label
-                      key={event._id}
-                      className="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-muted/30 cursor-pointer transition-colors border border-transparent hover:border-border/30"
-                    >
-                      <Checkbox
-                        checked={formData.applicableEvents.includes(event._id)}
-                        onCheckedChange={() => toggleEvent(event._id)}
-                        className="rounded-md border-border/40"
-                      />
-                      <span className="text-sm font-medium text-foreground line-clamp-1">
-                        {event.eventName}
-                      </span>
-                    </label>
-                  ))
-                )}
-              </div>
-              <p className="text-[10px] text-muted-foreground/60 italic">
-                If no events are selected, the coupon will be global.
+              <p className="text-[10px] text-muted-foreground/60 italic px-2">
+                Total number of times this coupon can be used across all events
+                and users.
               </p>
             </div>
 
@@ -392,7 +246,7 @@ export function AddCouponModal({ open, onClose }: AddCouponModalProps) {
               </Button>
               <Button
                 type="submit"
-                className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider bg-sidebar-primary text-white hover:bg-sidebar-primary/90 shadow-lg shadow-sidebar-primary/20"
+                className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider bg-violet-600 text-white hover:bg-violet-700 shadow-lg shadow-violet-500/20 shadow-[inset_0_-2px_0_rgba(0,0,0,0.1)] transition-all active:translate-y-0.5"
                 disabled={mutation.isPending}
               >
                 {mutation.isPending ? (
@@ -401,7 +255,7 @@ export function AddCouponModal({ open, onClose }: AddCouponModalProps) {
                     Creating...
                   </>
                 ) : (
-                  "Create Coupon"
+                  "Create Global Coupon"
                 )}
               </Button>
             </div>

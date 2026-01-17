@@ -23,10 +23,8 @@ function CouponsContent() {
     queryFn: () => getAllCoupons(),
   });
 
-  const filteredCoupons = coupons.filter(
-    (c) =>
-      c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCoupons = coupons.filter((c) =>
+    c.code.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   if (error) {
@@ -73,7 +71,7 @@ function CouponsContent() {
         {[
           {
             label: "Active Promos",
-            value: coupons.filter((c: any) => c.isActive).length,
+            value: coupons.filter((c: any) => c.is_active).length,
             gradient: "from-pink-500/20 to-rose-500/20",
             iconColor: "text-pink-500",
           },

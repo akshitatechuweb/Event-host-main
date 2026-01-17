@@ -4,23 +4,12 @@ import Booking from "../models/Booking.js";
 // Create a new coupon (Super Admin Only)
 export const createCoupon = async (req, res) => {
   try {
-    const {
-      code,
-      discountType,
-      discountValue,
-      description,
-      applicableEvents,
-      minOrderAmount,
-      maxDiscount,
-      expiryDate,
-      usageLimit,
-      perUserLimit,
-    } = req.body;
+    const { code, type, value, usage_limit, expiry_date } = req.body;
 
-    if (!code || !discountType || discountValue === undefined) {
+    if (!code || !type || value === undefined) {
       return res.status(400).json({
         success: false,
-        message: "Code, discountType, and discountValue are required",
+        message: "Code, type, and value are required",
       });
     }
 
@@ -37,23 +26,17 @@ export const createCoupon = async (req, res) => {
 
     const coupon = new Coupon({
       code: normalizedCode,
-      discountType,
-      discountValue,
-      description,
-      applicableEvents: applicableEvents || [],
-      minOrderAmount: minOrderAmount || 0,
-      maxDiscount: maxDiscount || null,
-      expiryDate: expiryDate ? new Date(expiryDate) : null,
-      usageLimit: usageLimit || null,
-      perUserLimit: perUserLimit || 1,
-      createdBy: req.user._id,
+      type,
+      value,
+      usage_limit: usage_limit || null,
+      expiry_date: expiry_date ? new Date(expiry_date) : null,
     });
 
     await coupon.save();
 
     res.status(201).json({
       success: true,
-      message: "Coupon created successfully",
+      message: "Global Coupon created successfully",
       coupon,
     });
   } catch (error) {
@@ -69,19 +52,26 @@ export const createCoupon = async (req, res) => {
 // Apply a coupon code (for Checkout UI)
 export const applyCoupon = async (req, res) => {
   try {
-    const { code, subtotal, eventId } = req.body;
+    const { code, subtotal } = req.body;
 
-    if (!code || subtotal === undefined || !eventId) {
+    if (!code || subtotal === undefined) {
       return res.status(400).json({
         success: false,
-        message: "Code, subtotal, and eventId are required",
+        message: "Code and subtotal are required",
+      });
+    }
+
+    if (subtotal <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Coupons cannot be applied to free events",
       });
     }
 
     const normalizedCode = code.trim().toUpperCase();
     const coupon = await Coupon.findOne({
       code: normalizedCode,
-      isActive: true,
+      is_active: true,
     });
 
     if (!coupon) {
@@ -92,7 +82,7 @@ export const applyCoupon = async (req, res) => {
     }
 
     // 1. Validation: Expiry
-    if (coupon.expiryDate && new Date() > coupon.expiryDate) {
+    if (coupon.expiry_date && new Date() > coupon.expiry_date) {
       return res.status(400).json({
         success: false,
         message: "Coupon has expired",
@@ -100,57 +90,22 @@ export const applyCoupon = async (req, res) => {
     }
 
     // 2. Validation: Global Usage Limit
-    if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
+    if (
+      coupon.usage_limit !== null &&
+      coupon.usageCount >= coupon.usage_limit
+    ) {
       return res.status(400).json({
         success: false,
         message: "Coupon usage limit reached",
       });
     }
 
-    // 3. Validation: Event Restriction
-    if (
-      coupon.applicableEvents &&
-      coupon.applicableEvents.length > 0 &&
-      !coupon.applicableEvents.some((id) => id.toString() === eventId)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "This coupon is not valid for this event",
-      });
-    }
-
-    // 4. Validation: Minimum Order Amount (on subtotal)
-    if (subtotal < coupon.minOrderAmount) {
-      return res.status(400).json({
-        success: false,
-        message: `Min order for this coupon is ₹${coupon.minOrderAmount}`,
-      });
-    }
-
-    // 5. Validation: Per-User Limit
-    // Check confirmed bookings for this user using this coupon
-    const userUsageCount = await Booking.countDocuments({
-      userId: req.user._id,
-      appliedCouponCode: normalizedCode,
-      status: "confirmed",
-    });
-
-    if (userUsageCount >= coupon.perUserLimit) {
-      return res.status(400).json({
-        success: false,
-        message: `You have reached the usage limit for this coupon`,
-      });
-    }
-
     // Discount Calculation
     let discount = 0;
-    if (coupon.discountType === "PERCENTAGE") {
-      discount = (subtotal * coupon.discountValue) / 100;
-      if (coupon.maxDiscount !== null && discount > coupon.maxDiscount) {
-        discount = coupon.maxDiscount;
-      }
-    } else if (coupon.discountType === "FLAT_AMOUNT") {
-      discount = coupon.discountValue;
+    if (coupon.type === "PERCENTAGE") {
+      discount = (subtotal * coupon.value) / 100;
+    } else if (coupon.type === "FLAT_AMOUNT") {
+      discount = coupon.value;
     }
 
     // Ensure discount doesn't exceed subtotal
@@ -176,9 +131,8 @@ export const applyCoupon = async (req, res) => {
       },
       coupon: {
         code: coupon.code,
-        discountType: coupon.discountType,
-        discountValue: coupon.discountValue,
-        description: coupon.description,
+        type: coupon.type,
+        value: coupon.value,
       },
     });
   } catch (error) {
@@ -194,9 +148,7 @@ export const applyCoupon = async (req, res) => {
 // Get all coupons (Admin only)
 export const getAllCoupons = async (req, res) => {
   try {
-    const coupons = await Coupon.find()
-      .populate("applicableEvents", "eventName")
-      .sort({ createdAt: -1 });
+    const coupons = await Coupon.find().sort({ createdAt: -1 });
     res.json({ success: true, coupons });
   } catch (error) {
     res.status(500).json({
@@ -211,12 +163,12 @@ export const getAllCoupons = async (req, res) => {
 export const updateCouponStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { isActive } = req.body;
+    const { is_active } = req.body;
 
     const coupon = await Coupon.findByIdAndUpdate(
       id,
-      { isActive },
-      { new: true }
+      { is_active },
+      { new: true },
     );
     if (!coupon) {
       return res

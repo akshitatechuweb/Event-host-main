@@ -102,7 +102,7 @@ const processConfirmedBooking = async (transactionId, providerTxnId) => {
 ===================================================== */
 export const createOrder = async (req, res) => {
   try {
-    const { eventId, items = [], attendees = [], couponCode } = req.body;
+    const { eventId, items = [], attendees = [] } = req.body;
     const userId = req.user?._id || null;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -125,142 +125,243 @@ export const createOrder = async (req, res) => {
       passMap[p.type] = p;
     });
 
-    let totalAmount = 0;
+    let subtotal = 0;
     let totalPersons = 0;
 
     for (const item of items) {
       const pass = passMap[item.passType];
-
-      if (!pass) {
+      if (!pass || pass.price !== item.price) {
         return res.status(400).json({
           success: false,
-          message: `${item.passType} pass not available`,
+          message: `Price mismatch or ${item.passType} pass not available`,
         });
       }
-
-      // Security: price validation
-      if (pass.price !== item.price) {
-        return res.status(400).json({
-          success: false,
-          message: "Ticket price mismatch",
-        });
-      }
-
-      totalAmount += pass.price * item.quantity;
+      subtotal += pass.price * item.quantity;
       totalPersons +=
         item.passType === "Couple" ? item.quantity * 2 : item.quantity;
     }
 
-    const subtotal = totalAmount;
-    let discountAmount = 0;
-    let taxAmount = 0;
-    let appliedCoupon = null;
+    const taxAmount = Math.round(subtotal * 0.1); // 10% tax on original subtotal
+    const finalAmount = subtotal + taxAmount;
 
-    if (couponCode && couponCode.trim()) {
-      const normalizedCode = couponCode.trim().toUpperCase();
-      console.log(
-        `[COUPON] Attempting to apply: ${normalizedCode} for Event: ${eventId}`,
-      );
+    // Create a unique temporary order/booking ID
+    const internalOrderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      const coupon = await Coupon.findOne({
-        code: normalizedCode,
-        isActive: true,
-      });
-
-      if (coupon) {
-        console.log(
-          `[COUPON] Found: ${coupon.code}. Validating eligibility...`,
-        );
-
-        // 1. Expiry & Global Usage Limit
-        const isEligible =
-          (!coupon.expiryDate || new Date() <= coupon.expiryDate) &&
-          (coupon.usageLimit === null || coupon.usageCount < coupon.usageLimit);
-
-        // 2. Event Eligibility
-        const isEventEligible =
-          !coupon.applicableEvents ||
-          coupon.applicableEvents.length === 0 ||
-          coupon.applicableEvents.some(
-            (id) => id.toString() === eventId.toString(),
-          );
-
-        // 3. User Usage Limit (If logged in)
-        let isUserEligible = true;
-        if (userId) {
-          const userUsageCount = await Booking.countDocuments({
-            userId,
-            appliedCouponCode: normalizedCode,
-            status: "confirmed",
-          });
-          if (userUsageCount >= (coupon.perUserLimit || 1)) {
-            isUserEligible = false;
-            console.log(
-              `[COUPON] User has already reached limit for this coupon`,
-            );
-          }
-        }
-
-        console.log(`[COUPON] Eligibility Results:`, {
-          isEligible,
-          isEventEligible,
-          isUserEligible,
-          subtotal,
-          minReq: coupon.minOrderAmount,
-        });
-
-        if (
-          isEligible &&
-          isEventEligible &&
-          isUserEligible &&
-          Number(subtotal) >= Number(coupon.minOrderAmount)
-        ) {
-          if (coupon.discountType === "PERCENTAGE") {
-            discountAmount = (subtotal * coupon.discountValue) / 100;
-            if (
-              coupon.maxDiscount !== null &&
-              discountAmount > coupon.maxDiscount
-            ) {
-              discountAmount = coupon.maxDiscount;
-            }
-          } else {
-            discountAmount = coupon.discountValue;
-          }
-          if (discountAmount > subtotal) discountAmount = subtotal;
-          appliedCoupon = coupon.code;
-          console.log(`[COUPON] Applied! Discount: ${discountAmount}`);
-        } else {
-          console.log(`[COUPON] Criteria not met`);
-        }
-      } else {
-        console.log(`[COUPON] Not found or inactive: ${normalizedCode}`);
-      }
-    }
-
-    const discountedAmount = subtotal - discountAmount;
-    taxAmount = Math.round(discountedAmount * 0.1); // 10% tax
-    const finalAmount = discountedAmount + taxAmount;
-
-    const order = await razorpay.orders.create({
-      amount: finalAmount * 100,
-      currency: "INR",
-      receipt: `booking_${Date.now()}`,
+    const booking = await Booking.create({
+      userId,
+      eventId,
+      attendees,
+      ticketCount: totalPersons,
+      items,
+      subtotal,
+      discountAmount: 0,
+      taxAmount,
+      totalAmount: finalAmount,
+      appliedCouponCode: null,
+      orderId: internalOrderId,
+      status: "pending",
     });
 
     return res.json({
       success: true,
-      orderId: order.id,
+      bookingId: booking._id,
+      orderId: internalOrderId,
       amount: finalAmount,
       subtotal,
-      discountAmount,
       taxAmount,
-      couponCode: appliedCoupon,
-      key_id: process.env.RAZORPAY_KEY_ID,
       eventName: event.eventName,
       ticketCount: totalPersons,
     });
   } catch (error) {
     console.error("CREATE ORDER ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * 2️⃣ Apply Coupon API
+ * POST /api/payment/apply-coupon
+ */
+export const applyCouponToOrder = async (req, res) => {
+  try {
+    const { bookingId, couponCode } = req.body;
+    if (!bookingId || !couponCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking ID and coupon code are required",
+      });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+    }
+
+    if (booking.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Coupon can only be applied to pending orders",
+      });
+    }
+
+    const normalizedCode = couponCode.trim().toUpperCase();
+
+    // Idempotency: If same coupon already applied
+    if (booking.appliedCouponCode === normalizedCode) {
+      return res.json({
+        success: true,
+        message: "Coupon already applied",
+        amount: booking.totalAmount,
+        discountAmount: booking.discountAmount,
+        couponCode: normalizedCode,
+      });
+    }
+
+    // Check if already has a different coupon
+    if (booking.appliedCouponCode) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "An order can only have one coupon. Remove the current one first.",
+      });
+    }
+
+    const coupon = await Coupon.findOne({
+      code: normalizedCode,
+      is_active: true,
+    });
+    if (!coupon) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Invalid or inactive coupon" });
+    }
+
+    // Validate Expiry and Usage
+    const isEligible =
+      (!coupon.expiry_date || new Date() <= coupon.expiry_date) &&
+      (coupon.usage_limit === null || coupon.usageCount < coupon.usage_limit);
+
+    if (!isEligible) {
+      return res.status(400).json({
+        success: false,
+        message: "Coupon expired or reached usage limit",
+      });
+    }
+
+    if (booking.subtotal <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Coupons cannot be applied to free events",
+      });
+    }
+
+    let discountAmount = 0;
+    if (coupon.type === "PERCENTAGE") {
+      discountAmount = (booking.subtotal * coupon.value) / 100;
+    } else {
+      discountAmount = coupon.value;
+    }
+
+    if (discountAmount > booking.subtotal) discountAmount = booking.subtotal;
+
+    const newSubtotalAfterDiscount = booking.subtotal - discountAmount;
+    const newTax = Math.round(newSubtotalAfterDiscount * 0.1);
+    const newFinalAmount = newSubtotalAfterDiscount + newTax;
+
+    booking.discountAmount = discountAmount;
+    booking.taxAmount = newTax;
+    booking.totalAmount = newFinalAmount;
+    booking.appliedCouponCode = normalizedCode;
+    await booking.save();
+
+    return res.json({
+      success: true,
+      message: "Coupon applied successfully",
+      amount: newFinalAmount,
+      discountAmount,
+      taxAmount: newTax,
+      couponCode: normalizedCode,
+    });
+  } catch (error) {
+    console.error("APPLY COUPON ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * Optional: Remove Coupon API
+ * POST /api/payment/remove-coupon
+ */
+export const removeCouponFromOrder = async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    const booking = await Booking.findById(bookingId);
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+
+    if (!booking.appliedCouponCode) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No coupon applied to this order" });
+    }
+
+    // Restore original values
+    const originalTax = Math.round(booking.subtotal * 0.1);
+    const originalFinal = booking.subtotal + originalTax;
+
+    booking.discountAmount = 0;
+    booking.taxAmount = originalTax;
+    booking.totalAmount = originalFinal;
+    booking.appliedCouponCode = null;
+    await booking.save();
+
+    return res.json({
+      success: true,
+      message: "Coupon removed",
+      amount: originalFinal,
+      taxAmount: originalTax,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * 3️⃣ Initiate Payment API (For Razorpay)
+ * POST /api/payment/initiate-razorpay
+ */
+export const initiateRazorpayPayment = async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    const booking = await Booking.findById(bookingId);
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+
+    // Create Razorpay Order
+    const razorpayOrder = await razorpay.orders.create({
+      amount: booking.totalAmount * 100,
+      currency: "INR",
+      receipt: `booking_${booking._id}`,
+    });
+
+    // Update booking with the actual provider order ID
+    booking.orderId = razorpayOrder.id;
+    await booking.save();
+
+    return res.json({
+      success: true,
+      orderId: razorpayOrder.id,
+      amount: booking.totalAmount,
+      key_id: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (error) {
+    console.error("INITIATE RAZORPAY ERROR:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -495,120 +596,72 @@ export const verifyPayment = async (req, res) => {
 ===================================================== */
 export const initiatePhonePePayment = async (req, res) => {
   try {
-    const { eventId, items = [], attendees = [], couponCode } = req.body;
+    const { bookingId, eventId, items = [], attendees = [] } = req.body;
     const userId = req.user?._id || null;
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "items must be a non-empty array" });
-    }
-
-    const event = await Event.findById(eventId);
-    if (!event)
-      return res
-        .status(404)
-        .json({ success: false, message: "Event not found" });
-
-    // 1. Calculate Amount (Same as Razorpay logic)
-    const passMap = {};
-    event.passes.forEach((p) => {
-      passMap[p.type] = p;
-    });
-
-    let subtotal = 0;
-    let totalPersons = 0;
-
-    for (const item of items) {
-      const pass = passMap[item.passType];
-      if (!pass || pass.price !== item.price) {
-        return res.status(400).json({
-          success: false,
-          message: "Ticket price mismatch or pass unavailable",
-        });
+    let booking;
+    if (bookingId) {
+      booking = await Booking.findById(bookingId);
+      if (!booking)
+        return res
+          .status(404)
+          .json({ success: false, message: "Booking not found" });
+    } else {
+      // Emergency fallback: Create booking if not already created (though flow suggests it should be)
+      if (!Array.isArray(items) || items.length === 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "items must be a non-empty array" });
       }
-      subtotal += pass.price * item.quantity;
-      totalPersons +=
-        item.passType === "Couple" ? item.quantity * 2 : item.quantity;
-    }
 
-    let discountAmount = 0;
-    let appliedCoupon = null;
+      const event = await Event.findById(eventId);
+      if (!event)
+        return res
+          .status(404)
+          .json({ success: false, message: "Event not found" });
 
-    if (couponCode && couponCode.trim()) {
-      const normalizedCode = couponCode.trim().toUpperCase();
-      console.log(
-        `[COUPON-PHONEPE] Attempting: ${normalizedCode} for Event: ${eventId}`,
-      );
-
-      const coupon = await Coupon.findOne({
-        code: normalizedCode,
-        isActive: true,
+      const passMap = {};
+      event.passes.forEach((p) => {
+        passMap[p.type] = p;
       });
 
-      if (coupon) {
-        console.log(`[COUPON-PHONEPE] Found: ${coupon.code}. Validating...`);
+      let subtotal = 0;
+      let totalPersons = 0;
 
-        const isEligible =
-          (!coupon.expiryDate || new Date() <= coupon.expiryDate) &&
-          (coupon.usageLimit === null || coupon.usageCount < coupon.usageLimit);
-
-        const isEventEligible =
-          !coupon.applicableEvents ||
-          coupon.applicableEvents.length === 0 ||
-          coupon.applicableEvents.some(
-            (id) => id.toString() === eventId.toString(),
-          );
-
-        let isUserEligible = true;
-        if (userId) {
-          const userUsageCount = await Booking.countDocuments({
-            userId,
-            appliedCouponCode: normalizedCode,
-            status: "confirmed",
-          });
-          if (userUsageCount >= (coupon.perUserLimit || 1)) {
-            isUserEligible = false;
-            console.log(`[COUPON-PHONEPE] User limit reached`);
-          }
+      for (const item of items) {
+        const pass = passMap[item.passType];
+        if (!pass || pass.price !== item.price) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Ticket price mismatch" });
         }
-
-        console.log(`[COUPON-PHONEPE] Logic Check:`, {
-          isEligible,
-          isEventEligible,
-          isUserEligible,
-          subtotal,
-          minReq: coupon.minOrderAmount,
-        });
-
-        if (
-          isEligible &&
-          isEventEligible &&
-          isUserEligible &&
-          Number(subtotal) >= Number(coupon.minOrderAmount)
-        ) {
-          discountAmount =
-            coupon.discountType === "PERCENTAGE"
-              ? Math.min(
-                  (subtotal * coupon.discountValue) / 100,
-                  coupon.maxDiscount || Infinity,
-                )
-              : coupon.discountValue;
-
-          if (discountAmount > subtotal) discountAmount = subtotal;
-          appliedCoupon = coupon.code;
-          console.log(`[COUPON-PHONEPE] Applied! Discount: ${discountAmount}`);
-        } else {
-          console.log(`[COUPON-PHONEPE] Conditions not met`);
-        }
-      } else {
-        console.log(`[COUPON-PHONEPE] Not found: ${normalizedCode}`);
+        subtotal += pass.price * item.quantity;
+        totalPersons +=
+          item.passType === "Couple" ? item.quantity * 2 : item.quantity;
       }
+
+      const taxAmount = Math.round(subtotal * 0.1);
+      const finalAmount = subtotal + taxAmount;
+      const merchantTransactionId = `MT${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+      booking = await Booking.create({
+        userId,
+        eventId,
+        attendees,
+        ticketCount: totalPersons,
+        items,
+        totalAmount: finalAmount,
+        subtotal,
+        discountAmount: 0,
+        taxAmount,
+        appliedCouponCode: null,
+        orderId: merchantTransactionId,
+        status: "pending",
+      });
     }
 
-    const taxAmount = Math.round((subtotal - discountAmount) * 0.1);
-    const finalAmount = subtotal - discountAmount + taxAmount;
-    const merchantTransactionId = `MT${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const merchantTransactionId = booking.orderId;
+    const finalAmount = booking.totalAmount;
 
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const host = req.headers["x-forwarded-host"] || req.get("host");
@@ -626,24 +679,13 @@ export const initiatePhonePePayment = async (req, res) => {
         /* ignore */
       }
     }
-    if (!frontendUrl) frontendUrl = "http://localhost:3000"; // Safeguard
+    if (!frontendUrl) frontendUrl = "http://localhost:3000";
 
-    // 2. Create Pending Booking
-    const booking = await Booking.create({
-      userId,
-      eventId,
-      attendees,
-      ticketCount: totalPersons,
-      items,
-      totalAmount: finalAmount,
-      subtotal,
-      discountAmount,
-      taxAmount,
-      appliedCouponCode: appliedCoupon,
-      orderId: merchantTransactionId, // Using this as our tracking ID
-      status: "pending",
-      redirectUrl: frontendUrl, // Save where we came from
-    });
+    // Update booking redirectUrl if needed
+    if (frontendUrl && !booking.redirectUrl) {
+      booking.redirectUrl = frontendUrl;
+      await booking.save();
+    }
 
     const payload = {
       merchantId: MERCHANT_ID,
@@ -651,7 +693,7 @@ export const initiatePhonePePayment = async (req, res) => {
       merchantUserId: userId ? userId.toString() : "GUEST",
       amount: finalAmount * 100, // PhonePe takes amount in paise
       redirectUrl: `${backendBaseUrl}/api/payment/phonepe/handle-redirect`,
-      redirectMode: "POST", // Using POST to receive data from PhonePe
+      redirectMode: "POST",
       callbackUrl: `${backendBaseUrl}/api/payment/phonepe/callback`,
       paymentInstrument: { type: "PAY_PAGE" },
     };

@@ -14,7 +14,7 @@ export async function getHosts(page = 1, limit = 10) {
     {
       credentials: "include",
       cache: "no-store",
-    }
+    },
   );
 
   if (!res.ok) {
@@ -78,7 +78,7 @@ export async function getEventTransactions(
   eventId: string,
   page = 1,
   limit = 10,
-  ticketType?: string
+  ticketType?: string,
 ): Promise<EventTransactionsResponse> {
   let url = `/api/admin/events/${eventId}/transactions?page=${page}&limit=${limit}`;
   if (ticketType) {
@@ -143,11 +143,11 @@ export async function createCoupon(input: CreateCouponInput) {
   return data;
 }
 
-export async function updateCouponStatus(id: string, isActive: boolean) {
+export async function updateCouponStatus(id: string, is_active: boolean) {
   const res = await fetch(`/api/admin/coupons/${id}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ isActive }),
+    body: JSON.stringify({ is_active }),
     credentials: "include",
   });
   const data = await res.json();

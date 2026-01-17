@@ -25,8 +25,8 @@ export function CouponList({ coupons }: CouponListProps) {
   const queryClient = useQueryClient();
 
   const toggleStatusMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      updateCouponStatus(id, isActive),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
+      updateCouponStatus(id, is_active),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coupons"] });
       toast.success("Coupon status updated");
@@ -55,7 +55,7 @@ export function CouponList({ coupons }: CouponListProps) {
           No coupons found
         </p>
         <p className="text-sm text-muted-foreground/60 mt-1">
-          Create your first coupon to get started
+          Create your first global coupon to get started
         </p>
       </div>
     );
@@ -76,7 +76,7 @@ export function CouponList({ coupons }: CouponListProps) {
               {/* Status Indicator Bar */}
               <div
                 className={`absolute top-0 left-0 w-1.5 h-full ${
-                  coupon.isActive
+                  coupon.is_active
                     ? "bg-linear-to-b from-pink-500 to-violet-500"
                     : "bg-muted-foreground/10"
                 }`}
@@ -90,34 +90,28 @@ export function CouponList({ coupons }: CouponListProps) {
                       {coupon.code}
                     </h3>
                     <p className="text-[10px] text-muted-foreground/50 font-bold uppercase tracking-[0.2em]">
-                      {coupon.discountType.replace("_", " ")}
+                      {(coupon.type || "PERCENTAGE").replace("_", " ")}
                     </p>
                   </div>
                   <Badge
-                    variant={coupon.isActive ? "default" : "secondary"}
+                    variant={coupon.is_active ? "default" : "secondary"}
                     className={
-                      coupon.isActive
+                      coupon.is_active
                         ? "bg-pink-500/10 text-pink-500 border-pink-500/20 font-medium"
                         : "font-medium"
                     }
                   >
-                    {coupon.isActive ? "Active" : "Paused"}
+                    {coupon.is_active ? "Active" : "Paused"}
                   </Badge>
                 </div>
-
-                {coupon.description && (
-                  <p className="text-sm text-muted-foreground/70 leading-relaxed line-clamp-2">
-                    {coupon.description}
-                  </p>
-                )}
 
                 {/* Value Display */}
                 <div className="py-5 px-6 rounded-2xl bg-muted/10 border border-border/10 flex items-center justify-between group-hover:bg-muted/20 transition-colors">
                   <div className="flex flex-col">
                     <span className="text-3xl font-semibold text-foreground tracking-tight">
-                      {coupon.discountType === "PERCENTAGE"
-                        ? `${coupon.discountValue}%`
-                        : `₹${coupon.discountValue}`}
+                      {coupon.type === "PERCENTAGE"
+                        ? `${coupon.value || 0}%`
+                        : `₹${(coupon.value || 0).toLocaleString()}`}
                     </span>
                     <span className="text-[10px] uppercase font-bold text-muted-foreground/40 tracking-wider">
                       Discount
@@ -125,8 +119,8 @@ export function CouponList({ coupons }: CouponListProps) {
                   </div>
                   <div className="text-right flex flex-col">
                     <span className="text-xl font-semibold text-foreground">
-                      {coupon.usageLimit
-                        ? `${coupon.usageCount}/${coupon.usageLimit}`
+                      {coupon.usage_limit
+                        ? `${coupon.usageCount}/${coupon.usage_limit}`
                         : coupon.usageCount}
                     </span>
                     <span className="text-[10px] uppercase font-bold text-muted-foreground/40 tracking-wider">
@@ -136,26 +130,18 @@ export function CouponList({ coupons }: CouponListProps) {
                 </div>
 
                 {/* Info Grid */}
-                <div className="grid grid-cols-2 gap-5 text-[11px]">
+                <div className="grid grid-cols-1 gap-5 text-[11px]">
                   <div className="flex items-center gap-2.5 text-muted-foreground/60">
                     <Calendar className="w-3.5 h-3.5 text-pink-500/50" />
                     <span>
-                      {coupon.expiryDate
-                        ? new Date(coupon.expiryDate).toLocaleDateString()
+                      {coupon.expiry_date
+                        ? new Date(coupon.expiry_date).toLocaleDateString()
                         : "No Expiry"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2.5 text-muted-foreground/60">
-                    <Users className="w-3.5 h-3.5 text-violet-500/50" />
-                    <span>{coupon.perUserLimit} per user</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-muted-foreground/60 col-span-2">
                     <Ticket className="w-3.5 h-3.5 text-indigo-500/50" />
-                    <span className="truncate">
-                      {coupon.applicableEvents.length > 0
-                        ? `${coupon.applicableEvents.length} Targeted Events`
-                        : "All Events"}
-                    </span>
+                    <span>Applicable to all events</span>
                   </div>
                 </div>
 
@@ -168,12 +154,12 @@ export function CouponList({ coupons }: CouponListProps) {
                     onClick={() =>
                       toggleStatusMutation.mutate({
                         id: coupon._id,
-                        isActive: !coupon.isActive,
+                        is_active: !coupon.is_active,
                       })
                     }
                     disabled={toggleStatusMutation.isPending}
                   >
-                    {coupon.isActive ? (
+                    {coupon.is_active ? (
                       <>
                         <XCircle className="w-3.5 h-3.5 mr-2" /> Deactivate
                       </>

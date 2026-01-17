@@ -9,61 +9,34 @@ const couponSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
-    discountType: {
+    type: {
       type: String,
       enum: ["PERCENTAGE", "FLAT_AMOUNT"],
       required: true,
     },
-    discountValue: {
+    value: {
       type: Number,
       required: true,
       min: 0,
     },
-    description: {
-      type: String,
-      trim: true,
-    },
-    applicableEvents: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Event",
-      },
-    ],
-    minOrderAmount: {
-      type: Number,
-      default: 0,
-    },
-    maxDiscount: {
+    usage_limit: {
       type: Number,
       default: null,
     },
-    expiryDate: {
+    expiry_date: {
       type: Date,
       default: null,
-    },
-    usageLimit: {
-      type: Number,
-      default: null,
-    },
-    perUserLimit: {
-      type: Number,
-      default: 1, // Default to once per user
     },
     usageCount: {
       type: Number,
       default: 0,
     },
-    isActive: {
+    is_active: {
       type: Boolean,
       default: true,
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Index for fast lookup by code

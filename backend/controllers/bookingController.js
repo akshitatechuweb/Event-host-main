@@ -50,24 +50,20 @@ export const createBooking = async (req, res) => {
           .status(400)
           .json({ success: false, message: `${item.type} pass not available` });
       if (pass.remainingQuantity < item.quantity)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: `${item.type} pass insufficient stock`,
-          });
+        return res.status(400).json({
+          success: false,
+          message: `${item.type} pass insufficient stock`,
+        });
       totalAmount += pass.price * item.quantity;
       totalPersonsRequired +=
         item.type === "Couple" ? item.quantity * 2 : item.quantity;
     }
 
     if (attendees.length !== totalPersonsRequired) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "attendees length does not match selected tickets quantity",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "attendees length does not match selected tickets quantity",
+      });
     }
 
     // capacity check
@@ -75,12 +71,10 @@ export const createBooking = async (req, res) => {
       typeof event.maxCapacity === "number" &&
       (event.currentBookings || 0) + totalPersonsRequired > event.maxCapacity
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Event sold out or insufficient capacity",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Event sold out or insufficient capacity",
+      });
     }
 
     // distribution validation
@@ -96,12 +90,10 @@ export const createBooking = async (req, res) => {
     });
     for (const [ptype, expected] of Object.entries(expectedCounts)) {
       if ((actualCounts[ptype] || 0) !== expected) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: `attendees distribution does not match selected tickets for pass ${ptype}`,
-          });
+        return res.status(400).json({
+          success: false,
+          message: `attendees distribution does not match selected tickets for pass ${ptype}`,
+        });
       }
     }
 
@@ -186,7 +178,7 @@ export const createBooking = async (req, res) => {
         },
         createdAt: new Date().toISOString(),
       },
-      [userId]
+      [userId],
     );
 
     res.status(201).json({
@@ -206,7 +198,10 @@ export const createBooking = async (req, res) => {
 export const getMyBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ userId: req.user._id })
-      .populate("eventId", "title location startDateTime")
+      .populate(
+        "eventId",
+        "eventName subtitle eventImage date eventDateTime fullAddress city hostedBy",
+      )
       .populate("ticketTypeId", "name price");
     // attach generated tickets
     const bookingIds = bookings.map((b) => b._id);
@@ -240,6 +235,10 @@ export const getHostBookings = async (req, res) => {
     const eventIds = events.map((e) => e._id);
 
     const bookings = await Booking.find({ eventId: { $in: eventIds } })
+      .populate(
+        "eventId",
+        "eventName subtitle eventImage date eventDateTime fullAddress city hostedBy",
+      )
       .populate("userId", "name phone email")
       .populate("ticketTypeId", "name price");
     // attach generated tickets

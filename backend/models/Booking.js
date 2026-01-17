@@ -100,8 +100,11 @@ const bookingSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "failed", "cancelled"],
       default: "pending",
     },
+    redirectUrl: {
+      type: String,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Only enforce uniqueness for documents where a non-null qrCode exists

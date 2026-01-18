@@ -142,6 +142,30 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    // Validate Attendees against Schema
+    if (!Array.isArray(attendees) || attendees.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "attendees must be a non-empty array",
+      });
+    }
+
+    for (const attendee of attendees) {
+      if (
+        !attendee.fullName ||
+        !attendee.email ||
+        !attendee.phone ||
+        !attendee.gender ||
+        !attendee.passType
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Each attendee must have fullName, email, phone, gender, and passType",
+        });
+      }
+    }
+
     const event = await Event.findById(eventId);
     if (!event) {
       return res
@@ -149,7 +173,7 @@ export const createOrder = async (req, res) => {
         .json({ success: false, message: "Event not found" });
     }
 
-    // Capacity Check
+    // Capacity Check & Pricing Calculation
     let totalPersons = 0;
     const passMap = {};
     event.passes.forEach((p) => {
@@ -157,6 +181,7 @@ export const createOrder = async (req, res) => {
     });
 
     let subtotal = 0;
+    const itemsWithPrice = [];
     for (const item of items) {
       const pass = passMap[item.passType];
       if (!pass) {
@@ -165,9 +190,18 @@ export const createOrder = async (req, res) => {
           message: `${item.passType} pass not available`,
         });
       }
-      subtotal += pass.price * item.quantity;
+
+      const itemPrice = pass.price;
+      subtotal += itemPrice * item.quantity;
       totalPersons +=
         item.passType === "Couple" ? item.quantity * 2 : item.quantity;
+
+      // Store items with their price for the Booking record
+      itemsWithPrice.push({
+        passType: item.passType,
+        quantity: item.quantity,
+        price: itemPrice,
+      });
     }
 
     if ((event.currentBookings || 0) + totalPersons > event.maxCapacity) {
@@ -187,7 +221,7 @@ export const createOrder = async (req, res) => {
       eventId,
       attendees,
       ticketCount: totalPersons,
-      items,
+      items: itemsWithPrice,
       subtotal,
       discountAmount: 0,
       taxAmount,
@@ -241,7 +275,8 @@ export const initiatePhonePePayment = async (req, res) => {
     }
 
     // ⚡ Optional Coupon Application Logic during Payment Initiation
-    if (couponCode) {
+    // 1. If couponCode is provided as a non-empty string -> Apply it
+    if (typeof couponCode === "string" && couponCode.trim() !== "") {
       const normalizedCode = couponCode.trim().toUpperCase();
       const coupon = await Coupon.findOne({ code: normalizedCode });
 
@@ -280,6 +315,18 @@ export const initiatePhonePePayment = async (req, res) => {
       booking.appliedCouponCode = normalizedCode;
       await booking.save();
     }
+    // 2. If couponCode is explicitly null or empty string -> Remove existing coupon
+    else if (couponCode === null || couponCode === "") {
+      const originalTax = Math.round(booking.subtotal * 0.1);
+      const originalTotal = booking.subtotal + originalTax;
+
+      booking.discountAmount = 0;
+      booking.taxAmount = originalTax;
+      booking.totalAmount = originalTotal;
+      booking.appliedCouponCode = null;
+      await booking.save();
+    }
+    // 3. If couponCode is undefined (not in body) -> Do nothing, use current booking state
 
     const merchantTransactionId = booking.orderId;
     const finalAmount = booking.totalAmount;

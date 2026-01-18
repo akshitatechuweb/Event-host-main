@@ -44,7 +44,6 @@ import { getPasses } from "../controllers/passController.js";
 import {
   createCoupon,
   getAllCoupons,
-  updateCouponStatus,
   deleteCoupon,
 } from "../controllers/couponController.js";
 const router = express.Router();
@@ -55,13 +54,13 @@ router.get(
   "/auth/me",
   authMiddleware,
   requireRole("admin", "superadmin"),
-  adminMe
+  adminMe,
 );
 router.get(
   "/profile",
   authMiddleware,
   requireRole("admin", "superadmin"),
-  adminMe
+  adminMe,
 );
 router.post("/auth/logout", authMiddleware, adminLogout);
 
@@ -71,13 +70,13 @@ router.put(
   authMiddleware,
   requireRole("admin", "superadmin"),
   upload.single("profileImage"),
-  updateAdminProfile
+  updateAdminProfile,
 );
 router.put(
   "/auth/change-password",
   authMiddleware,
   requireRole("admin", "superadmin"),
-  updateAdminPassword
+  updateAdminPassword,
 );
 
 // Dashboard stats endpoint
@@ -85,7 +84,7 @@ router.get(
   "/dashboard/stats",
   authMiddleware,
   requireRole("admin", "superadmin"),
-  getDashboardStats
+  getDashboardStats,
 );
 
 // ===============================
@@ -98,7 +97,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "read"),
-  getPendingHostingRequests
+  getPendingHostingRequests,
 );
 
 // Get single request details
@@ -107,7 +106,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "read"),
-  getHostingRequestById
+  getHostingRequestById,
 );
 
 // Approve host request
@@ -116,7 +115,7 @@ router.put(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "write"),
-  approveHostingRequest
+  approveHostingRequest,
 );
 
 // Reject host request
@@ -125,7 +124,7 @@ router.post(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "write"),
-  rejectHostingRequest
+  rejectHostingRequest,
 );
 
 // Get all approved hosts (for events)
@@ -134,7 +133,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("hosts", "read"),
-  getAllHosts
+  getAllHosts,
 );
 
 // ===============================
@@ -145,7 +144,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("transactions", "read"),
-  getEventTransactions
+  getEventTransactions,
 );
 
 router.get(
@@ -153,7 +152,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("events", "read"),
-  getEvents
+  getEvents,
 );
 
 // GET: All tickets or tickets by Event ID
@@ -167,7 +166,7 @@ router.get(
       return getPasses(req, res, next);
     }
     return getAllTickets(req, res, next);
-  }
+  },
 );
 
 router.post(
@@ -176,7 +175,7 @@ router.post(
   requireRole("admin", "superadmin"),
   checkPermission("events", "write"),
   upload.single("eventImage"),
-  createEvent
+  createEvent,
 );
 
 router.put(
@@ -185,7 +184,7 @@ router.put(
   requireRole("admin", "superadmin"),
   checkPermission("events", "write"),
   upload.single("eventImage"),
-  updateEvent
+  updateEvent,
 );
 
 // ===============================
@@ -196,7 +195,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("users", "read"),
-  getAllUsers
+  getAllUsers,
 );
 
 // Get single app user (Admin)
@@ -205,7 +204,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("users", "read"),
-  getUserById
+  getUserById,
 );
 
 router.put(
@@ -213,7 +212,7 @@ router.put(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("users", "write"),
-  deactivateUser
+  deactivateUser,
 );
 
 // Promote user to host (admin action based on isHostRequestPending)
@@ -222,7 +221,7 @@ router.put(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("users", "write"),
-  approveHostUpgrade
+  approveHostUpgrade,
 );
 
 // ===============================
@@ -236,14 +235,14 @@ router.put(
   "/admins/:id",
   authMiddleware,
   requireRole("superadmin"),
-  updateAdmin
+  updateAdmin,
 );
 
 router.delete(
   "/admins/:id",
   authMiddleware,
   requireRole("superadmin"),
-  deleteAdmin
+  deleteAdmin,
 );
 
 // ===============================
@@ -253,28 +252,23 @@ router.post(
   "/coupons",
   authMiddleware,
   requireRole("superadmin"),
-  createCoupon
+  createCoupon,
 );
 
 router.get(
   "/coupons",
   authMiddleware,
   requireRole("admin", "superadmin"),
-  getAllCoupons
+  getAllCoupons,
 );
 
-router.patch(
-  "/coupons/:id/status",
-  authMiddleware,
-  requireRole("superadmin"),
-  updateCouponStatus
-);
+// Status update removed as is_active field is removed
 
 router.delete(
   "/coupons/:id",
   authMiddleware,
   requireRole("superadmin"),
-  deleteCoupon
+  deleteCoupon,
 );
 
 router.get(
@@ -282,7 +276,7 @@ router.get(
   authMiddleware,
   requireRole("admin", "superadmin"),
   checkPermission("events", "read"),
-  getHostEvents
+  getHostEvents,
 );
 
 export default router;

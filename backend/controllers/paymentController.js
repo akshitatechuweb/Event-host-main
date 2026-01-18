@@ -331,27 +331,17 @@ export const initiatePhonePePayment = async (req, res) => {
     const merchantTransactionId = booking.orderId;
     const finalAmount = booking.totalAmount;
 
+    // Construct Backend Base URL
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const host = req.headers["x-forwarded-host"] || req.get("host");
     const backendBaseUrl = `${protocol}://${host}`;
 
-    const origin = req.get("origin");
-    const referer = req.get("referer");
-    let frontendUrl = origin;
-    if (!frontendUrl && referer) {
-      try {
-        const url = new URL(referer);
-        frontendUrl = `${url.protocol}//${url.host}`;
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    if (!frontendUrl) frontendUrl = "http://localhost:3000";
-
-    if (frontendUrl && !booking.redirectUrl) {
-      booking.redirectUrl = frontendUrl;
-      await booking.save();
-    }
+    // Fix: We don't care about frontend URL anymore. 
+    // The redirect will always come back to OUR backend status page.
+    // CHANGE: Adjusted to match the actual route defined in paymentRoutes.js (handle-redirect)
+    const redirectUrl = `${backendBaseUrl}/api/payment/phonepe/handle-redirect`;
+    booking.redirectUrl = redirectUrl; // Saving just for reference/debugging
+    await booking.save();
 
     const userId = booking.userId;
 
@@ -360,9 +350,9 @@ export const initiatePhonePePayment = async (req, res) => {
       merchantTransactionId,
       merchantUserId: userId ? userId.toString() : "GUEST",
       amount: Math.round(finalAmount * 100), // paise
-      redirectUrl: `${backendBaseUrl}/api/payment/phonepe/handle-redirect`,
-      redirectMode: "POST",
-      callbackUrl: `${backendBaseUrl}/api/payment/phonepe/callback`,
+      redirectUrl: redirectUrl,
+      redirectMode: "POST", // PhonePe sends a POST to this URL
+      callbackUrl: `${backendBaseUrl}/api/payment/phonepe/callback`, // S2S Webhook
       paymentInstrument: { type: "PAY_PAGE" },
     };
 
@@ -447,6 +437,21 @@ export const verifyPayment = async (req, res) => {
       );
 
       if (!result) {
+        // If result is null, it might mean the booking is already confirmed 
+        // OR it genuinely failed/wasn't found. 
+        // Let's check the booking status to be sure.
+        const existingBooking = await Booking.findOne({ orderId: transactionId });
+        if (existingBooking && existingBooking.status === 'confirmed') {
+          return res.json({
+            success: true,
+            message: "Payment verified successfully (Already Processed)",
+            bookingId: existingBooking._id,
+            // Note: generatedTickets might not be readily available here if we don't fetch them, 
+            // but usually verification is done once. 
+            // If needed we can fetch them from GeneratedTicket model.
+          });
+        }
+
         return res.status(404).json({
           success: false,
           message: "Booking not found or already processed",
@@ -506,7 +511,17 @@ export const checkPhonePeStatus = async (req, res) => {
         response.data.data.amount, // paise
       );
 
+      // If already confirmed, retrieve existing data
       if (!result) {
+        const existingBooking = await Booking.findOne({ orderId: transactionId });
+        if (existingBooking && existingBooking.status === 'confirmed') {
+          return res.json({
+            success: true,
+            message: "Payment successful",
+            bookingId: existingBooking._id,
+            // Ideally return tickets here too if possible, but basic status is OK
+          });
+        }
         return res.status(404).json({
           success: false,
           message: "Booking not found or already processed",
@@ -570,36 +585,29 @@ export const phonePeCallback = async (req, res) => {
 
 /* =====================================================
    PHONEPE: HANDLE REDIRECT (FROM PHONEPE TO BACKEND)
+   This now renders a simple static page.
 ===================================================== */
 export const handlePhonePeRedirect = async (req, res) => {
   try {
-    const { merchantTransactionId, transactionId, code } = {
+    const { merchantTransactionId, code } = {
       ...req.query,
       ...req.body,
     };
 
     console.log("[DEBUG] PhonePe Redirect Received:", {
       merchantTransactionId,
-      transactionId,
       code,
     });
 
-    // 1. Fetch the booking to get the original redirectUrl
-    const booking = await Booking.findOne({ orderId: merchantTransactionId });
-    const frontendUrl =
-      booking?.redirectUrl ||
-      process.env.FRONTEND_URL ||
-      "http://localhost:3000";
-
-    // 2. If code is already SUCCESS, we can try to process it
-    // This block is removed as the status API check is more reliable and always performed.
-
-    // 2. To be extra safe, always check the Status API
+    // 1. Always check the Status API to be sure
     const fullURL = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}${SALT_KEY}`;
     const checksum =
       crypto.createHash("sha256").update(fullURL).digest("hex") +
       "###" +
       SALT_INDEX;
+
+    let isSuccess = false;
+    let message = "Payment Processing...";
 
     try {
       const response = await axios.get(
@@ -619,35 +627,56 @@ export const handlePhonePeRedirect = async (req, res) => {
           response.data.data.transactionId,
           response.data.data.amount, // paise
         );
-        return res.redirect(
-          `${frontendUrl}/payment-status?id=${merchantTransactionId}&status=success`,
-        );
+        isSuccess = true;
+        message = "Payment Successful! You can close this window.";
       } else {
-        return res.redirect(
-          `${frontendUrl}/payment-status?id=${merchantTransactionId || "unknown"}&status=failed&code=${response.data.code || code || "ERROR"}`,
-        );
+        message = `Payment Failed: ${response.data.code || "Unknown Error"}`;
       }
     } catch (apiError) {
       console.error("Status check failed in redirect:", apiError.message);
-      // Fallback to the code sent by PhonePe in the redirect
-      // This block is simplified as the status API check is primary.
-      return res.redirect(
-        `${frontendUrl}/payment-status?id=${merchantTransactionId || "unknown"}&status=failed`,
-      );
+      message = "We are verifying your payment. Please check your app.";
     }
+
+    // 2. Return a simple HTML page
+    // Using a simple style to look decent on mobile
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Status</title>
+        <style>
+          body { font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f4f4f5; }
+          .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); text-align: center; max-width: 90%; width: 400px; }
+          .icon { font-size: 48px; margin-bottom: 1rem; }
+          h1 { font-size: 1.5rem; margin: 0 0 0.5rem 0; color: #18181b; }
+          p { color: #71717a; margin: 0; }
+          .success { color: #10b981; }
+          .error { color: #ef4444; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="icon ${isSuccess ? 'success' : 'error'}">
+            ${isSuccess ? '✅' : '❌'}
+          </div>
+          <h1>${isSuccess ? 'Payment Successful' : 'Payment Failed'}</h1>
+          <p>${message}</p>
+          <p style="margin-top: 1rem; font-size: 0.875rem; color: #a1a1aa;">You can close this window now.</p>
+        </div>
+        <script>
+           // Optional: Close window automatically after a few seconds if it was a popup
+           // setTimeout(() => window.close(), 5000);
+        </script>
+      </body>
+      </html>
+    `;
+
+    return res.status(isSuccess ? 200 : 400).send(html);
+
   } catch (error) {
     console.error("PHONEPE REDIRECT HANDLER ERROR:", error.message);
-    // Try to find the booking one last time for redirection
-    const merchantTransactionId =
-      req.query?.merchantTransactionId || req.body?.merchantTransactionId;
-    const booking = merchantTransactionId
-      ? await Booking.findOne({ orderId: merchantTransactionId })
-      : null;
-    const frontendUrl =
-      booking?.redirectUrl ||
-      process.env.FRONTEND_URL ||
-      "http://localhost:3000";
-
-    return res.redirect(`${frontendUrl}/payment-status?status=error`);
+    return res.status(500).send("Internal Server Error during payment processing.");
   }
 };

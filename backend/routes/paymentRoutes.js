@@ -8,7 +8,7 @@ import {
   handlePhonePeRedirect,
   applyCouponToOrder,
   removeCouponFromOrder,
-  initiateRazorpayPayment,
+  verifyPayment,
 } from "../controllers/paymentController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
@@ -21,27 +21,6 @@ router.post(
   authMiddleware,
   requireRole("user", "host", "admin", "superadmin"),
   createOrder,
-);
-
-router.post(
-  "/apply-coupon",
-  authMiddleware,
-  requireRole("user", "host", "admin", "superadmin"),
-  applyCouponToOrder,
-);
-
-router.post(
-  "/remove-coupon",
-  authMiddleware,
-  requireRole("user", "host", "admin", "superadmin"),
-  removeCouponFromOrder,
-);
-
-router.post(
-  "/initiate-razorpay",
-  authMiddleware,
-  requireRole("user", "host", "admin", "superadmin"),
-  initiateRazorpayPayment,
 );
 
 router.post(

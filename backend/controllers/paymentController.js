@@ -1,5 +1,7 @@
 import crypto from "crypto";
 import axios from "axios";
+import fs from "fs";
+import path from "path";
 import Event from "../models/Event.js";
 import Booking from "../models/Booking.js";
 import GeneratedTicket from "../models/GeneratedTicket.js";
@@ -218,10 +220,10 @@ export const createOrder = async (req, res) => {
       attendees,
       ticketCount: totalPersons,
       items: itemsWithPrice,
-      totalAmount,           // ✅ Main field
-      subtotal: 0,           // ✅ Set to 0 (not used)
-      discountAmount: 0,     // ✅ Set to 0 (not used)
-      taxAmount: 0,          // ✅ Set to 0 (not used)
+      totalAmount, // ✅ Main field
+      subtotal: 0, // ✅ Set to 0 (not used)
+      discountAmount: 0, // ✅ Set to 0 (not used)
+      taxAmount: 0, // ✅ Set to 0 (not used)
       appliedCouponCode: null,
       orderId: internalOrderId,
       status: "pending",
@@ -246,11 +248,17 @@ export const createOrder = async (req, res) => {
  */
 export const initiatePhonePePayment = async (req, res) => {
   try {
-    console.log('🔍 CREDENTIALS CHECK:', {
-      MERCHANT_ID: MERCHANT_ID || 'MISSING',
-      SALT_KEY: SALT_KEY ? `${SALT_KEY.substring(0, 10)}...` : 'MISSING',
-      SALT_INDEX: SALT_INDEX || 'MISSING',
-      API_URL: PHONEPE_API_URL || 'MISSING'
+    const debugLog = (msg, data = {}) => {
+      const logMsg = `[${new Date().toISOString()}] ${msg} ${JSON.stringify(data, null, 2)}\n`;
+      fs.appendFileSync(path.join(process.cwd(), "payment_debug.log"), logMsg);
+      console.log(msg, data);
+    };
+
+    debugLog("🔍 CREDENTIALS CHECK:", {
+      MERCHANT_ID: MERCHANT_ID || "MISSING",
+      SALT_KEY: SALT_KEY ? `${SALT_KEY.substring(0, 10)}...` : "MISSING",
+      SALT_INDEX: SALT_INDEX || "MISSING",
+      API_URL: PHONEPE_API_URL || "MISSING",
     });
 
     const { bookingId } = req.body;
@@ -278,7 +286,7 @@ export const initiatePhonePePayment = async (req, res) => {
     if (!booking.totalAmount || booking.totalAmount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid booking amount"
+        message: "Invalid booking amount",
       });
     }
 
@@ -307,9 +315,14 @@ export const initiatePhonePePayment = async (req, res) => {
       paymentInstrument: { type: "PAY_PAGE" },
     };
 
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64");
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
+      "base64",
+    );
     const fullURL = base64Payload + "/pg/v1/pay" + SALT_KEY;
-    const checksum = crypto.createHash("sha256").update(fullURL).digest("hex") + "###" + SALT_INDEX;
+    const checksum =
+      crypto.createHash("sha256").update(fullURL).digest("hex") +
+      "###" +
+      SALT_INDEX;
 
     const response = await axios.post(
       `${PHONEPE_API_URL}/pg/v1/pay`,
@@ -323,6 +336,8 @@ export const initiatePhonePePayment = async (req, res) => {
       },
     );
 
+    debugLog("PHONEPE INITIATION SUCCESS", response.data);
+
     if (response.data.success) {
       return res.json({
         success: true,
@@ -334,14 +349,26 @@ export const initiatePhonePePayment = async (req, res) => {
       throw new Error(response.data.message || "PhonePe initiation failed");
     }
   } catch (error) {
-  console.error("PHONEPE INITIATE FULL ERROR:", {
-    message: error.message,
-    response: error.response?.data,          
-    status: error.response?.status,
-    headers: error.response?.headers
-  });
-  return res.status(500).json({ success: false, message: "Payment initiation failed" });
-}
+    const errorDetails = {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+      stack: error.stack,
+    };
+
+    const logMsg = `[${new Date().toISOString()}] PHONEPE INITIATE FULL ERROR: ${JSON.stringify(errorDetails, null, 2)}\n`;
+    fs.appendFileSync(path.join(process.cwd(), "payment_debug.log"), logMsg);
+
+    console.error("PHONEPE INITIATE FULL ERROR:", errorDetails);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Payment initiation failed",
+        error: error.message,
+      });
+  }
 };
 /* =====================================================
    VERIFY PAYMENT (General endpoint for frontend)
@@ -382,8 +409,10 @@ export const verifyPayment = async (req, res) => {
       );
 
       if (!result) {
-        const existingBooking = await Booking.findOne({ orderId: transactionId });
-        if (existingBooking && existingBooking.status === 'confirmed') {
+        const existingBooking = await Booking.findOne({
+          orderId: transactionId,
+        });
+        if (existingBooking && existingBooking.status === "confirmed") {
           return res.json({
             success: true,
             message: "Payment verified successfully (Already Processed)",
@@ -410,9 +439,8 @@ export const verifyPayment = async (req, res) => {
         code: response.data.code,
       });
     }
-  } 
-  // ← Yaha purana catch block ko hata ke yeh naya wala lagao
-  catch (error) {
+  } catch (error) {
+    // ← Yaha purana catch block ko hata ke yeh naya wala lagao
     const errorDetails = {
       message: error.message,
       status: error.response?.status,
@@ -422,11 +450,12 @@ export const verifyPayment = async (req, res) => {
       merchantId: MERCHANT_ID,
     };
     console.error("VERIFY PAYMENT DETAILED ERROR:", errorDetails);
-    
+
     return res.status(500).json({
       success: false,
       message: "Error verifying payment",
-      debugInfo: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+      debugInfo:
+        process.env.NODE_ENV === "development" ? errorDetails : undefined,
     });
   }
 };
@@ -465,8 +494,10 @@ export const checkPhonePeStatus = async (req, res) => {
 
       // If already confirmed, retrieve existing data
       if (!result) {
-        const existingBooking = await Booking.findOne({ orderId: transactionId });
-        if (existingBooking && existingBooking.status === 'confirmed') {
+        const existingBooking = await Booking.findOne({
+          orderId: transactionId,
+        });
+        if (existingBooking && existingBooking.status === "confirmed") {
           return res.json({
             success: true,
             message: "Payment successful",
@@ -610,10 +641,10 @@ export const handlePhonePeRedirect = async (req, res) => {
       </head>
       <body>
         <div class="card">
-          <div class="icon ${isSuccess ? 'success' : 'error'}">
-            ${isSuccess ? '✅' : '❌'}
+          <div class="icon ${isSuccess ? "success" : "error"}">
+            ${isSuccess ? "✅" : "❌"}
           </div>
-          <h1>${isSuccess ? 'Payment Successful' : 'Payment Failed'}</h1>
+          <h1>${isSuccess ? "Payment Successful" : "Payment Failed"}</h1>
           <p>${message}</p>
           <p style="margin-top: 1rem; font-size: 0.875rem; color: #a1a1aa;">You can close this window now.</p>
         </div>
@@ -626,9 +657,10 @@ export const handlePhonePeRedirect = async (req, res) => {
     `;
 
     return res.status(isSuccess ? 200 : 400).send(html);
-
   } catch (error) {
     console.error("PHONEPE REDIRECT HANDLER ERROR:", error.message);
-    return res.status(500).send("Internal Server Error during payment processing.");
+    return res
+      .status(500)
+      .send("Internal Server Error during payment processing.");
   }
 };

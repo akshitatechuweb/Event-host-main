@@ -130,6 +130,7 @@ const processConfirmedBooking = async (
 /* =====================================================
    CREATE ORDER
 ===================================================== */
+
 export const createOrder = async (req, res) => {
   try {
     const { eventId, items = [], attendees = [] } = req.body;
@@ -142,7 +143,6 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // Validate Attendees against Schema
     if (!Array.isArray(attendees) || attendees.length === 0) {
       return res.status(400).json({
         success: false,
@@ -180,7 +180,7 @@ export const createOrder = async (req, res) => {
       passMap[p.type] = p;
     });
 
-    let subtotal = 0;
+    let totalAmount = 0;
     const itemsWithPrice = [];
     for (const item of items) {
       const pass = passMap[item.passType];
@@ -192,11 +192,10 @@ export const createOrder = async (req, res) => {
       }
 
       const itemPrice = pass.price;
-      subtotal += itemPrice * item.quantity;
+      totalAmount += itemPrice * item.quantity;
       totalPersons +=
         item.passType === "Couple" ? item.quantity * 2 : item.quantity;
 
-      // Store items with their price for the Booking record
       itemsWithPrice.push({
         passType: item.passType,
         quantity: item.quantity,
@@ -211,9 +210,6 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    const taxAmount = Math.round(subtotal * 0.1);
-    const finalAmount = subtotal + taxAmount;
-
     const internalOrderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     const booking = await Booking.create({
@@ -222,10 +218,10 @@ export const createOrder = async (req, res) => {
       attendees,
       ticketCount: totalPersons,
       items: itemsWithPrice,
-      subtotal,
-      discountAmount: 0,
-      taxAmount,
-      totalAmount: finalAmount,
+      totalAmount,           // ✅ Main field
+      subtotal: 0,           // ✅ Set to 0 (not used)
+      discountAmount: 0,     // ✅ Set to 0 (not used)
+      taxAmount: 0,          // ✅ Set to 0 (not used)
       appliedCouponCode: null,
       orderId: internalOrderId,
       status: "pending",
@@ -235,9 +231,7 @@ export const createOrder = async (req, res) => {
       success: true,
       bookingId: booking._id,
       orderId: internalOrderId,
-      amount: finalAmount,
-      subtotal,
-      taxAmount,
+      amount: totalAmount,
       eventName: event.eventName,
       ticketCount: totalPersons,
     });
@@ -246,14 +240,20 @@ export const createOrder = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 /**
  * 3️⃣ Initiate Payment API (For PhonePe)
  * POST /api/payment/phonepe/initiate
  */
 export const initiatePhonePePayment = async (req, res) => {
   try {
-    const { bookingId, couponCode } = req.body;
+    console.log('🔍 CREDENTIALS CHECK:', {
+      MERCHANT_ID: MERCHANT_ID || 'MISSING',
+      SALT_KEY: SALT_KEY ? `${SALT_KEY.substring(0, 10)}...` : 'MISSING',
+      SALT_INDEX: SALT_INDEX || 'MISSING',
+      API_URL: PHONEPE_API_URL || 'MISSING'
+    });
+
+    const { bookingId } = req.body;
 
     if (!bookingId) {
       return res
@@ -274,59 +274,13 @@ export const initiatePhonePePayment = async (req, res) => {
         .json({ success: false, message: "Only pending bookings can be paid" });
     }
 
-    // ⚡ Optional Coupon Application Logic during Payment Initiation
-    // 1. If couponCode is provided as a non-empty string -> Apply it
-    if (typeof couponCode === "string" && couponCode.trim() !== "") {
-      const normalizedCode = couponCode.trim().toUpperCase();
-      const coupon = await Coupon.findOne({ code: normalizedCode });
-
-      if (!coupon) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Invalid coupon code" });
-      }
-
-      if (booking.subtotal <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Coupons cannot be applied to free events",
-        });
-      }
-
-      // Calculate discount
-      let discountAmount = 0;
-      if (coupon.type === "PERCENTAGE") {
-        discountAmount = (booking.subtotal * coupon.value) / 100;
-      } else {
-        discountAmount = coupon.value;
-      }
-
-      // Cap discount at subtotal
-      if (discountAmount > booking.subtotal) discountAmount = booking.subtotal;
-
-      // Update booking with the discount and recalculated total
-      const newSubtotalAfterDiscount = booking.subtotal - discountAmount;
-      const newTax = Math.round(newSubtotalAfterDiscount * 0.1);
-      const newFinalAmount = newSubtotalAfterDiscount + newTax;
-
-      booking.discountAmount = discountAmount;
-      booking.taxAmount = newTax;
-      booking.totalAmount = newFinalAmount;
-      booking.appliedCouponCode = normalizedCode;
-      await booking.save();
+    // ✅ Simple validation
+    if (!booking.totalAmount || booking.totalAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking amount"
+      });
     }
-    // 2. If couponCode is explicitly null or empty string -> Remove existing coupon
-    else if (couponCode === null || couponCode === "") {
-      const originalTax = Math.round(booking.subtotal * 0.1);
-      const originalTotal = booking.subtotal + originalTax;
-
-      booking.discountAmount = 0;
-      booking.taxAmount = originalTax;
-      booking.totalAmount = originalTotal;
-      booking.appliedCouponCode = null;
-      await booking.save();
-    }
-    // 3. If couponCode is undefined (not in body) -> Do nothing, use current booking state
 
     const merchantTransactionId = booking.orderId;
     const finalAmount = booking.totalAmount;
@@ -336,11 +290,8 @@ export const initiatePhonePePayment = async (req, res) => {
     const host = req.headers["x-forwarded-host"] || req.get("host");
     const backendBaseUrl = `${protocol}://${host}`;
 
-    // Fix: We don't care about frontend URL anymore. 
-    // The redirect will always come back to OUR backend status page.
-    // CHANGE: Adjusted to match the actual route defined in paymentRoutes.js (handle-redirect)
     const redirectUrl = `${backendBaseUrl}/api/payment/phonepe/handle-redirect`;
-    booking.redirectUrl = redirectUrl; // Saving just for reference/debugging
+    booking.redirectUrl = redirectUrl;
     await booking.save();
 
     const userId = booking.userId;
@@ -351,22 +302,17 @@ export const initiatePhonePePayment = async (req, res) => {
       merchantUserId: userId ? userId.toString() : "GUEST",
       amount: Math.round(finalAmount * 100), // paise
       redirectUrl: redirectUrl,
-      redirectMode: "POST", // PhonePe sends a POST to this URL
-      callbackUrl: `${backendBaseUrl}/api/payment/phonepe/callback`, // S2S Webhook
+      redirectMode: "POST",
+      callbackUrl: `${backendBaseUrl}/api/payment/phonepe/callback`,
       paymentInstrument: { type: "PAY_PAGE" },
     };
 
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
-      "base64",
-    );
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64");
     const fullURL = base64Payload + "/pg/v1/pay" + SALT_KEY;
-    const checksum =
-      crypto.createHash("sha256").update(fullURL).digest("hex") +
-      "###" +
-      SALT_INDEX;
+    const checksum = crypto.createHash("sha256").update(fullURL).digest("hex") + "###" + SALT_INDEX;
 
     const response = await axios.post(
-        `${PHONEPE_API_URL}/pg/v1/pay`,
+      `${PHONEPE_API_URL}/pg/v1/pay`,
       { request: base64Payload },
       {
         headers: {
@@ -397,7 +343,6 @@ export const initiatePhonePePayment = async (req, res) => {
       .json({ success: false, message: "Payment initiation failed" });
   }
 };
-
 /* =====================================================
    VERIFY PAYMENT (General endpoint for frontend)
    POST /api/payment/verify-payment

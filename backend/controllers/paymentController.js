@@ -334,14 +334,14 @@ export const initiatePhonePePayment = async (req, res) => {
       throw new Error(response.data.message || "PhonePe initiation failed");
     }
   } catch (error) {
-    console.error(
-      "PHONEPE INITIATE ERROR:",
-      error.response?.data || error.message,
-    );
-    return res
-      .status(500)
-      .json({ success: false, message: "Payment initiation failed" });
-  }
+  console.error("PHONEPE INITIATE FULL ERROR:", {
+    message: error.message,
+    response: error.response?.data,          
+    status: error.response?.status,
+    headers: error.response?.headers
+  });
+  return res.status(500).json({ success: false, message: "Payment initiation failed" });
+}
 };
 /* =====================================================
    VERIFY PAYMENT (General endpoint for frontend)
@@ -382,18 +382,12 @@ export const verifyPayment = async (req, res) => {
       );
 
       if (!result) {
-        // If result is null, it might mean the booking is already confirmed 
-        // OR it genuinely failed/wasn't found. 
-        // Let's check the booking status to be sure.
         const existingBooking = await Booking.findOne({ orderId: transactionId });
         if (existingBooking && existingBooking.status === 'confirmed') {
           return res.json({
             success: true,
             message: "Payment verified successfully (Already Processed)",
             bookingId: existingBooking._id,
-            // Note: generatedTickets might not be readily available here if we don't fetch them, 
-            // but usually verification is done once. 
-            // If needed we can fetch them from GeneratedTicket model.
           });
         }
 
@@ -416,11 +410,24 @@ export const verifyPayment = async (req, res) => {
         code: response.data.code,
       });
     }
-  } catch (error) {
-    console.error("VERIFY PAYMENT ERROR:", error.message);
-    return res
-      .status(500)
-      .json({ success: false, message: "Error verifying payment" });
+  } 
+  // ← Yaha purana catch block ko hata ke yeh naya wala lagao
+  catch (error) {
+    const errorDetails = {
+      message: error.message,
+      status: error.response?.status,
+      phonePeCode: error.response?.data?.code,
+      phonePeMessage: error.response?.data?.message,
+      transactionId,
+      merchantId: MERCHANT_ID,
+    };
+    console.error("VERIFY PAYMENT DETAILED ERROR:", errorDetails);
+    
+    return res.status(500).json({
+      success: false,
+      message: "Error verifying payment",
+      debugInfo: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+    });
   }
 };
 

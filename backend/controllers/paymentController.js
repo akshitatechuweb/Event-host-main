@@ -366,7 +366,7 @@ export const initiatePhonePePayment = async (req, res) => {
       SALT_INDEX;
 
     const response = await axios.post(
-      PHONEPE_API_URL,
+        `${PHONEPE_API_URL}/pg/v1/pay`,
       { request: base64Payload },
       {
         headers: {
